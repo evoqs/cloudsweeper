@@ -1,0 +1,217 @@
+
+AccountData 
+{
+	"accountID" : 	Integer 
+	"accountType" :	String
+	"Descritpion" : String
+}
+
+
+UserData 
+{
+	"userName" : 			String
+	"accountID" : 			Integer
+	"role" :				String
+	"passsswordHash" :		String
+}
+
+
+CloudCredsData
+{
+	"accountID" : 			Integer
+	"cloudAccountID" :		Integer		
+	"cloudAccountType" : 	String
+	"cloudAccountCreds" :	{
+								"cloudSpecificTag1" : String
+								"cloudSpecificTag2" : String
+								...
+							}
+}
+
+DefaultTemplate
+{
+  "template": [
+    {
+      "resourceType": "EC2_Instance",
+      "defaultPolicy": {
+        "policies": [
+          {
+            "name": "old-instances",
+            "resource": "ec2",
+            "filters": [
+              {
+                "type": "instance-age",
+                "days": "${EC2_INSTANCE_AGE}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "resourceType": "EBS_Volume",
+      "defaultPolicy": {
+        "policies": [
+          {
+            "name": "ebs-mark-unattached-deletion-default",
+            "resource": "ebs",
+            "filters": [
+              {
+                "Attachments": []
+              },
+              {
+                "tag:maid_status": "absent"
+              }
+            ],
+            "actions": [
+              {
+                "type": "${OPERATION_TYPE}",
+                "op": "${OPERATION}",
+                "days": "${DAYS}"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+
+
+PipeLine
+{
+	"accountID" : 		Integer
+	"cloudAccountID":	Integer
+	"pipeLineId": Integer
+	"pipeLineName": String
+	"policyList": [
+					policyID1, policyID2, .. 
+				]
+	"
+
+Policy
+{
+	"policyName": 		String
+	"PolicyID"  : 		Integer
+	"ResourceType" 		String
+	"PolicyDefinition" : {
+					"policies": [
+								<Actual Policy>
+								]
+								}
+}
+
+Schedule 
+
+{
+	"policyID": 	Integer
+	"schedule": 	{
+						"frequency_hour": Integer
+						"active_days": String
+						"fixed_time": DateTime
+					}
+	"lastRun":		DateTime
+	"enabled": 		Boolean
+}
+	
+	
+Policy Run Data 
+
+{
+	"policyName": String
+	"PolicyID"  : Integer
+	"runTime"   : Date
+	"Version" 	: Integer
+	"runResult" : [
+					{
+						"header1": "value",
+						"header2": "value",
+						"header3": "value"
+					},
+										{
+						"header1": "value",
+						"header2": "value",
+						"header3": "value"
+					},
+										{
+						"header1": "value",
+						"header2": "value",
+						"header3": "value"
+					},
+										{
+						"header1": "value",
+						"header2": "value",
+						"header3": "value"
+					},
+										{
+						"header1": "value",
+						"header2": "value",
+						"header3": "value"
+					},
+										{
+						"header1": "value",
+						"header2": "value",
+						"header3": "value"
+					}
+				]
+	}
+}
+
+					
+					
+PolicyTemplate 
+{
+	resourceList: [
+	
+	{
+		resourceType: "EC2_Instance"
+		filters: [
+			"filter1" : "valueDefinition"
+			"filter2" : "valueDefinition"
+			....
+			"filtern" : "valueDefinition"
+			]
+	},
+	
+	{
+		resourceType: "EBS_Volume"
+		filters: [
+			"filter1" : "valueDefinition"
+			"filter2" : "valueDefinition"
+			....
+			"filtern" : "valueDefinition"
+			]
+	},
+	
+		{
+		resourceType: "EBS_Snapshot"
+		filters: [
+			"filter1" : "valueDefinition"
+			"filter2" : "valueDefinition"
+			....
+			"filtern" : "valueDefinition"
+			]
+	},
+	
+			{
+		resourceType: "Elastic_IP"
+		filters: [
+			"filter1" : "valueDefinition"
+			"filter2" : "valueDefinition"
+			....
+			"filtern" : "valueDefinition"
+			]
+	},
+	
+	{
+		resourceType: "Elastic_LB"
+		filters: [
+			"filter1" : "valueDefinition"
+			"filter2" : "valueDefinition"
+			....
+			"filtern" : "valueDefinition"
+			]
+	}	
+	
+	]
+}					
