@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"testmod/model"
-	"testmod/storage"
-	"testmod/utils"
+	"cloudsweep/model"
+	"cloudsweep/storage"
+	"cloudsweep/utils"
 
 	"github.com/gorilla/mux"
 )

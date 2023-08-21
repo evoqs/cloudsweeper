@@ -7,10 +7,10 @@ import (
 	"math/rand"
 	"strconv"
 
-	"testmod/api"
-	"testmod/model"
-	"testmod/storage"
-	"testmod/utils"
+	"cloudsweep/api"
+	"cloudsweep/model"
+	"cloudsweep/storage"
+	"cloudsweep/utils"
 )
 
 func main() {

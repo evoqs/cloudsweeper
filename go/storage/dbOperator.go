@@ -1,10 +1,10 @@
 package storage
 
 import (
+	"cloudsweep/model"
 	"context"
 	"fmt"
 	"strconv"
-	"testmod/model"
 )
 
 const policyTable = "policies"
