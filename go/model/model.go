@@ -30,14 +30,24 @@ type CSPolicy struct {
 }
 
 type PipeLine struct {
-	AccountID      int      `json:"accountid" bson:"accountid"`
-	CloudAccountID int      `json:"cloudaccountid" bson:"cloudaccountid"`
-	PipeLineID     int      `json:"piplineid" bson:"piplineid"`
-	PipeLineName   string   `json:"piplinename" bson:"piplinename"`
-	PolicyID       []int    `json:"policyid" bson:"policyid"`
-	Schedule       Schedule `json:"schedule" bson:"schedule"`
-	Enabled        bool     `json:"enabled" bson:"enabled"`
+	AccountID      int       `json:"accountid" bson:"accountid"`
+	CloudAccountID int       `json:"cloudaccountid" bson:"cloudaccountid"`
+	PipeLineID     int       `json:"piplineid" bson:"piplineid"`
+	PipeLineName   string    `json:"piplinename" bson:"piplinename"`
+	PolicyID       []int     `json:"policyid" bson:"policyid"`
+	Schedule       Schedule  `json:"schedule" bson:"schedule"`
+	Enabled        bool      `json:"enabled" bson:"enabled"`
+	RunStatus      RunStatus `json:"status" bson:"status"`
 }
+
+type RunStatus int
+
+const (
+	RUNNING   RunStatus = 0
+	COMPLETED RunStatus = 1
+	FAILED    RunStatus = 2
+	UNKNOWN   RunStatus = 3
+)
 
 type Schedule struct {
 	Hourly int            `json:"hourly" bson:"hourly"`
