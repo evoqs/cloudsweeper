@@ -109,7 +109,7 @@ func (dbm DBManger) UpdateRecord(dbname string, collection string, query string,
 
 }
 
-func (dbm DBManger) DeleteRecord(dbname string, collection string, query string) error {
+func (dbm DBManger) DeleteOneRecord(dbname string, collection string, query string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -119,6 +119,21 @@ func (dbm DBManger) DeleteRecord(dbname string, collection string, query string)
 		// handle error
 	}
 	_, err = dbm.mongoClinet.Database(dbname).Collection(collection).DeleteOne(ctx, &bquery)
+
+	return err
+
+}
+
+func (dbm DBManger) DeleteMultipleRecord(dbname string, collection string, query string) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var bquery interface{}
+	err := bson.UnmarshalExtJSON([]byte(query), true, &bquery)
+	if err != nil {
+		// handle error
+	}
+	_, err = dbm.mongoClinet.Database(dbname).Collection(collection).DeleteMany(ctx, &bquery)
 
 	return err
 

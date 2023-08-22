@@ -39,16 +39,19 @@ func main() {
 	}
 
 	result := storage.GetIdCounter(*dbM, cfg.Database.Name)
+	result1 := storage.GetIdCounter(*dbM, cfg.Database.Name)
+	fmt.Println("Initial Counter", result1)
 	if result.CounterID == 0 {
 		fmt.Println("Counter not set, Initializing counter")
 		storage.InitializeCounter(*dbM, cfg.Database.Name)
 
 	}
 
-	//fmt.Println(result)
+	fmt.Println("Starting server1")
+	//InsertRandomRecord(*dbM, cfg.Database.Name)
 	var server api.Server
 	server.StartApiServer("8000", *dbM)
-	//InsertRandomRecord(*dbM, cfg.Database.Name)
+
 	//InsertRandomRecord(*dbM, cfg.Database.Name)
 	//InsertRandomRecord(*dbM, cfg.Database.Name)
 	/*
@@ -68,10 +71,16 @@ func main() {
 
 func InsertRandomRecord(dbM storage.DBManger, dbName string) {
 	var acc model.AccountData
+	cred := model.AwsCredentials{
+		AccessKeyID:     "myaccesskey1234",
+		SecretAccessKey: "topsecretparu",
+	}
 	acc = model.AccountData{
-		AccountID:   0,
-		AccountType: "aws",
-		Description: "AWS account ",
+		AccountID:      0,
+		CloudAccountID: 3033,
+		AccountType:    "aws",
+		Description:    "AWS account ",
+		AwsCredentials: cred,
 	}
 
 	acc.AccountID = rand.Intn(100000)
@@ -131,7 +140,7 @@ func UpdateRandomRecord(dbM storage.DBManger, dbName string, query string) {
 
 func DeleteRandomRecord(dbM storage.DBManger, dbName string, query string) {
 
-	err := dbM.DeleteRecord(dbName, "account", query)
+	err := dbM.DeleteOneRecord(dbName, "account", query)
 	if err != nil {
 		fmt.Println("Delete record failed with " + err.Error())
 

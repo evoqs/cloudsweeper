@@ -57,6 +57,8 @@ func main2() {
 
 	var bdoc interface{}
 
+	//bdoc = `{}
+
 	if err != nil {
 		fmt.Println(err)
 	}

@@ -33,6 +33,18 @@ func PutAccounts(dbM DBManger, dbName string, acc model.AccountData) error {
 	return err
 }
 
+func DeleteAccounts(dbM DBManger, dbName string, query string) error {
+
+	err := dbM.DeleteMultipleRecord(dbName, accountTable, query)
+	return err
+}
+
+func DeleteCloudAccount(dbM DBManger, dbName string, query string) error {
+
+	err := dbM.DeleteOneRecord(dbName, accountTable, query)
+	return err
+}
+
 // For internal Use only
 func GetIdCounter(dbM DBManger, dbName string) model.IdCounter {
 
@@ -42,9 +54,12 @@ func GetIdCounter(dbM DBManger, dbName string) model.IdCounter {
 	cursor, err := dbM.QueryOneRecord(dbName, CounterTable, query)
 
 	if err = cursor.Decode(&result); err != nil {
+		fmt.Println(err)
 		//panic(err)
 
 	}
+	fmt.Println(dbName, CounterTable, query)
+	fmt.Println(result)
 	return result
 }
 
