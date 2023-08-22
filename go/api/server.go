@@ -21,7 +21,7 @@ func (srv *Server) StartApiServer(port string, dbM storage.DBManger) {
 	srv.port = port
 	srv.dbM = dbM
 	router := mux.NewRouter()
-	router.HandleFunc("/accounts", srv.GetAllAccount).Methods("GET")
+	router.HandleFunc("/accounts", srv.GetAllAccount).Methods("GET") //May Need to remove
 	router.HandleFunc("/accounts/{accountid}", srv.GetAccount).Methods("GET")
 	router.HandleFunc("/accounts/{accountid}", srv.DeleteAccount).Methods("DELETE")
 

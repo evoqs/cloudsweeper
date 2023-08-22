@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type AccountData struct {
 	AccountID      int            `json:"accountid" bson:"accountid"`
 	CloudAccountID int            `json:"cloudaccountid" bson:"cloudaccountid"`
@@ -25,6 +27,32 @@ type CSPolicy struct {
 	AccountID        int    `json:"accountid" bson:"accountid"`
 	CloudAccountID   int    `json:"cloudaccountid" bson:"cloudaccountid"`
 	PolicyDefinition string `json:"policydefinition" bson:"policydefinition"`
+}
+
+type PipeLine struct {
+	AccountID      int      `json:"accountid" bson:"accountid"`
+	CloudAccountID int      `json:"cloudaccountid" bson:"cloudaccountid"`
+	PipeLineID     int      `json:"piplineid" bson:"piplineid"`
+	PipeLineName   string   `json:"piplinename" bson:"piplinename"`
+	PolicyID       []int    `json:"policyid" bson:"policyid"`
+	Schedule       Schedule `json:"schedule" bson:"schedule"`
+	Enabled        bool     `json:"enabled" bson:"enabled"`
+}
+
+type Schedule struct {
+	Hourly int            `json:"hourly" bson:"hourly"`
+	Daily  ScheduleDaily  `json:"daily" bson:"daily"`
+	Weekly ScheduleWeekly `json:"weekly" bson:"weekly"`
+}
+
+type ScheduleDaily struct {
+	Intreval int       `json:"intreval" bson:"intreval"`
+	Time     time.Time `json:"time" bson:"time"`
+}
+
+type ScheduleWeekly struct {
+	DaysOfWeek string    `json:"daysofweek" bson:"daysofweek"`
+	Time       time.Time `json:"time" bson:"time"`
 }
 
 type IdCounter struct {
