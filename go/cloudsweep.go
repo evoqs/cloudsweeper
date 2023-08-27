@@ -38,20 +38,6 @@ func main() {
 		defer dbM.Disconnect()
 	}
 
-	result := storage.GetIdCounter(*dbM, cfg.Database.Name)
-	result1 := storage.GetIdCounter(*dbM, cfg.Database.Name)
-	fmt.Println("Initial Counter", result1)
-	if result.CounterID == 0 {
-		fmt.Println("Counter not set, Initializing counter")
-		storage.InitializeCounter(*dbM, cfg.Database.Name)
-
-	}
-
-	fmt.Println("Starting server1")
-	//InsertRandomRecord(*dbM, cfg.Database.Name)
-	var server api.Server
-	server.StartApiServer("8000", *dbM)
-
 	//InsertRandomRecord(*dbM, cfg.Database.Name)
 	//InsertRandomRecord(*dbM, cfg.Database.Name)
 	/*
@@ -61,38 +47,46 @@ func main() {
 
 		UpdateRandomRecord(*dbM, cfg.Database.Name, query)
 		fmt.Println("Query All")
-		query = `{}`
-		QueryRandomRecord(*dbM, cfg.Database.Name, query)
+
 
 		query = `{"accountId": ` + strconv.Itoa(98407) + `}`
 		DeleteRandomRecord(*dbM, cfg.Database.Name, query)
 	*/
+	//query := `64e97c7a6ca9765964be555e`
+	//QueryRandomRecordWithId(*dbM, cfg.Database.Name, query)
+
+	startServer(dbM)
+}
+
+func startServer(dbM *storage.DBManger) {
+	fmt.Println("Starting server")
+	var server api.Server
+	server.StartApiServer("8000", *dbM)
 }
 
 func InsertRandomRecord(dbM storage.DBManger, dbName string) {
 	var acc model.AccountData
 	cred := model.AwsCredentials{
 		AccessKeyID:     "myaccesskey1234",
-		SecretAccessKey: "topsecretparu",
+		SecretAccessKey: "topsecret",
 	}
 	acc = model.AccountData{
-		AccountID:      0,
-		CloudAccountID: 3033,
+		AccountID:      "0",
 		AccountType:    "aws",
 		Description:    "AWS account ",
 		AwsCredentials: cred,
 	}
 
-	acc.AccountID = rand.Intn(100000)
+	acc.AccountID = strconv.Itoa(rand.Intn(100000))
 	acc.Description = acc.Description + strconv.Itoa(rand.Intn(100000))
 	fmt.Println(acc)
 
-	err := dbM.InsertRecord(dbName, "account", &acc)
+	recordId, err := dbM.InsertRecord(dbName, "account", &acc)
 	if err != nil {
 		fmt.Println("Insert record failed with " + err.Error())
 
 	} else {
-		fmt.Println("Successfuly Inserted the record")
+		fmt.Println("Successfuly Inserted the record " + recordId)
 	}
 }
 
@@ -117,19 +111,40 @@ func QueryRandomRecord(dbM storage.DBManger, dbName string, query string) {
 	}
 }
 
+func QueryRandomRecordWithId(dbM storage.DBManger, dbName string, query string) {
+
+	var results []model.AccountData
+
+	cursor, err := dbM.QueryRecordWithObjectID(dbName, "account", query)
+
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		panic(err)
+	}
+
+	for _, result := range results {
+		cursor.Decode(&result)
+		output, err := json.Marshal(result) //, "", "    ")
+		//output, err := json.MarshalIndent(result, "", "    ")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("%s\n", output)
+	}
+}
+
 func UpdateRandomRecord(dbM storage.DBManger, dbName string, query string) {
 	var acc model.AccountData
 	acc = model.AccountData{
-		AccountID:   0,
+		AccountID:   "00",
 		AccountType: "aws",
 		Description: "Updated AWS account ",
 	}
 
-	acc.AccountID = rand.Intn(100000)
+	acc.AccountID = strconv.Itoa(rand.Intn(100000))
 	acc.Description = acc.Description + strconv.Itoa(rand.Intn(100000))
 	fmt.Println(acc)
 
-	err := dbM.UpdateRecord(dbName, "account", query, &acc)
+	_, err := dbM.UpdateRecord(dbName, "account", query, &acc)
 	if err != nil {
 		fmt.Println("Update record failed with " + err.Error())
 

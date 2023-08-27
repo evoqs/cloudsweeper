@@ -1,11 +1,14 @@
 package storage
 
 import (
+	"cloudsweep/model"
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -46,13 +49,14 @@ func (dbm DBManger) CheckConnection() error {
 	return err
 }
 
-func (dbm DBManger) InsertRecord(dbname string, collection string, rec interface{}) error {
+func (dbm DBManger) InsertRecord(dbname string, collection string, rec interface{}) (string, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	_, err := dbm.mongoClinet.Database(dbname).Collection(collection).InsertOne(ctx, rec)
+	record, err := dbm.mongoClinet.Database(dbname).Collection(collection).InsertOne(ctx, rec)
 
-	return err
+	id := record.InsertedID.(primitive.ObjectID).Hex()
+	return id, err
 }
 
 func (dbm DBManger) Disconnect() error {
@@ -70,8 +74,25 @@ func (dbm DBManger) QueryRecord(dbname string, collection string, query string) 
 	var bquery interface{}
 	err := bson.UnmarshalExtJSON([]byte(query), true, &bquery)
 	if err != nil {
-		// handle error
+		fmt.Println("Error unmarshelling", err.Error())
 	}
+	cursor, err := dbm.mongoClinet.Database(dbname).Collection(collection).Find(ctx, &bquery)
+
+	return cursor, err
+
+}
+
+func (dbm DBManger) QueryRecordWithObjectID(dbname string, collection string, mongoObjectid string) (*mongo.Cursor, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	objectId, err := primitive.ObjectIDFromHex(mongoObjectid)
+	if err != nil {
+		fmt.Println("Invalid id")
+	}
+
+	bquery := bson.M{"_id": objectId}
 	cursor, err := dbm.mongoClinet.Database(dbname).Collection(collection).Find(ctx, &bquery)
 
 	return cursor, err
@@ -94,7 +115,7 @@ func (dbm DBManger) QueryOneRecord(dbname string, collection string, query strin
 
 }
 
-func (dbm DBManger) UpdateRecord(dbname string, collection string, query string, rec interface{}) error {
+func (dbm DBManger) UpdateRecord(dbname string, collection string, query string, rec interface{}) (*mongo.UpdateResult, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -103,10 +124,20 @@ func (dbm DBManger) UpdateRecord(dbname string, collection string, query string,
 	if err != nil {
 		// handle error
 	}
-	_, err = dbm.mongoClinet.Database(dbname).Collection(collection).ReplaceOne(ctx, &bquery, &rec)
+	result, err := dbm.mongoClinet.Database(dbname).Collection(collection).ReplaceOne(ctx, &bquery, &rec)
+	return result, err
+}
 
-	return err
+func (dbm DBManger) UpdateRecordWithObjectId(dbname string, collection string, mongoObjectid string, rec interface{}) (*mongo.UpdateResult, error) {
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	//fmt.Println(objectId)
+	objectId, err := primitive.ObjectIDFromHex(mongoObjectid)
+	bquery := bson.M{"_id": objectId}
+	result, err := dbm.mongoClinet.Database(dbname).Collection(collection).ReplaceOne(ctx, &bquery, &rec)
+	return result, err
 }
 
 func (dbm DBManger) DeleteOneRecord(dbname string, collection string, query string) error {
@@ -124,7 +155,19 @@ func (dbm DBManger) DeleteOneRecord(dbname string, collection string, query stri
 
 }
 
-func (dbm DBManger) DeleteMultipleRecord(dbname string, collection string, query string) error {
+func (dbm DBManger) DeleteOneRecordWithObjectID(dbname string, collection string, objectId string) (*mongo.DeleteResult, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	bquery := bson.M{"_id": objectId}
+	result, err := dbm.mongoClinet.Database(dbname).Collection(collection).DeleteOne(ctx, &bquery)
+
+	return result, err
+
+}
+
+func (dbm DBManger) DeleteMultipleRecord(dbname string, collection string, query string) (*mongo.DeleteResult, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -133,8 +176,13 @@ func (dbm DBManger) DeleteMultipleRecord(dbname string, collection string, query
 	if err != nil {
 		// handle error
 	}
-	_, err = dbm.mongoClinet.Database(dbname).Collection(collection).DeleteMany(ctx, &bquery)
+	result, err := dbm.mongoClinet.Database(dbname).Collection(collection).DeleteMany(ctx, &bquery)
 
-	return err
+	return result, err
 
+}
+
+func getMongoObjectQuery(hexobjId string) (model.MongoIDQuery, error) {
+	objID, err := primitive.ObjectIDFromHex(hexobjId)
+	return model.MongoIDQuery{ObjectID: objID}, err
 }

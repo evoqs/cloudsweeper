@@ -12,11 +12,27 @@ const accountTable = "account"
 const CounterTable = "idcounter"
 const counterTableId = "100"
 
-func GetAccounts(dbM DBManger, dbName string, query string) []model.AccountData {
+func GetAllAccounts(dbM DBManger, dbName string, cloudaccountid string) ([]model.AccountData, error) {
 
 	var results []model.AccountData
 
-	cursor, err := dbM.QueryRecord(dbName, accountTable, query)
+	cursor, err := dbM.QueryRecord(dbName, accountTable, cloudaccountid)
+
+	fmt.Println(err)
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		fmt.Println(err)
+	}
+	if results != nil {
+		fmt.Println("Length " + strconv.Itoa(len(results)))
+	}
+	return results, err
+}
+
+func GetCloudAccount(dbM DBManger, dbName string, cloudaccountid string) ([]model.AccountData, error) {
+
+	var results []model.AccountData
+
+	cursor, err := dbM.QueryRecordWithObjectID(dbName, accountTable, cloudaccountid)
 
 	if err = cursor.All(context.TODO(), &results); err != nil {
 		panic(err)
@@ -24,62 +40,41 @@ func GetAccounts(dbM DBManger, dbName string, query string) []model.AccountData 
 	if results != nil {
 		fmt.Println("Length " + strconv.Itoa(len(results)))
 	}
-	return results
+	return results, err
 }
 
-func PutAccounts(dbM DBManger, dbName string, acc model.AccountData) error {
+func AddCloudAccount(dbM DBManger, dbName string, acc model.AccountData) (string, error) {
 
-	err := dbM.InsertRecord(dbName, accountTable, acc)
-	return err
+	id, err := dbM.InsertRecord(dbName, accountTable, acc)
+	return id, err
 }
 
-func DeleteAccounts(dbM DBManger, dbName string, query string) error {
+func UpdateCloudAccount(dbM DBManger, dbName string, acc model.AccountData) (int64, error) {
 
-	err := dbM.DeleteMultipleRecord(dbName, accountTable, query)
-	return err
-}
-
-func DeleteCloudAccount(dbM DBManger, dbName string, query string) error {
-
-	err := dbM.DeleteOneRecord(dbName, accountTable, query)
-	return err
-}
-
-// For internal Use only
-func GetIdCounter(dbM DBManger, dbName string) model.IdCounter {
-
-	var result model.IdCounter
-	query := `{"counterid" : ` + counterTableId + `}`
-
-	cursor, err := dbM.QueryOneRecord(dbName, CounterTable, query)
-
-	if err = cursor.Decode(&result); err != nil {
-		fmt.Println(err)
-		//panic(err)
-
+	objectId := acc.CloudAccountID
+	result, err := dbM.UpdateRecordWithObjectId(dbName, accountTable, objectId.Hex(), acc)
+	if err != nil {
+		return 0, err
 	}
-	fmt.Println(dbName, CounterTable, query)
-	fmt.Println(result)
-	return result
+	return result.ModifiedCount, err
+
 }
 
-func InitializeCounter(dbM DBManger, dbName string) error {
-	var counter model.IdCounter
-	counter.CounterID = 100
-	counter.NextAccountID = 1000
-	counter.NextCloudAccountID = 2000
-	counter.NextPolicyID = 30000
+func DeleteAllCloudAccounts(dbM DBManger, dbName string, query string) (int64, error) {
 
-	err := dbM.InsertRecord(dbName, CounterTable, counter)
-	return err
+	result, err := dbM.DeleteMultipleRecord(dbName, accountTable, query)
+	fmt.Printf("Delete Count %d,", result.DeletedCount)
+	fmt.Println(err)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.DeletedCount, err
 }
 
-// For internal Use only
-func UpdateIdCounter(dbM DBManger, dbName string, counter model.IdCounter) error {
+func DeleteCloudAccount(dbM DBManger, dbName string, query string) (int64, error) {
 
-	query := `{"counterid" : ` + counterTableId + `}`
+	result, err := dbM.DeleteOneRecordWithObjectID(dbName, accountTable, query)
 
-	err := dbM.UpdateRecord(dbName, CounterTable, query, counter)
-
-	return err
+	return result.DeletedCount, err
 }

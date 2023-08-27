@@ -1,13 +1,17 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type AccountData struct {
-	AccountID      int            `json:"accountid" bson:"accountid"`
-	CloudAccountID int            `json:"cloudaccountid" bson:"cloudaccountid"`
-	AccountType    string         `json:"accounttype" bson:"accounttype"`
-	Description    string         `json:"description" bson:"description"`
-	AwsCredentials AwsCredentials `json:"awscredentials" bson:"awscredentials"`
+	AccountID      string             `json:"accountid" bson:"accountid"`
+	CloudAccountID primitive.ObjectID `json:"cloudaccountid,omitempty" bson:"_id,omitempty"`
+	AccountType    string             `json:"accounttype" bson:"accounttype"`
+	Description    string             `json:"description" bson:"description"`
+	AwsCredentials AwsCredentials     `json:"awscredentials" bson:"awscredentials"`
 }
 
 type AwsCredentials struct {
@@ -15,24 +19,18 @@ type AwsCredentials struct {
 	SecretAccessKey string `json:"aws_secret_access_key" bson:"aws_secret_access_key"`
 }
 
-func (w *AccountData) SetData(id int, typ string, des string) {
-	w.AccountID = id
-	w.AccountType = typ
-	w.Description = des
-}
-
 type CSPolicy struct {
 	PolicyName       string `json:"policyname" bson:"policyname"`
-	PolicyID         int    `json:"policyid" bson:"policyid"`
+	PolicyID         string `json:"policyid" bson:"_id"`
 	AccountID        int    `json:"accountid" bson:"accountid"`
 	CloudAccountID   int    `json:"cloudaccountid" bson:"cloudaccountid"`
 	PolicyDefinition string `json:"policydefinition" bson:"policydefinition"`
 }
 
 type PipeLine struct {
-	AccountID      int       `json:"accountid" bson:"accountid"`
-	CloudAccountID int       `json:"cloudaccountid" bson:"cloudaccountid"`
-	PipeLineID     int       `json:"piplineid" bson:"piplineid"`
+	AccountID      string    `json:"accountid" bson:"accountid"`
+	CloudAccountID string    `json:"cloudaccountid" bson:"cloudaccountid"`
+	PipeLineID     string    `json:"piplineid" bson:"piplineid"`
 	PipeLineName   string    `json:"piplinename" bson:"piplinename"`
 	PolicyID       []int     `json:"policyid" bson:"policyid"`
 	Schedule       Schedule  `json:"schedule" bson:"schedule"`
@@ -65,9 +63,31 @@ type ScheduleWeekly struct {
 	Time       time.Time `json:"time" bson:"time"`
 }
 
-type IdCounter struct {
-	CounterID          int `json:"counterid" bson:"counterid"`
-	NextAccountID      int `json:"nextaccountid" bson:"nextaccountid"`
-	NextPolicyID       int `json:"nextpolicyid" bson:"nextpolicyid"`
-	NextCloudAccountID int `json:"nextcloudaccountid" bson:"nextcloudaccountid"`
+type Response200 struct {
+	Status     string `json:"status"`
+	StatusCode int    `json:"responsecode"`
+}
+
+type Response201 struct {
+	Status     string `json:"status"`
+	StatusCode int    `json:"responsecode"`
+}
+
+type Response400 struct {
+	Error      string `json:"error"`
+	StatusCode int    `json:"responsecode"`
+}
+
+type Response404 struct {
+	Error      string `json:"error"`
+	StatusCode int    `json:"responsecode"`
+}
+
+type Response500 struct {
+	Error      string `json:"internalerror"`
+	StatusCode int    `json:"responsecode"`
+}
+
+type MongoIDQuery struct {
+	ObjectID primitive.ObjectID `bson:"_id"`
 }

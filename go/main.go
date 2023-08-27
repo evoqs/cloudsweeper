@@ -4,7 +4,6 @@ import (
 	"cloudsweep/model"
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -40,7 +39,7 @@ func main2() {
 
 	var acc model.AccountData
 	acc = model.AccountData{
-		AccountID:   123213,
+		AccountID:   "123213",
 		AccountType: "aws",
 		Description: "AWS account ",
 	}
@@ -93,7 +92,7 @@ func main1() {
 
 	var acc model.AccountData
 	acc = model.AccountData{
-		AccountID:   123213,
+		AccountID:   "123213",
 		AccountType: "aws",
 		Description: "AWS account ",
 	}
@@ -103,18 +102,12 @@ func main1() {
 	var dataSet map[int]*model.AccountData
 	dataSet = make(map[int]*model.AccountData)
 
-	var pa *model.AccountData
-	for i := 1; i < 200; i++ {
-		pa = new(model.AccountData)
-		pa.SetData(i*119, "account"+strconv.Itoa(i), "My account")
-		dataSet[i] = pa
-	}
-
 	// Send a ping to confirm a successful connection
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	var result bson.M
-	if err := client.Database("admin").RunCommand(ctx, bson.D{{"ping", 1}}).Decode(&result); err != nil {
+
+	if err := client.Database("admin").RunCommand(ctx, bson.D{{Key: "ping", Value: 1}}).Decode(&result); err != nil {
 		panic(err)
 	}
 	fmt.Println("Pinged your deployment. You successfully connected to MongoDB!")
