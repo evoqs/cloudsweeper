@@ -12,6 +12,7 @@ const accountTable = "account"
 const CounterTable = "idcounter"
 const counterTableId = "100"
 
+// *********************************************************Db Operations Cloud Account ***********************************************************************
 func GetAllAccounts(dbM DBManger, dbName string, cloudaccountid string) ([]model.AccountData, error) {
 
 	var results []model.AccountData
@@ -72,9 +73,48 @@ func DeleteAllCloudAccounts(dbM DBManger, dbName string, query string) (int64, e
 	return result.DeletedCount, err
 }
 
-func DeleteCloudAccount(dbM DBManger, dbName string, query string) (int64, error) {
+func DeleteCloudAccount(dbM DBManger, dbName string, objectid string) (int64, error) {
 
-	result, err := dbM.DeleteOneRecordWithObjectID(dbName, accountTable, query)
+	result, err := dbM.DeleteOneRecordWithObjectID(dbName, accountTable, objectid)
 
+	return result.DeletedCount, err
+}
+
+//*********************************************************Db Operations policies ***********************************************************************
+
+func AddPolicy(dbM DBManger, dbName string, policy model.CSPolicy) (string, error) {
+
+	id, err := dbM.InsertRecord(dbName, policyTable, policy)
+	return id, err
+}
+
+func UpdatePolicy(dbM DBManger, dbName string, policy model.CSPolicy) (int64, error) {
+
+	objectId := policy.PolicyID
+	result, err := dbM.UpdateRecordWithObjectId(dbName, policyTable, objectId.Hex(), policy)
+	if err != nil {
+		return 0, err
+	}
+	return result.ModifiedCount, err
+}
+
+func GetPolicyDetails(dbM DBManger, dbName string, policyid string) ([]model.CSPolicy, error) {
+
+	var results []model.CSPolicy
+
+	cursor, err := dbM.QueryRecordWithObjectID(dbName, policyTable, policyid)
+
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		panic(err)
+	}
+	if results != nil {
+		fmt.Println("Length " + strconv.Itoa(len(results)))
+	}
+	return results, err
+}
+
+func DeleteCustodianPolicy(dbM DBManger, dbName string, objectid string) (int64, error) {
+
+	result, err := dbM.DeleteOneRecordWithObjectID(dbName, policyTable, objectid)
 	return result.DeletedCount, err
 }

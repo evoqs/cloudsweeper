@@ -48,7 +48,7 @@ func (srv *Server) DeleteAllCloudAccount(writer http.ResponseWriter, request *ht
 	writer.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(request)
-	//accountid := vars["accountid"]
+
 	accountid := vars["accountid"]
 	fmt.Println(vars)
 	query := fmt.Sprintf(`{"accountid": "%s"}`, accountid)
@@ -172,8 +172,13 @@ func (srv *Server) GetCloudAccount(writer http.ResponseWriter, request *http.Req
 
 	vars := mux.Vars(request)
 	accountid := vars["cloudaccountid"]
-	accounts, err := storage.GetCloudAccount(srv.dbM, utils.GetConfig().Database.Name, accountid)
 
+	if !primitive.IsValidObjectID(accountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid ObjectID: %s", accountid)))
+		return
+	}
+
+	accounts, err := storage.GetCloudAccount(srv.dbM, utils.GetConfig().Database.Name, accountid)
 	if err != nil {
 		srv.SendResponse500(writer, err)
 		return
@@ -202,12 +207,14 @@ func (srv *Server) DeleteCloudAccount(writer http.ResponseWriter, request *http.
 	writer.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(request)
-	//accountid := vars["accountid"]
+
 	accountid := vars["cloudaccountid"]
-	fmt.Println(vars)
-	query := `{"cloudaccountid":` + accountid + `}`
-	fmt.Println(query)
-	deleteCount, err := storage.DeleteCloudAccount(srv.dbM, utils.GetConfig().Database.Name, query)
+	if !primitive.IsValidObjectID(accountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid ObjectID: %s", accountid)))
+		return
+	}
+
+	deleteCount, err := storage.DeleteCloudAccount(srv.dbM, utils.GetConfig().Database.Name, accountid)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)

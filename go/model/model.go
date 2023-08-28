@@ -20,11 +20,11 @@ type AwsCredentials struct {
 }
 
 type CSPolicy struct {
-	PolicyName       string `json:"policyname" bson:"policyname"`
-	PolicyID         string `json:"policyid" bson:"_id"`
-	AccountID        int    `json:"accountid" bson:"accountid"`
-	CloudAccountID   int    `json:"cloudaccountid" bson:"cloudaccountid"`
-	PolicyDefinition string `json:"policydefinition" bson:"policydefinition"`
+	PolicyName       string             `json:"policyname" bson:"policyname"`
+	PolicyID         primitive.ObjectID `json:"policyid" bson:"_id,omitempty"`
+	AccountID        string             `json:"accountid" bson:"accountid"`
+	CloudAccountID   string             `json:"cloudaccountid" bson:"cloudaccountid"`
+	PolicyDefinition string             `json:"policydefinition" bson:"policydefinition"`
 }
 
 type PipeLine struct {
