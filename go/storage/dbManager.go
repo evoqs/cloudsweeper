@@ -155,11 +155,11 @@ func (dbm DBManger) DeleteOneRecord(dbname string, collection string, query stri
 
 }
 
-func (dbm DBManger) DeleteOneRecordWithObjectID(dbname string, collection string, objectId string) (*mongo.DeleteResult, error) {
+func (dbm DBManger) DeleteOneRecordWithObjectID(dbname string, collection string, mongoObjectid string) (*mongo.DeleteResult, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
+	objectId, err := primitive.ObjectIDFromHex(mongoObjectid)
 	bquery := bson.M{"_id": objectId}
 	result, err := dbm.mongoClinet.Database(dbname).Collection(collection).DeleteOne(ctx, &bquery)
 

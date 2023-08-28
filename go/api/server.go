@@ -18,13 +18,21 @@ func (srv *Server) StartApiServer(port string, dbM storage.DBManger) {
 	srv.dbM = dbM
 	router := mux.NewRouter()
 
+	//SweepAccount Level operations
 	router.HandleFunc("/accounts/{accountid}", srv.GetAllCloudAccount).Methods("GET")
 	router.HandleFunc("/accounts/{accountid}", srv.DeleteAllCloudAccount).Methods("DELETE")
 
+	//Cloud Account operations
 	router.HandleFunc("/cloudaccount", srv.AddCloudAccount).Methods("POST")
 	router.HandleFunc("/cloudaccount", srv.UpdateCloudAccount).Methods("PUT")
 	router.HandleFunc("/cloudaccount/{cloudaccountid}", srv.GetCloudAccount).Methods("GET")
 	router.HandleFunc("/cloudaccount/{cloudaccountid}", srv.DeleteCloudAccount).Methods("DELETE")
+
+	//Policy related operations
+	router.HandleFunc("/policy", srv.AddCustodianPolicy).Methods("POST")
+	router.HandleFunc("/policy", srv.UpdateCustodianPolicy).Methods("PUT")
+	router.HandleFunc("/policy/{policyid}", srv.GetCustodianPolicy).Methods("GET")
+	router.HandleFunc("/policy/{policyid}", srv.DeleteCustodianPolicy).Methods("DELETE")
 
 	http.ListenAndServe(":8000", router)
 }
