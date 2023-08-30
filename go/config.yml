@@ -1,0 +1,12 @@
+# Server configurations
+server:
+  host: "localhost"
+  port: 8000
+
+# Database credentials
+database:
+  user: ""
+  pass: ""
+  host: "127.0.0.1"
+  port: "27017"
+  dbname: "sweepdb"
