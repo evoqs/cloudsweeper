@@ -10,6 +10,7 @@ import (
 
 type Server struct {
 	dbM  storage.DBManger
+	opr  storage.DbOperators
 	port string
 }
 
@@ -33,6 +34,9 @@ func (srv *Server) StartApiServer(port string, dbM storage.DBManger) {
 	router.HandleFunc("/policy", srv.UpdateCustodianPolicy).Methods("PUT")
 	router.HandleFunc("/policy/{policyid}", srv.GetCustodianPolicy).Methods("GET")
 	router.HandleFunc("/policy/{policyid}", srv.DeleteCustodianPolicy).Methods("DELETE")
+
+	//Run a pipeline
+	router.HandleFunc("/pipeline/{pipelineid}/run", srv.RunPipeLine).Methods("POST")
 
 	http.ListenAndServe(":8000", router)
 }

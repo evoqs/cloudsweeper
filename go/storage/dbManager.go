@@ -16,14 +16,20 @@ import (
 
 type DBManger struct {
 	url         string
+	dbName      string
 	mongoClinet *mongo.Client
 }
 
 func GetDBManager() *DBManger {
 	return new(DBManger)
 }
+
 func (dbm *DBManger) SetDbUrl(url string) {
 	dbm.url = url
+}
+
+func (dbm *DBManger) SetDatabase(dbName string) {
+	dbm.dbName = dbName
 }
 
 func (dbm *DBManger) Connect() (*mongo.Client, error) {
@@ -49,11 +55,11 @@ func (dbm DBManger) CheckConnection() error {
 	return err
 }
 
-func (dbm DBManger) InsertRecord(dbname string, collection string, rec interface{}) (string, error) {
+func (dbm DBManger) InsertRecord(collection string, rec interface{}) (string, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	record, err := dbm.mongoClinet.Database(dbname).Collection(collection).InsertOne(ctx, rec)
+	record, err := dbm.mongoClinet.Database(dbm.dbName).Collection(collection).InsertOne(ctx, rec)
 
 	id := record.InsertedID.(primitive.ObjectID).Hex()
 	return id, err
@@ -67,7 +73,7 @@ func (dbm DBManger) Disconnect() error {
 	return err
 }
 
-func (dbm DBManger) QueryRecord(dbname string, collection string, query string) (*mongo.Cursor, error) {
+func (dbm DBManger) QueryRecord(collection string, query string) (*mongo.Cursor, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -76,13 +82,13 @@ func (dbm DBManger) QueryRecord(dbname string, collection string, query string) 
 	if err != nil {
 		fmt.Println("Error unmarshelling", err.Error())
 	}
-	cursor, err := dbm.mongoClinet.Database(dbname).Collection(collection).Find(ctx, &bquery)
+	cursor, err := dbm.mongoClinet.Database(dbm.dbName).Collection(collection).Find(ctx, &bquery)
 
 	return cursor, err
 
 }
 
-func (dbm DBManger) QueryRecordWithObjectID(dbname string, collection string, mongoObjectid string) (*mongo.Cursor, error) {
+func (dbm DBManger) QueryRecordWithObjectID(collection string, mongoObjectid string) (*mongo.Cursor, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -93,13 +99,13 @@ func (dbm DBManger) QueryRecordWithObjectID(dbname string, collection string, mo
 	}
 
 	bquery := bson.M{"_id": objectId}
-	cursor, err := dbm.mongoClinet.Database(dbname).Collection(collection).Find(ctx, &bquery)
+	cursor, err := dbm.mongoClinet.Database(dbm.dbName).Collection(collection).Find(ctx, &bquery)
 
 	return cursor, err
 
 }
 
-func (dbm DBManger) QueryOneRecord(dbname string, collection string, query string) (*mongo.SingleResult, error) {
+func (dbm DBManger) QueryOneRecord(collection string, query string) (*mongo.SingleResult, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -109,13 +115,13 @@ func (dbm DBManger) QueryOneRecord(dbname string, collection string, query strin
 	if err != nil {
 		// handle error
 	}
-	cursor := dbm.mongoClinet.Database(dbname).Collection(collection).FindOne(ctx, &bquery, options.FindOne())
+	cursor := dbm.mongoClinet.Database(dbm.dbName).Collection(collection).FindOne(ctx, &bquery, options.FindOne())
 
 	return cursor, err
 
 }
 
-func (dbm DBManger) UpdateRecord(dbname string, collection string, query string, rec interface{}) (*mongo.UpdateResult, error) {
+func (dbm DBManger) UpdateRecord(collection string, query string, rec interface{}) (*mongo.UpdateResult, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -124,11 +130,11 @@ func (dbm DBManger) UpdateRecord(dbname string, collection string, query string,
 	if err != nil {
 		// handle error
 	}
-	result, err := dbm.mongoClinet.Database(dbname).Collection(collection).ReplaceOne(ctx, &bquery, &rec)
+	result, err := dbm.mongoClinet.Database(dbm.dbName).Collection(collection).ReplaceOne(ctx, &bquery, &rec)
 	return result, err
 }
 
-func (dbm DBManger) UpdateRecordWithObjectId(dbname string, collection string, mongoObjectid string, rec interface{}) (*mongo.UpdateResult, error) {
+func (dbm DBManger) UpdateRecordWithObjectId(collection string, mongoObjectid string, rec interface{}) (*mongo.UpdateResult, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -136,11 +142,11 @@ func (dbm DBManger) UpdateRecordWithObjectId(dbname string, collection string, m
 	//fmt.Println(objectId)
 	objectId, err := primitive.ObjectIDFromHex(mongoObjectid)
 	bquery := bson.M{"_id": objectId}
-	result, err := dbm.mongoClinet.Database(dbname).Collection(collection).ReplaceOne(ctx, &bquery, &rec)
+	result, err := dbm.mongoClinet.Database(dbm.dbName).Collection(collection).ReplaceOne(ctx, &bquery, &rec)
 	return result, err
 }
 
-func (dbm DBManger) DeleteOneRecord(dbname string, collection string, query string) error {
+func (dbm DBManger) DeleteOneRecord(collection string, query string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -149,25 +155,25 @@ func (dbm DBManger) DeleteOneRecord(dbname string, collection string, query stri
 	if err != nil {
 		// handle error
 	}
-	_, err = dbm.mongoClinet.Database(dbname).Collection(collection).DeleteOne(ctx, &bquery)
+	_, err = dbm.mongoClinet.Database(dbm.dbName).Collection(collection).DeleteOne(ctx, &bquery)
 
 	return err
 
 }
 
-func (dbm DBManger) DeleteOneRecordWithObjectID(dbname string, collection string, mongoObjectid string) (*mongo.DeleteResult, error) {
+func (dbm DBManger) DeleteOneRecordWithObjectID(collection string, mongoObjectid string) (*mongo.DeleteResult, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	objectId, err := primitive.ObjectIDFromHex(mongoObjectid)
 	bquery := bson.M{"_id": objectId}
-	result, err := dbm.mongoClinet.Database(dbname).Collection(collection).DeleteOne(ctx, &bquery)
+	result, err := dbm.mongoClinet.Database(dbm.dbName).Collection(collection).DeleteOne(ctx, &bquery)
 
 	return result, err
 
 }
 
-func (dbm DBManger) DeleteMultipleRecord(dbname string, collection string, query string) (*mongo.DeleteResult, error) {
+func (dbm DBManger) DeleteMultipleRecord(collection string, query string) (*mongo.DeleteResult, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -176,7 +182,7 @@ func (dbm DBManger) DeleteMultipleRecord(dbname string, collection string, query
 	if err != nil {
 		// handle error
 	}
-	result, err := dbm.mongoClinet.Database(dbname).Collection(collection).DeleteMany(ctx, &bquery)
+	result, err := dbm.mongoClinet.Database(dbm.dbName).Collection(collection).DeleteMany(ctx, &bquery)
 
 	return result, err
 

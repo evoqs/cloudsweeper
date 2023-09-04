@@ -2,8 +2,6 @@ package api
 
 import (
 	"cloudsweep/model"
-	"cloudsweep/storage"
-	"cloudsweep/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,14 +23,14 @@ func (srv *Server) AddCustodianPolicy(writer http.ResponseWriter, request *http.
 		return
 	}
 
-	id, err := storage.AddPolicy(srv.dbM, utils.GetConfig().Database.Name, policy)
+	id, err := srv.opr.PolicyOperator.AddPolicy(policy)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)
 		return
 	}
 
-	srv.SendResponse200(writer, fmt.Sprintf("Successfully Added Policy with ID %s", id))
+	//srv.SendResponse200(writer, fmt.Sprintf("Successfully Added Policy with ID %s", id))
 
 	writer.WriteHeader(http.StatusOK)
 	policy.PolicyID, err = primitive.ObjectIDFromHex(id)
@@ -50,7 +48,7 @@ func (srv *Server) UpdateCustodianPolicy(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	count, err := storage.UpdatePolicy(srv.dbM, utils.GetConfig().Database.Name, policy)
+	count, err := srv.opr.PolicyOperator.UpdatePolicy(policy)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)
@@ -76,7 +74,7 @@ func (srv *Server) GetCustodianPolicy(writer http.ResponseWriter, request *http.
 		return
 	}
 
-	policies, err := storage.GetPolicyDetails(srv.dbM, utils.GetConfig().Database.Name, policyid)
+	policies, err := srv.opr.PolicyOperator.GetPolicyDetails(policyid)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)
@@ -112,7 +110,7 @@ func (srv *Server) DeleteCustodianPolicy(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	deleteCount, err := storage.DeleteCustodianPolicy(srv.dbM, utils.GetConfig().Database.Name, policyid)
+	deleteCount, err := srv.opr.PolicyOperator.DeleteCustodianPolicy(policyid)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)

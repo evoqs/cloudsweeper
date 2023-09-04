@@ -7,8 +7,6 @@ import (
 	"net/http"
 
 	"cloudsweep/model"
-	"cloudsweep/storage"
-	"cloudsweep/utils"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -24,7 +22,8 @@ func (srv *Server) GetAllCloudAccount(writer http.ResponseWriter, request *http.
 	//query := `{"accountid": ` + accountid + `}`
 	query := fmt.Sprintf(`{"accountid": "%s"}`, accountid)
 	fmt.Println(query)
-	accounts, err := storage.GetAllAccounts(srv.dbM, utils.GetConfig().Database.Name, query)
+
+	accounts, err := srv.opr.AccountOperator.GetAllAccounts(query)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)
@@ -53,7 +52,7 @@ func (srv *Server) DeleteAllCloudAccount(writer http.ResponseWriter, request *ht
 	fmt.Println(vars)
 	query := fmt.Sprintf(`{"accountid": "%s"}`, accountid)
 	fmt.Println(query)
-	deleteCount, err := storage.DeleteAllCloudAccounts(srv.dbM, utils.GetConfig().Database.Name, query)
+	deleteCount, err := srv.opr.AccountOperator.DeleteAllCloudAccounts(query)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)
@@ -103,7 +102,7 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 	}
 
 	//Writing cloundaccount data to MongoDB
-	id, err := storage.AddCloudAccount(srv.dbM, utils.GetConfig().Database.Name, acc)
+	id, err := srv.opr.AccountOperator.AddCloudAccount(acc)
 	if err != nil {
 		srv.SendResponse500(writer, err)
 		return
@@ -148,7 +147,7 @@ func (srv *Server) UpdateCloudAccount(writer http.ResponseWriter, request *http.
 		return
 	}
 
-	updateCount, err := storage.UpdateCloudAccount(srv.dbM, utils.GetConfig().Database.Name, acc)
+	updateCount, err := srv.opr.AccountOperator.UpdateCloudAccount(acc)
 	if err != nil {
 		srv.SendResponse500(writer, err)
 		return
@@ -178,7 +177,7 @@ func (srv *Server) GetCloudAccount(writer http.ResponseWriter, request *http.Req
 		return
 	}
 
-	accounts, err := storage.GetCloudAccount(srv.dbM, utils.GetConfig().Database.Name, accountid)
+	accounts, err := srv.opr.AccountOperator.GetCloudAccount(accountid)
 	if err != nil {
 		srv.SendResponse500(writer, err)
 		return
@@ -214,7 +213,7 @@ func (srv *Server) DeleteCloudAccount(writer http.ResponseWriter, request *http.
 		return
 	}
 
-	deleteCount, err := storage.DeleteCloudAccount(srv.dbM, utils.GetConfig().Database.Name, accountid)
+	deleteCount, err := srv.opr.AccountOperator.DeleteCloudAccount(accountid)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)

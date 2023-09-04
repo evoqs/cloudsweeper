@@ -16,7 +16,7 @@ var (
 //
 // Converts the json file and returns the content into an file.
 // It returns error when an error is encountered.
-func convertJsonToYaml(json string) (string, error) {
+func ConvertJsonToYaml(json string) (string, error) {
 	var yaml strings.Builder
 	if err := json2yaml.Convert(&yaml, strings.NewReader(json)); err != nil {
 		return "", err
@@ -28,7 +28,7 @@ func convertJsonToYaml(json string) (string, error) {
 //
 // Converts the json file and writes the content into an file.
 // It returns error when an error is encountered.
-func convertJsonToYamlAndWriteToFile(json string, path string) error {
+func ConvertJsonToYamlAndWriteToFile(json string, path string) error {
 	var yaml strings.Builder
 	if err := json2yaml.Convert(&yaml, strings.NewReader(json)); err != nil {
 		return err

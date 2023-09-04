@@ -1,16 +1,10 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"math/rand"
-	"strconv"
-
 	"cloudsweep/api"
-	"cloudsweep/model"
 	"cloudsweep/storage"
 	"cloudsweep/utils"
+	"fmt"
 )
 
 func main() {
@@ -25,6 +19,7 @@ func main() {
 
 	dbM := storage.GetDBManager()
 	dbM.SetDbUrl(dbUrl)
+	dbM.SetDatabase(utils.GetConfig().Database.Name)
 
 	_, err = dbM.Connect()
 	if err != nil {
@@ -56,6 +51,9 @@ func main() {
 	//QueryRandomRecordWithId(*dbM, cfg.Database.Name, query)
 
 	startServer(dbM)
+
+	//cpumodel := utils.GetCPUmodel()
+	//fmt.Println(cpumodel)
 }
 
 func startServer(dbM *storage.DBManger) {
@@ -64,6 +62,7 @@ func startServer(dbM *storage.DBManger) {
 	server.StartApiServer("8000", *dbM)
 }
 
+/*
 func InsertRandomRecord(dbM storage.DBManger, dbName string) {
 	var acc model.AccountData
 	cred := model.AwsCredentials{
@@ -163,3 +162,4 @@ func DeleteRandomRecord(dbM storage.DBManger, dbName string, query string) {
 		fmt.Println("Successfuly deleted the record")
 	}
 }
+*/

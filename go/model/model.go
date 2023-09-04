@@ -6,6 +6,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+const AWS = "aws"
+
 type AccountData struct {
 	AccountID      string             `json:"accountid" bson:"accountid"`
 	CloudAccountID primitive.ObjectID `json:"cloudaccountid,omitempty" bson:"_id,omitempty"`
@@ -15,6 +17,7 @@ type AccountData struct {
 }
 
 type AwsCredentials struct {
+	Region          string `json:"aws_region" bson:"aws_region"`
 	AccessKeyID     string `json:"aws_access_key_id" bson:"aws_access_key_id"`
 	SecretAccessKey string `json:"aws_secret_access_key" bson:"aws_secret_access_key"`
 }
@@ -28,14 +31,14 @@ type CSPolicy struct {
 }
 
 type PipeLine struct {
-	AccountID      string    `json:"accountid" bson:"accountid"`
-	CloudAccountID string    `json:"cloudaccountid" bson:"cloudaccountid"`
-	PipeLineID     string    `json:"piplineid" bson:"piplineid"`
-	PipeLineName   string    `json:"piplinename" bson:"piplinename"`
-	PolicyID       []int     `json:"policyid" bson:"policyid"`
-	Schedule       Schedule  `json:"schedule" bson:"schedule"`
-	Enabled        bool      `json:"enabled" bson:"enabled"`
-	RunStatus      RunStatus `json:"status" bson:"status"`
+	AccountID      string             `json:"accountid" bson:"accountid"`
+	CloudAccountID string             `json:"cloudaccountid" bson:"cloudaccountid"`
+	PipeLineID     primitive.ObjectID `json:"piplineid" bson:"_id,omitempty"`
+	PipeLineName   string             `json:"piplinename" bson:"piplinename"`
+	PolicyID       []string           `json:"policyid" bson:"policyid"`
+	Schedule       Schedule           `json:"schedule" bson:"schedule"`
+	Enabled        bool               `json:"enabled" bson:"enabled"`
+	RunStatus      RunStatus          `json:"status" bson:"status"`
 }
 
 type RunStatus int

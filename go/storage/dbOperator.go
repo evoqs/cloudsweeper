@@ -1,18 +1,17 @@
 package storage
 
-import (
-	"cloudsweep/model"
-	"context"
-	"fmt"
-	"strconv"
-)
-
 const policyTable = "policies"
 const accountTable = "account"
-const CounterTable = "idcounter"
-const counterTableId = "100"
+const pipelineTable = "pipeline"
+
+type DbOperators struct {
+	PipeLineOperator PipeLineOperator
+	AccountOperator  AccountOperator
+	PolicyOperator   PolicyOperator
+}
 
 // *********************************************************Db Operations Cloud Account ***********************************************************************
+/*
 func GetAllAccounts(dbM DBManger, dbName string, cloudaccountid string) ([]model.AccountData, error) {
 
 	var results []model.AccountData
@@ -79,9 +78,9 @@ func DeleteCloudAccount(dbM DBManger, dbName string, objectid string) (int64, er
 
 	return result.DeletedCount, err
 }
-
+*/
 //*********************************************************Db Operations policies ***********************************************************************
-
+/*
 func AddPolicy(dbM DBManger, dbName string, policy model.CSPolicy) (string, error) {
 
 	id, err := dbM.InsertRecord(dbName, policyTable, policy)
@@ -118,3 +117,4 @@ func DeleteCustodianPolicy(dbM DBManger, dbName string, objectid string) (int64,
 	result, err := dbM.DeleteOneRecordWithObjectID(dbName, policyTable, objectid)
 	return result.DeletedCount, err
 }
+*/
