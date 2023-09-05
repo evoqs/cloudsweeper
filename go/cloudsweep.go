@@ -32,7 +32,7 @@ func main() {
 		fmt.Println("Successfully Connected")
 		defer dbM.Disconnect()
 	}
-
+	dbo := storage.GetDBOperators(dbM)
 	//InsertRandomRecord(*dbM, cfg.Database.Name)
 	//InsertRandomRecord(*dbM, cfg.Database.Name)
 	/*
@@ -50,16 +50,16 @@ func main() {
 	//query := `64e97c7a6ca9765964be555e`
 	//QueryRandomRecordWithId(*dbM, cfg.Database.Name, query)
 
-	startServer(dbM)
+	startServer(dbo)
 
 	//cpumodel := utils.GetCPUmodel()
 	//fmt.Println(cpumodel)
 }
 
-func startServer(dbM *storage.DBManger) {
+func startServer(dbO *storage.DbOperators) {
 	fmt.Println("Starting server")
 	var server api.Server
-	server.StartApiServer("8000", *dbM)
+	server.StartApiServer("8000", *dbO)
 }
 
 /*

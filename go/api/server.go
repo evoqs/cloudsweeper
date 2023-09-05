@@ -9,14 +9,15 @@ import (
 )
 
 type Server struct {
-	dbM  storage.DBManger
+	//dbM  storage.DBManger
 	opr  storage.DbOperators
 	port string
 }
 
-func (srv *Server) StartApiServer(port string, dbM storage.DBManger) {
+func (srv *Server) StartApiServer(port string, dbO storage.DbOperators) {
 	srv.port = port
-	srv.dbM = dbM
+	//srv.dbM = dbM
+	srv.opr = dbO
 	router := mux.NewRouter()
 
 	//SweepAccount Level operations
@@ -37,6 +38,7 @@ func (srv *Server) StartApiServer(port string, dbM storage.DBManger) {
 
 	//Run a pipeline
 	router.HandleFunc("/pipeline/{pipelineid}/run", srv.RunPipeLine).Methods("POST")
+	router.HandleFunc("/pipeline", srv.AddPipeLine).Methods("POST")
 
 	http.ListenAndServe(":8000", router)
 }

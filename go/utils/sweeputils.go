@@ -50,3 +50,20 @@ func RunPolicy() string {
 	}
 	return string(stdout)
 }
+
+func RunCustodianPolicy(envvars []string, runfolder string, policyfile string, activation string) string {
+	//cmd := "cat /proc/cpuinfo | egrep '^model name' | uniq | awk '{print substr($0, index($0,$4))}'"
+	//cmd := "source /home/vboxuser/custodian/bin/activate; custodian run --dryrun -s /tmp /home/vboxuser/c7npolicies/policy1.yml"
+
+	cmd := fmt.Sprintf("source %s; custodian run --dryrun -s %s %s", activation, runfolder, policyfile)
+	out := exec.Command("bash", "-c", cmd)
+	for _, envvar := range envvars {
+		out.Env = append(out.Environ(), envvar)
+	}
+
+	stdout, err := out.CombinedOutput()
+	if err != nil {
+		return fmt.Sprintf("Failed to execute command: %s \n %s \n %s", cmd, err, stdout)
+	}
+	return string(stdout)
+}

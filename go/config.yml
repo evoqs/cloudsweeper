@@ -10,3 +10,7 @@ database:
   host: "127.0.0.1"
   port: "27017"
   dbname: "sweepdb"
+
+#Custodian configurations
+custodian:
+  c7nawsinstall: "/home/vboxuser/custodian/bin/activate"

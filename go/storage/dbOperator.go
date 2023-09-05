@@ -10,6 +10,23 @@ type DbOperators struct {
 	PolicyOperator   PolicyOperator
 }
 
+func GetDBOperators(dbm *DBManger) *DbOperators {
+	var Db_Operators DbOperators
+
+	var PipeLine_Operator PipeLineOperator
+	var Policy_Operator PolicyOperator
+	var Account_Operator AccountOperator
+
+	PipeLine_Operator.dbM = *dbm
+	Policy_Operator.dbM = *dbm
+	Account_Operator.dbM = *dbm
+
+	Db_Operators.AccountOperator = Account_Operator
+	Db_Operators.PipeLineOperator = PipeLine_Operator
+	Db_Operators.PolicyOperator = Policy_Operator
+	return (&Db_Operators)
+}
+
 // *********************************************************Db Operations Cloud Account ***********************************************************************
 /*
 func GetAllAccounts(dbM DBManger, dbName string, cloudaccountid string) ([]model.AccountData, error) {

@@ -3,6 +3,7 @@ package api
 import (
 	"cloudsweep/model"
 	"cloudsweep/policy_converter"
+	"cloudsweep/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -93,6 +94,13 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 		cloudAcc := cloudAccList[0]
 		if cloudAcc.AccountType == model.AWS {
 			srv.SendResponse200(writer, fmt.Sprintf("Recived run request for %s, created runfolder %s", pipelineid, policyJson))
+			var envvars []string
+			envvars = append(envvars, fmt.Sprintf("AWS_DEFAULT_REGION=%s", cloudAcc.AwsCredentials.Region))
+			envvars = append(envvars, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", cloudAcc.AwsCredentials.AccessKeyID))
+			envvars = append(envvars, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", cloudAcc.AwsCredentials.SecretAccessKey))
+
+			activatePath := utils.GetConfig().Custodian.C7nAwsInstall
+			utils.RunCustodianPolicy(envvars, RunFolder, policyFile, activatePath)
 			return
 		}
 
