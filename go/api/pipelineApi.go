@@ -48,6 +48,8 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 	}
 
 	srv.SendResponse200(writer, "Accepted pipeline request for run.")
+
+	fmt.Println("Send response 200")
 	//Updating pipline status as running
 	pipeLine.RunStatus = model.RUNNING
 	upcount, err := srv.opr.PipeLineOperator.UpdatePipeLine(pipeLine)
@@ -82,7 +84,9 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 		4. Fectch the cloud credentails for the policy run
 		5. trigger the run and update the pipleline status as running
 		6. Send Accepted response 200
-
+		7. Update the results
+		8. Mark as Completed
+		9. Delete the folder
 		*/
 
 		//Step 1 TODO
@@ -132,14 +136,20 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 			} else {
 				fmt.Println("policy run successful with result", runres)
 				//get policy name and resource
-				policyName, err := utils.GetFirstMatchingGroup(runres, "policy:.*?policy:(.*?)\\sresource:")
-				if err != nil {
+				policyName, _ := utils.GetFirstMatchingGroup(runres, "policy:.*?policy:(.*?)\\sresource:")
+				if policyName != "" {
 					resourceFile := fmt.Sprintf("%s/%s/%s", RunFolder, policyName, "resources.json")
 					resourceList, err := utils.ReadFile(resourceFile)
+					replacer := strings.NewReplacer("\r", "", "\n", "")
+					resourceList = replacer.Replace(string(resourceList))
+					//var jsonMap map[string]interface{}
+					//json.Unmarshal([]byte(resourceList), &jsonMap)
 					if err != nil {
 						fmt.Println("Failed to read policy result from result", resourceFile)
 						isPolicyRunFailed = true
 						continue
+					} else {
+						fmt.Println("*********", resourceList)
 					}
 					resourceName, err := utils.GetFirstMatchingGroup(runres, "resource:(.*?)\\s")
 					var policyRunresult model.PolicyResult

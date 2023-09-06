@@ -10,12 +10,12 @@ import (
 
 type Server struct {
 	//dbM  storage.DBManger
-	opr  storage.DbOperators
-	port string
+	opr    storage.DbOperators
+	socket string
 }
 
-func (srv *Server) StartApiServer(port string, dbO storage.DbOperators) {
-	srv.port = port
+func (srv *Server) StartApiServer(socket string, dbO storage.DbOperators) {
+	srv.socket = socket
 	//srv.dbM = dbM
 	srv.opr = dbO
 	router := mux.NewRouter()
@@ -44,7 +44,7 @@ func (srv *Server) StartApiServer(port string, dbO storage.DbOperators) {
 	router.HandleFunc("/pipeline/{pipelineid}", srv.GetPipeLine).Methods("GET")
 	router.HandleFunc("/pipeline/{pipelineid}", srv.DeletePipeLine).Methods("DELETE")
 
-	http.ListenAndServe(port, router)
+	http.ListenAndServe(socket, router)
 }
 
 func (srv *Server) SendResponse500(writer http.ResponseWriter, err error) {

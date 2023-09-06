@@ -137,8 +137,8 @@ func (srv *Server) GetPolicyRunResult(writer http.ResponseWriter, request *http.
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid ObjectID: %s", policyid)))
 		return
 	}
-
-	policieResults, err := srv.opr.PolicyOperator.GetPolicyResultDetails(policyid)
+	query := fmt.Sprintf(`{"policyid": "%s"}`, policyid)
+	policieResults, err := srv.opr.PolicyOperator.GetPolicyResultDetails(query)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)
