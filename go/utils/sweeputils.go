@@ -3,8 +3,10 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
@@ -51,7 +53,7 @@ func RunPolicy() string {
 	return string(stdout)
 }
 
-func RunCustodianPolicy(envvars []string, runfolder string, policyfile string, activation string) string {
+func RunCustodianPolicy(envvars []string, runfolder string, policyfile string, activation string, runchan chan string) {
 	//cmd := "cat /proc/cpuinfo | egrep '^model name' | uniq | awk '{print substr($0, index($0,$4))}'"
 	//cmd := "source /home/vboxuser/custodian/bin/activate; custodian run --dryrun -s /tmp /home/vboxuser/c7npolicies/policy1.yml"
 
@@ -63,7 +65,29 @@ func RunCustodianPolicy(envvars []string, runfolder string, policyfile string, a
 
 	stdout, err := out.CombinedOutput()
 	if err != nil {
-		return fmt.Sprintf("Failed to execute command: %s \n %s \n %s", cmd, err, stdout)
+		runchan <- fmt.Sprintf("Failed to execute command: %s \n %s \n %s", cmd, err, stdout)
 	}
-	return string(stdout)
+	runchan <- string(stdout)
+}
+
+func GetFirstMatchingGroup(sentence string, regex string) (string, error) {
+
+	rgx, err := regexp.Compile(regex)
+	if err != nil {
+		return "", err
+	}
+
+	rs := rgx.FindStringSubmatch(sentence)
+	if len(rs) >= 2 {
+		return rs[1], nil
+	}
+	return "", errors.New("No matching group Found")
+
+}
+
+func ReadFile(fileName string) (string, error) {
+
+	fileContent, err := ioutil.ReadFile(fileName)
+	return string(fileContent), err
+
 }

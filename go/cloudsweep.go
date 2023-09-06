@@ -33,6 +33,7 @@ func main() {
 		defer dbM.Disconnect()
 	}
 	dbo := storage.GetDBOperators(dbM)
+
 	//InsertRandomRecord(*dbM, cfg.Database.Name)
 	//InsertRandomRecord(*dbM, cfg.Database.Name)
 	/*
@@ -50,16 +51,16 @@ func main() {
 	//query := `64e97c7a6ca9765964be555e`
 	//QueryRandomRecordWithId(*dbM, cfg.Database.Name, query)
 
-	startServer(dbo)
+	startServer(dbo, utils.GetConfig().Server.Host, utils.GetConfig().Server.Port)
 
 	//cpumodel := utils.GetCPUmodel()
 	//fmt.Println(cpumodel)
 }
 
-func startServer(dbO *storage.DbOperators) {
+func startServer(dbO *storage.DbOperators, host string, port string) {
 	fmt.Println("Starting server")
 	var server api.Server
-	server.StartApiServer("8000", *dbO)
+	server.StartApiServer(fmt.Sprintf("%s:%s", host, port), *dbO)
 }
 
 /*

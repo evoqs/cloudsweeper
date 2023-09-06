@@ -1,6 +1,7 @@
 package storage
 
 const policyTable = "policies"
+const policyResultTable = "policyrunresult"
 const accountTable = "account"
 const pipelineTable = "pipeline"
 

@@ -23,6 +23,7 @@ func (srv *Server) StartApiServer(port string, dbO storage.DbOperators) {
 	//SweepAccount Level operations
 	router.HandleFunc("/accounts/{accountid}", srv.GetAllCloudAccount).Methods("GET")
 	router.HandleFunc("/accounts/{accountid}", srv.DeleteAllCloudAccount).Methods("DELETE")
+	router.HandleFunc("/accounts/{accountid}/pipeline", srv.GetAllPipeLine).Methods("GET")
 
 	//Cloud Account operations
 	router.HandleFunc("/cloudaccount", srv.AddCloudAccount).Methods("POST")
@@ -35,12 +36,15 @@ func (srv *Server) StartApiServer(port string, dbO storage.DbOperators) {
 	router.HandleFunc("/policy", srv.UpdateCustodianPolicy).Methods("PUT")
 	router.HandleFunc("/policy/{policyid}", srv.GetCustodianPolicy).Methods("GET")
 	router.HandleFunc("/policy/{policyid}", srv.DeleteCustodianPolicy).Methods("DELETE")
+	router.HandleFunc("/policy/{policyid}/results", srv.GetPolicyRunResult).Methods("GET")
 
 	//Run a pipeline
 	router.HandleFunc("/pipeline/{pipelineid}/run", srv.RunPipeLine).Methods("POST")
 	router.HandleFunc("/pipeline", srv.AddPipeLine).Methods("POST")
+	router.HandleFunc("/pipeline/{pipelineid}", srv.GetPipeLine).Methods("GET")
+	router.HandleFunc("/pipeline/{pipelineid}", srv.DeletePipeLine).Methods("DELETE")
 
-	http.ListenAndServe(":8000", router)
+	http.ListenAndServe(port, router)
 }
 
 func (srv *Server) SendResponse500(writer http.ResponseWriter, err error) {

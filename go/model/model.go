@@ -22,13 +22,32 @@ type AwsCredentials struct {
 	SecretAccessKey string `json:"aws_secret_access_key" bson:"aws_secret_access_key"`
 }
 
-type CSPolicy struct {
+type Policy struct {
 	PolicyName       string             `json:"policyname" bson:"policyname"`
 	PolicyID         primitive.ObjectID `json:"policyid" bson:"_id,omitempty"`
 	AccountID        string             `json:"accountid" bson:"accountid"`
 	CloudAccountID   string             `json:"cloudaccountid" bson:"cloudaccountid"`
 	PolicyDefinition string             `json:"policydefinition" bson:"policydefinition"`
 }
+
+type PolicyResult struct {
+	PolicyResultID primitive.ObjectID `json:"policyresultid" bson:"_id,omitempty"`
+	PolicyID       string             `json:"policyid" bson:"policyid"`
+	Resource       string             `json:"resource" bson:"resource"`
+	Result         string             `json:"result" bson:"result"`
+}
+
+// ******************* TO BE used in case needed to parse the policy json
+type CSPolicyDef struct {
+	Policies []CSPolicy `json:"policies" bson:"policies"`
+}
+
+type CSPolicy struct {
+	Name     string `json:"name" bson:"name"`
+	Resource string `json:"resource" bson:"resource"`
+}
+
+//******************* TO BE used in case needed to parse the policy json
 
 type PipeLine struct {
 	AccountID      string             `json:"accountid" bson:"accountid"`

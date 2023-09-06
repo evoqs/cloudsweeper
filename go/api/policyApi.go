@@ -15,7 +15,7 @@ func (srv *Server) AddCustodianPolicy(writer http.ResponseWriter, request *http.
 	defer request.Body.Close()
 	writer.Header().Set("Content-Type", "application/json")
 
-	var policy model.CSPolicy
+	var policy model.Policy
 	err := json.NewDecoder(request.Body).Decode(&policy)
 
 	if err != nil {
@@ -40,7 +40,7 @@ func (srv *Server) AddCustodianPolicy(writer http.ResponseWriter, request *http.
 func (srv *Server) UpdateCustodianPolicy(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
-	var policy model.CSPolicy
+	var policy model.Policy
 	err := json.NewDecoder(request.Body).Decode(&policy)
 
 	if err != nil {
@@ -125,4 +125,39 @@ func (srv *Server) DeleteCustodianPolicy(writer http.ResponseWriter, request *ht
 		srv.SendResponse200(writer, fmt.Sprintf("Successfully deleted policy, %s", policyid))
 	}
 
+}
+
+func (srv *Server) GetPolicyRunResult(writer http.ResponseWriter, request *http.Request) {
+	defer request.Body.Close()
+	writer.Header().Set("Content-Type", "application/json")
+	vars := mux.Vars(request)
+	policyid := vars["policyid"]
+
+	if !primitive.IsValidObjectID(policyid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid ObjectID: %s", policyid)))
+		return
+	}
+
+	policieResults, err := srv.opr.PolicyOperator.GetPolicyResultDetails(policyid)
+
+	if err != nil {
+		srv.SendResponse500(writer, err)
+		return
+	}
+
+	//TODO when length >1
+
+	if len(policieResults) == 0 {
+
+		srv.SendResponse404(writer, nil)
+		return
+	} else if len(policieResults) > 1 {
+		err := errors.New("Internal Server Error, DB data consistency issue , duplicate policies with same ID")
+		srv.SendResponse500(writer, err)
+		return
+	}
+
+	writer.WriteHeader(http.StatusOK)
+	policieResult := policieResults[0]
+	json.NewEncoder(writer).Encode(policieResult)
 }

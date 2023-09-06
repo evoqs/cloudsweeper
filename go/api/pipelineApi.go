@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -43,19 +44,32 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 	policyids := pipeLine.PolicyID
 	if len(policyids) == 0 {
 		srv.SendResponse404(writer, errors.New("No policy Defined for Pipeline."))
+		return
 	}
 
+	srv.SendResponse200(writer, "Accepted pipeline request for run.")
+	//Updating pipline status as running
+	pipeLine.RunStatus = model.RUNNING
+	upcount, err := srv.opr.PipeLineOperator.UpdatePipeLine(pipeLine)
+	if upcount != 1 {
+		fmt.Println("Failed to update pipline run status,", err)
+		return
+	}
+
+	isPolicyRunFailed := false
 	for _, policyid := range policyids {
 
 		policyList, err := srv.opr.PolicyOperator.GetPolicyDetails(policyid)
 		if err != nil {
-			srv.SendResponse500(writer, err)
-			return
+			fmt.Println("Failed to get policy")
+			isPolicyRunFailed = true
+			continue
 		}
 
 		if len(policyList) == 0 {
-			srv.SendResponse404(writer, nil)
-			return
+			fmt.Println("Policy not found")
+			isPolicyRunFailed = true
+			continue
 		}
 		fmt.Println("Length", len(policyList))
 		policy := policyList[0]
@@ -80,32 +94,96 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 		policyFile := fmt.Sprintf("%s/%s", RunFolder, "policy.yml")
 		err = policy_converter.ConvertJsonToYamlAndWriteToFile(policyJson, policyFile)
 		if err != nil {
-			srv.SendResponse500(writer, err)
-			return
+			fmt.Println("Failed to convert json policy to yaml, for policy id ", policy.PolicyID)
+			isPolicyRunFailed = true
+			continue
 		}
 
 		//Get creds
 		cloudAccList, err := srv.opr.AccountOperator.GetCloudAccount(policy.CloudAccountID)
 		if err != nil {
-			srv.SendResponse500(writer, err)
-			return
+			fmt.Println("Failed to get cloundaccount details for policy id ", policy.PolicyID, policy.CloudAccountID)
+			isPolicyRunFailed = true
+			continue
 		}
 
 		cloudAcc := cloudAccList[0]
 		if cloudAcc.AccountType == model.AWS {
-			srv.SendResponse200(writer, fmt.Sprintf("Recived run request for %s, created runfolder %s", pipelineid, policyJson))
+			//srv.SendResponse200(writer, fmt.Sprintf("Recived run request for %s, created runfolder %s", pipelineid, policyJson))
 			var envvars []string
 			envvars = append(envvars, fmt.Sprintf("AWS_DEFAULT_REGION=%s", cloudAcc.AwsCredentials.Region))
 			envvars = append(envvars, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", cloudAcc.AwsCredentials.AccessKeyID))
 			envvars = append(envvars, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", cloudAcc.AwsCredentials.SecretAccessKey))
 
 			activatePath := utils.GetConfig().Custodian.C7nAwsInstall
-			utils.RunCustodianPolicy(envvars, RunFolder, policyFile, activatePath)
-			return
+			c := make(chan string, 1)
+			go utils.RunCustodianPolicy(envvars, RunFolder, policyFile, activatePath, c)
+			runres, ok := <-c
+			close(c)
+			if !ok {
+				fmt.Println("Failed to read from channel")
+				isPolicyRunFailed = true
+				continue
+			}
+
+			if strings.Contains(runres, "ERROR") {
+				fmt.Println("policy run failed with result", runres)
+				isPolicyRunFailed = true
+			} else {
+				fmt.Println("policy run successful with result", runres)
+				//get policy name and resource
+				policyName, err := utils.GetFirstMatchingGroup(runres, "policy:.*?policy:(.*?)\\sresource:")
+				if err != nil {
+					resourceFile := fmt.Sprintf("%s/%s/%s", RunFolder, policyName, "resources.json")
+					resourceList, err := utils.ReadFile(resourceFile)
+					if err != nil {
+						fmt.Println("Failed to read policy result from result", resourceFile)
+						isPolicyRunFailed = true
+						continue
+					}
+					resourceName, err := utils.GetFirstMatchingGroup(runres, "resource:(.*?)\\s")
+					var policyRunresult model.PolicyResult
+					policyRunresult.PolicyID = policy.PolicyID.Hex()
+					policyRunresult.Result = resourceList
+					policyRunresult.Resource = resourceName
+
+					query := fmt.Sprintf(`{"policyid": "%s"}`, policyRunresult.PolicyID)
+					results, err := srv.opr.PolicyOperator.GetPolicyResultDetails(query)
+					if err != nil {
+						fmt.Println("Failed to read policy result from DB", policyRunresult.PolicyID)
+						isPolicyRunFailed = true
+						continue
+					}
+					if len(results) == 0 {
+						srv.opr.PolicyOperator.AddPolicyResult(policyRunresult)
+					} else {
+						result := results[0]
+						result.Result = resourceList
+						srv.opr.PolicyOperator.UpdatePolicyResult(result)
+					}
+				}
+
+			}
 		}
 
-		srv.SendResponse500(writer, errors.New("Internal Server Error"))
 	}
+
+	if isPolicyRunFailed {
+		pipeLine.RunStatus = model.FAILED
+		upcount, err := srv.opr.PipeLineOperator.UpdatePipeLine(pipeLine)
+		if upcount != 1 {
+			fmt.Println("Failed to update pipline run status,", err)
+			return
+		}
+	} else {
+		pipeLine.RunStatus = model.COMPLETED
+		upcount, err := srv.opr.PipeLineOperator.UpdatePipeLine(pipeLine)
+		if upcount != 1 {
+			fmt.Println("Failed to update pipline run status,", err)
+			return
+		}
+	}
+
 }
 
 func (srv *Server) AddPipeLine(writer http.ResponseWriter, request *http.Request) {
