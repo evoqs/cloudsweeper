@@ -32,7 +32,7 @@ func main() {
 		fmt.Println("Successfully Connected")
 		defer dbM.Disconnect()
 	}
-	dbo := storage.GetDBOperators(dbM)
+	dbo := storage.MakeDBOperators(dbM)
 
 	//InsertRandomRecord(*dbM, cfg.Database.Name)
 	//InsertRandomRecord(*dbM, cfg.Database.Name)

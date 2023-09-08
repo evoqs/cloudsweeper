@@ -5,13 +5,15 @@ const policyResultTable = "policyrunresult"
 const accountTable = "account"
 const pipelineTable = "pipeline"
 
+var operatorRepo = make(map[string]*DbOperators)
+
 type DbOperators struct {
 	PipeLineOperator PipeLineOperator
 	AccountOperator  AccountOperator
 	PolicyOperator   PolicyOperator
 }
 
-func GetDBOperators(dbm *DBManger) *DbOperators {
+func MakeDBOperators(dbm *DBManger) *DbOperators {
 	var Db_Operators DbOperators
 
 	var PipeLine_Operator PipeLineOperator
@@ -25,7 +27,12 @@ func GetDBOperators(dbm *DBManger) *DbOperators {
 	Db_Operators.AccountOperator = Account_Operator
 	Db_Operators.PipeLineOperator = PipeLine_Operator
 	Db_Operators.PolicyOperator = Policy_Operator
+	operatorRepo[dbm.dbName] = &Db_Operators
 	return (&Db_Operators)
+}
+
+func GetDBOperators(dbName string) *DbOperators {
+	return operatorRepo[dbName]
 }
 
 // *********************************************************Db Operations Cloud Account ***********************************************************************

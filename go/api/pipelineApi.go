@@ -3,6 +3,7 @@ package api
 import (
 	"cloudsweep/model"
 	"cloudsweep/policy_converter"
+	"cloudsweep/storage"
 	"cloudsweep/utils"
 	"encoding/json"
 	"errors"
@@ -27,14 +28,38 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 	//Get pipline and policy details , Skipping pipeline implemetation and directly using policies
 	//TODO
 
-	pipeLineList, err := srv.opr.PipeLineOperator.GetPipeLineDetails(pipelineid)
-	if err != nil {
+	pipeLine, httpcode, err := validateRunRequest(pipelineid)
+	if httpcode == 200 {
+		srv.SendResponse200(writer, "Accepted pipeline request for run.")
+	} else if httpcode == 500 {
 		srv.SendResponse500(writer, err)
-		return
+	} else if httpcode == 404 {
+		srv.SendResponse404(writer, nil)
+	} else if httpcode == 409 {
+		srv.SendResponse404(writer, errors.New("No policy Defined for Pipeline."))
+	}
+
+	go runPipeline(pipeLine)
+
+}
+
+// Run function to be called by scheduler
+func RunPipline(pipelineid string) {
+	pipeLine, _, err := validateRunRequest(pipelineid)
+	if err != nil {
+		fmt.Println("Failed to run the pipeline")
+	}
+	go runPipeline(pipeLine)
+}
+
+func validateRunRequest(pipelineid string) (model.PipeLine, int, error) {
+	opr := storage.GetDBOperators(utils.GetConfig().Database.Name)
+	pipeLineList, err := opr.PipeLineOperator.GetPipeLineDetails(pipelineid)
+	if err != nil {
+		return model.PipeLine{}, 500, err
 	}
 	if len(pipeLineList) == 0 {
-		srv.SendResponse404(writer, nil)
-		return
+		return model.PipeLine{}, 404, nil
 	}
 
 	pipeLine := pipeLineList[0]
@@ -43,25 +68,27 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 
 	policyids := pipeLine.PolicyID
 	if len(policyids) == 0 {
-		srv.SendResponse404(writer, errors.New("No policy Defined for Pipeline."))
-		return
+		return model.PipeLine{}, 409, errors.New("No policy Defined for Pipeline.")
 	}
 
-	srv.SendResponse200(writer, "Accepted pipeline request for run.")
+	return pipeLine, 200, nil
 
-	fmt.Println("Send response 200")
-	//Updating pipline status as running
+}
+
+func runPipeline(pipeLine model.PipeLine) {
 	pipeLine.RunStatus = model.RUNNING
-	upcount, err := srv.opr.PipeLineOperator.UpdatePipeLine(pipeLine)
+	opr := storage.GetDBOperators(utils.GetConfig().Database.Name)
+	upcount, err := opr.PipeLineOperator.UpdatePipeLine(pipeLine)
 	if upcount != 1 {
 		fmt.Println("Failed to update pipline run status,", err)
 		return
 	}
 
+	policyids := pipeLine.PolicyID
 	isPolicyRunFailed := false
 	for _, policyid := range policyids {
 
-		policyList, err := srv.opr.PolicyOperator.GetPolicyDetails(policyid)
+		policyList, err := opr.PolicyOperator.GetPolicyDetails(policyid)
 		if err != nil {
 			fmt.Println("Failed to get policy")
 			isPolicyRunFailed = true
@@ -104,7 +131,7 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 		}
 
 		//Get creds
-		cloudAccList, err := srv.opr.AccountOperator.GetCloudAccount(policy.CloudAccountID)
+		cloudAccList, err := opr.AccountOperator.GetCloudAccount(policy.CloudAccountID)
 		if err != nil {
 			fmt.Println("Failed to get cloundaccount details for policy id ", policy.PolicyID, policy.CloudAccountID)
 			isPolicyRunFailed = true
@@ -158,18 +185,18 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 					policyRunresult.Resource = resourceName
 
 					query := fmt.Sprintf(`{"policyid": "%s"}`, policyRunresult.PolicyID)
-					results, err := srv.opr.PolicyOperator.GetPolicyResultDetails(query)
+					results, err := opr.PolicyOperator.GetPolicyResultDetails(query)
 					if err != nil {
 						fmt.Println("Failed to read policy result from DB", policyRunresult.PolicyID)
 						isPolicyRunFailed = true
 						continue
 					}
 					if len(results) == 0 {
-						srv.opr.PolicyOperator.AddPolicyResult(policyRunresult)
+						opr.PolicyOperator.AddPolicyResult(policyRunresult)
 					} else {
 						result := results[0]
 						result.Result = resourceList
-						srv.opr.PolicyOperator.UpdatePolicyResult(result)
+						opr.PolicyOperator.UpdatePolicyResult(result)
 					}
 				}
 
@@ -180,14 +207,14 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 
 	if isPolicyRunFailed {
 		pipeLine.RunStatus = model.FAILED
-		upcount, err := srv.opr.PipeLineOperator.UpdatePipeLine(pipeLine)
+		upcount, err := opr.PipeLineOperator.UpdatePipeLine(pipeLine)
 		if upcount != 1 {
 			fmt.Println("Failed to update pipline run status,", err)
 			return
 		}
 	} else {
 		pipeLine.RunStatus = model.COMPLETED
-		upcount, err := srv.opr.PipeLineOperator.UpdatePipeLine(pipeLine)
+		upcount, err := opr.PipeLineOperator.UpdatePipeLine(pipeLine)
 		if upcount != 1 {
 			fmt.Println("Failed to update pipline run status,", err)
 			return
