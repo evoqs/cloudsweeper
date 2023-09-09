@@ -42,11 +42,25 @@ func (opr *PipeLineOperator) GetPipeLineDetails(pipelineid string) ([]model.Pipe
 	return results, err
 }
 
-func (opr *PipeLineOperator) GetAllPipeLines(query string) ([]model.PipeLine, error) {
+func (opr *PipeLineOperator) RunQuery(query string) ([]model.PipeLine, error) {
 
 	var results []model.PipeLine
 
 	cursor, err := opr.dbM.QueryRecord(pipelineTable, query)
+
+	fmt.Println(err)
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		fmt.Println(err)
+	}
+	if results != nil {
+		fmt.Println("Length " + strconv.Itoa(len(results)))
+	}
+	return results, err
+}
+
+func (opr *PipeLineOperator) GetAllPipeLines() ([]model.PipeLine, error) {
+	var results []model.PipeLine
+	cursor, err := opr.dbM.QueryAllRecords(pipelineTable)
 
 	fmt.Println(err)
 	if err = cursor.All(context.TODO(), &results); err != nil {

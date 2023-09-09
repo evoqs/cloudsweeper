@@ -2,23 +2,36 @@ package api
 
 import (
 	"cloudsweep/model"
-	"cloudsweep/policy_converter"
-	"cloudsweep/storage"
-	"cloudsweep/utils"
+	"cloudsweep/runner"
+	"cloudsweep/scheduler"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/rand"
 	"net/http"
-	"os"
-	"strconv"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request) {
+	defer request.Body.Close()
+	writer.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(request)
+	pipelineid := vars["pipelineid"]
+	rc, err := runner.ValidateAndRunPipeline(pipelineid)
+	if rc == 200 {
+		srv.SendResponse200(writer, "Accepted pipeline request for run.")
+	} else if rc == 500 {
+		srv.SendResponse500(writer, err)
+	} else if rc == 404 {
+		srv.SendResponse404(writer, nil)
+	} else if rc == 409 {
+		srv.SendResponse404(writer, errors.New("No policy Defined for Pipeline."))
+	}
+}
+
+/*func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	writer.Header().Set("Content-Type", "application/json")
 
@@ -66,7 +79,7 @@ func validateRunRequest(pipelineid string) (model.PipeLine, int, error) {
 
 	//Getting the policy
 
-	policyids := pipeLine.PolicyID
+	policyids := pipeLine.Policies
 	if len(policyids) == 0 {
 		return model.PipeLine{}, 409, errors.New("No policy Defined for Pipeline.")
 	}
@@ -84,7 +97,7 @@ func runPipeline(pipeLine model.PipeLine) {
 		return
 	}
 
-	policyids := pipeLine.PolicyID
+	policyids := pipeLine.Policies
 	isPolicyRunFailed := false
 	for _, policyid := range policyids {
 
@@ -114,11 +127,11 @@ func runPipeline(pipeLine model.PipeLine) {
 		7. Update the results
 		8. Mark as Completed
 		9. Delete the folder
-		*/
+*/
 
-		//Step 1 TODO
-		//Step 2 create runfolder
-		RunFolder := fmt.Sprintf("/tmp/%s.%s", policyid, strconv.Itoa(rand.Intn(100000)))
+//Step 1 TODO
+//Step 2 create runfolder
+/*		RunFolder := fmt.Sprintf("/tmp/%s.%s", policyid, strconv.Itoa(rand.Intn(100000)))
 		os.Mkdir(RunFolder, os.ModePerm)
 
 		//Step 3
@@ -221,7 +234,7 @@ func runPipeline(pipeLine model.PipeLine) {
 		}
 	}
 
-}
+}*/
 
 func (srv *Server) AddPipeLine(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
@@ -236,12 +249,17 @@ func (srv *Server) AddPipeLine(writer http.ResponseWriter, request *http.Request
 	}
 
 	id, err := srv.opr.PipeLineOperator.AddPipeLine(pipeline)
-
 	if err != nil {
 		srv.SendResponse500(writer, err)
 		return
 	}
-
+	pipelines, err := srv.opr.PipeLineOperator.GetPipeLineDetails(id)
+	if err != nil || len(pipelines) < 1 {
+		srv.SendResponse500(writer, err)
+		return
+	}
+	// Schedule the newly added pipeline
+	scheduler.GetDefaultPipelineScheduler().AddPipelineSchedule(pipelines[0])
 	//srv.SendResponse200(writer, fmt.Sprintf("Successfully Added Policy with ID %s", id))
 
 	writer.WriteHeader(http.StatusOK)
@@ -272,7 +290,7 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 		srv.SendResponse404(writer, nil)
 		return
 	}
-
+	scheduler.GetDefaultPipelineScheduler().UpdatePipelineSchedule(pipeline)
 	srv.SendResponse200(writer, fmt.Sprintf("Updated %d Policy with ID %s", count, pipeline.PipeLineID))
 }
 
@@ -321,7 +339,7 @@ func (srv *Server) GetAllPipeLine(writer http.ResponseWriter, request *http.Requ
 	query := fmt.Sprintf(`{"accountid": "%s"}`, accountid)
 	fmt.Println(query)
 
-	pipelines, err := srv.opr.PipeLineOperator.GetAllPipeLines(query)
+	pipelines, err := srv.opr.PipeLineOperator.RunQuery(query)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)
@@ -363,7 +381,7 @@ func (srv *Server) DeletePipeLine(writer http.ResponseWriter, request *http.Requ
 		return
 
 	} else {
+		scheduler.GetDefaultPipelineScheduler().DeletePipelineSchedule(pipelineid)
 		srv.SendResponse200(writer, fmt.Sprintf("Successfully deleted pipeline, %s", pipelineid))
 	}
-
 }

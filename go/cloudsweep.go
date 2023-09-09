@@ -2,6 +2,7 @@ package main
 
 import (
 	"cloudsweep/api"
+	"cloudsweep/scheduler"
 	"cloudsweep/storage"
 	"cloudsweep/utils"
 	"fmt"
@@ -51,6 +52,11 @@ func main() {
 	//query := `64e97c7a6ca9765964be555e`
 	//QueryRandomRecordWithId(*dbM, cfg.Database.Name, query)
 
+	// Start Scheduler
+	pipelineScheduler := scheduler.StartDefaultPipelineScheduler()
+	pipelineScheduler.ScheduleAllPipelines()
+
+	// Start Server
 	startServer(dbo, utils.GetConfig().Server.Host, utils.GetConfig().Server.Port)
 
 	//cpumodel := utils.GetCPUmodel()

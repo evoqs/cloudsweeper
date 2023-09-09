@@ -1,5 +1,7 @@
 package storage
 
+import "cloudsweep/utils"
+
 const policyTable = "policies"
 const policyResultTable = "policyrunresult"
 const accountTable = "account"
@@ -33,6 +35,10 @@ func MakeDBOperators(dbm *DBManger) *DbOperators {
 
 func GetDBOperators(dbName string) *DbOperators {
 	return operatorRepo[dbName]
+}
+
+func GetDefaultDBOperators() *DbOperators {
+	return operatorRepo[utils.GetConfig().Database.Name]
 }
 
 // *********************************************************Db Operations Cloud Account ***********************************************************************

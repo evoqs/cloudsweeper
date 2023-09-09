@@ -1,8 +1,6 @@
 package model
 
 import (
-	"time"
-
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -54,7 +52,7 @@ type PipeLine struct {
 	CloudAccountID string             `json:"cloudaccountid" bson:"cloudaccountid"`
 	PipeLineID     primitive.ObjectID `json:"piplineid" bson:"_id,omitempty"`
 	PipeLineName   string             `json:"piplinename" bson:"piplinename"`
-	PolicyID       []string           `json:"policyid" bson:"policyid"`
+	Policies       []string           `json:"policies" bson:"policyid"`
 	Schedule       Schedule           `json:"schedule" bson:"schedule"`
 	Enabled        bool               `json:"enabled" bson:"enabled"`
 	RunStatus      RunStatus          `json:"status" bson:"status"`
@@ -70,19 +68,11 @@ const (
 )
 
 type Schedule struct {
-	Hourly int            `json:"hourly" bson:"hourly"`
-	Daily  ScheduleDaily  `json:"daily" bson:"daily"`
-	Weekly ScheduleWeekly `json:"weekly" bson:"weekly"`
-}
-
-type ScheduleDaily struct {
-	Intreval int       `json:"intreval" bson:"intreval"`
-	Time     time.Time `json:"time" bson:"time"`
-}
-
-type ScheduleWeekly struct {
-	DaysOfWeek string    `json:"daysofweek" bson:"daysofweek"`
-	Time       time.Time `json:"time" bson:"time"`
+	Minute     string `json:"minute" bson:"minute"`
+	Hour       string `json:"hour" bson:"hour"`
+	DayOfMonth string `json:"dayofmonth" bson:"dayofmonth"`
+	Month      string `json:"month" bson:"month"`
+	DayOfWeek  string `json:"dayofweek" bson:"dayofweek"`
 }
 
 type Response200 struct {
