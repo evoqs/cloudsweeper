@@ -82,6 +82,21 @@ func (dbm DBManger) QueryRecord(dbname string, collection string, query string) 
 
 }
 
+func (dbm DBManger) QueryAllRecords(dbname string, collection string) (*mongo.Cursor, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var bquery interface{}
+	query := `{}`
+	err := bson.UnmarshalExtJSON([]byte(query), true, &bquery)
+	if err != nil {
+		fmt.Println("Error unmarshelling", err.Error())
+	}
+	cursor, err := dbm.mongoClinet.Database(dbname).Collection(collection).Find(ctx, &bquery)
+
+	return cursor, err
+
+}
+
 func (dbm DBManger) QueryRecordWithObjectID(dbname string, collection string, mongoObjectid string) (*mongo.Cursor, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

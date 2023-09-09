@@ -28,14 +28,14 @@ type CSPolicy struct {
 }
 
 type PipeLine struct {
-	AccountID      string    `json:"accountid" bson:"accountid"`
-	CloudAccountID string    `json:"cloudaccountid" bson:"cloudaccountid"`
-	PipeLineID     string    `json:"piplineid" bson:"piplineid"`
-	PipeLineName   string    `json:"piplinename" bson:"piplinename"`
-	PolicyID       []int     `json:"policyid" bson:"policyid"`
-	Schedule       Schedule  `json:"schedule" bson:"schedule"`
-	Enabled        bool      `json:"enabled" bson:"enabled"`
-	RunStatus      RunStatus `json:"status" bson:"status"`
+	AccountID      string               `json:"accountid" bson:"accountid"`
+	CloudAccountID string               `json:"cloudaccountid" bson:"cloudaccountid"`
+	PipeLineID     primitive.ObjectID   `json:"pipelineid" bson:"_id,omitempty"`
+	PipeLineName   string               `json:"piplinename" bson:"piplinename"`
+	PolicyID       []primitive.ObjectID `json:"policyid" bson:"policyid"`
+	Schedule       Schedule             `json:"schedule" bson:"schedule"`
+	Enabled        bool                 `json:"enabled" bson:"enabled"`
+	RunStatus      RunStatus            `json:"status" bson:"status"`
 }
 
 type RunStatus int
@@ -48,9 +48,11 @@ const (
 )
 
 type Schedule struct {
-	Hourly int            `json:"hourly" bson:"hourly"`
-	Daily  ScheduleDaily  `json:"daily" bson:"daily"`
-	Weekly ScheduleWeekly `json:"weekly" bson:"weekly"`
+	Minute     string `json:"minute" bson:"minute"`
+	Hour       string `json:"hour" bson:"hour"`
+	DayOfMonth string `json:"dayofmonth" bson:"dayofmonth"`
+	Month      string `json:"month" bson:"month"`
+	DayOfWeek  string `json:"dayofweek" bson:"dayofweek"`
 }
 
 type ScheduleDaily struct {

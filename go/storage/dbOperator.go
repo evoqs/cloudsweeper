@@ -1,6 +1,7 @@
 package storage
 
 import (
+	log "cloudsweep/logging"
 	"cloudsweep/model"
 	"context"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 )
 
 const policyTable = "policies"
+const pipelineTable = "pipelines"
 const accountTable = "account"
 const CounterTable = "idcounter"
 const counterTableId = "100"
@@ -116,5 +118,47 @@ func GetPolicyDetails(dbM DBManger, dbName string, policyid string) ([]model.CSP
 func DeleteCustodianPolicy(dbM DBManger, dbName string, objectid string) (int64, error) {
 
 	result, err := dbM.DeleteOneRecordWithObjectID(dbName, policyTable, objectid)
+	return result.DeletedCount, err
+}
+
+// *********************************************************Db Operations pipelines ***********************************************************************
+func AddPipeline(dbM DBManger, dbName string, pipeline model.PipeLine) (string, error) {
+	id, err := dbM.InsertRecord(dbName, pipelineTable, pipeline)
+	return id, err
+}
+
+func UpdatePipeline(dbM DBManger, dbName string, pipeline model.PipeLine) (int64, error) {
+	objectId := pipeline.PipeLineID
+	result, err := dbM.UpdateRecordWithObjectId(dbName, pipelineTable, objectId.Hex(), pipeline)
+	if err != nil {
+		return 0, err
+	}
+	return result.ModifiedCount, err
+}
+
+func GetPipeline(dbM DBManger, dbName string, pipelineId string) ([]model.PipeLine, error) {
+	var results []model.PipeLine
+	cursor, err := dbM.QueryRecordWithObjectID(dbName, pipelineTable, pipelineId)
+
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		panic(err)
+	}
+	if results != nil {
+		fmt.Println("Length " + strconv.Itoa(len(results)))
+	}
+	return results, err
+}
+
+func GetAllPipelines(dbM DBManger, dbName string) ([]model.PipeLine, error) {
+	var results []model.PipeLine
+	cursor, err := dbM.QueryAllRecords(dbName, pipelineTable)
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		log.NewDefaultLogger().Infof("Problem in getting all the pipelines. Reason: " + err.Error())
+	}
+	return results, err
+}
+
+func DeletePipeline(dbM DBManger, dbName string, objectid string) (int64, error) {
+	result, err := dbM.DeleteOneRecordWithObjectID(dbName, pipelineTable, objectid)
 	return result.DeletedCount, err
 }

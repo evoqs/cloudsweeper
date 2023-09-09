@@ -63,9 +63,12 @@ func (pss *PipeLineSchedulerStore) GetPipelineScheduler(name string) (*PipeLineS
 type PipeLineScheduler struct {
 	*Scheduler
 	logger.Logger
+	runMux sync.Mutex
 }
 
 func (pw *PipeLineScheduler) scheduleAllPipelines() error {
+	pw.runMux.Lock()
+	defer pw.runMux.Unlock()
 	//Get the pipeline json
 	pipelines, err := storage.GetAllPipelines() //TODO: Waiting for Bibin
 	if err != nil {
@@ -119,7 +122,8 @@ func GetPipelineScheduler(name string) *PipeLineScheduler {
 }
 
 // Entry Point. Starts the scheduler and schedules all the pipelines
-func StartPipelineScheduler() {
+func StartPipelineScheduler() *PipeLineScheduler {
 	defaultPipelineScheduler := startPipelineScheduler("DefaultPipelineScheduler", logger.NewDefaultLogger())
 	defaultPipelineScheduler.scheduleAllPipelines()
+	return defaultPipelineScheduler
 }
