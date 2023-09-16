@@ -1,16 +1,11 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"math/rand"
-	"strconv"
-
 	"cloudsweep/api"
-	"cloudsweep/model"
+	"cloudsweep/scheduler"
 	"cloudsweep/storage"
 	"cloudsweep/utils"
+	"fmt"
 )
 
 func main() {
@@ -25,6 +20,7 @@ func main() {
 
 	dbM := storage.GetDBManager()
 	dbM.SetDbUrl(dbUrl)
+	dbM.SetDatabase(utils.GetConfig().Database.Name)
 
 	_, err = dbM.Connect()
 	if err != nil {
@@ -37,6 +33,7 @@ func main() {
 		fmt.Println("Successfully Connected")
 		defer dbM.Disconnect()
 	}
+	dbo := storage.MakeDBOperators(dbM)
 
 	//InsertRandomRecord(*dbM, cfg.Database.Name)
 	//InsertRandomRecord(*dbM, cfg.Database.Name)
@@ -55,15 +52,24 @@ func main() {
 	//query := `64e97c7a6ca9765964be555e`
 	//QueryRandomRecordWithId(*dbM, cfg.Database.Name, query)
 
-	startServer(dbM)
+	// Start Scheduler
+	pipelineScheduler := scheduler.StartDefaultPipelineScheduler()
+	pipelineScheduler.ScheduleAllPipelines()
+
+	// Start Server
+	startServer(dbo, utils.GetConfig().Server.Host, utils.GetConfig().Server.Port)
+
+	//cpumodel := utils.GetCPUmodel()
+	//fmt.Println(cpumodel)
 }
 
-func startServer(dbM *storage.DBManger) {
+func startServer(dbO *storage.DbOperators, host string, port string) {
 	fmt.Println("Starting server")
 	var server api.Server
-	server.StartApiServer("8000", *dbM)
+	server.StartApiServer(fmt.Sprintf("%s:%s", host, port), *dbO)
 }
 
+/*
 func InsertRandomRecord(dbM storage.DBManger, dbName string) {
 	var acc model.AccountData
 	cred := model.AwsCredentials{
@@ -163,3 +169,4 @@ func DeleteRandomRecord(dbM storage.DBManger, dbName string, query string) {
 		fmt.Println("Successfuly deleted the record")
 	}
 }
+*/

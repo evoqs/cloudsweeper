@@ -23,6 +23,9 @@ type Config struct {
 		Name     string `yaml:"dbname" envconfig:"DB_NAME"`
 		Url      string //URL is constructed from given params
 	} `yaml:"database"`
+	Custodian struct {
+		C7nAwsInstall string `yaml:"c7nawsinstall" envconfig:"C7N_AWS_INSTALL"`
+	} `yaml:"custodian"`
 }
 
 // Loading the cfg

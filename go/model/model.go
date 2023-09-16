@@ -1,10 +1,10 @@
 package model
 
 import (
-	"time"
-
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+const AWS = "aws"
 
 type AccountData struct {
 	AccountID      string             `json:"accountid" bson:"accountid"`
@@ -15,11 +15,12 @@ type AccountData struct {
 }
 
 type AwsCredentials struct {
+	Region          string `json:"aws_region" bson:"aws_region"`
 	AccessKeyID     string `json:"aws_access_key_id" bson:"aws_access_key_id"`
 	SecretAccessKey string `json:"aws_secret_access_key" bson:"aws_secret_access_key"`
 }
 
-type CSPolicy struct {
+type Policy struct {
 	PolicyName       string             `json:"policyname" bson:"policyname"`
 	PolicyID         primitive.ObjectID `json:"policyid" bson:"_id,omitempty"`
 	AccountID        string             `json:"accountid" bson:"accountid"`
@@ -27,15 +28,34 @@ type CSPolicy struct {
 	PolicyDefinition string             `json:"policydefinition" bson:"policydefinition"`
 }
 
+type PolicyResult struct {
+	PolicyResultID primitive.ObjectID `json:"policyresultid" bson:"_id,omitempty"`
+	PolicyID       string             `json:"policyid" bson:"policyid"`
+	Resource       string             `json:"resource" bson:"resource"`
+	Result         string             `json:"result" bson:"result"`
+}
+
+// ******************* TO BE used in case needed to parse the policy json
+type CSPolicyDef struct {
+	Policies []CSPolicy `json:"policies" bson:"policies"`
+}
+
+type CSPolicy struct {
+	Name     string `json:"name" bson:"name"`
+	Resource string `json:"resource" bson:"resource"`
+}
+
+//******************* TO BE used in case needed to parse the policy json
+
 type PipeLine struct {
-	AccountID      string    `json:"accountid" bson:"accountid"`
-	CloudAccountID string    `json:"cloudaccountid" bson:"cloudaccountid"`
-	PipeLineID     string    `json:"piplineid" bson:"piplineid"`
-	PipeLineName   string    `json:"piplinename" bson:"piplinename"`
-	PolicyID       []int     `json:"policyid" bson:"policyid"`
-	Schedule       Schedule  `json:"schedule" bson:"schedule"`
-	Enabled        bool      `json:"enabled" bson:"enabled"`
-	RunStatus      RunStatus `json:"status" bson:"status"`
+	AccountID      string             `json:"accountid" bson:"accountid"`
+	CloudAccountID string             `json:"cloudaccountid" bson:"cloudaccountid"`
+	PipeLineID     primitive.ObjectID `json:"piplineid" bson:"_id,omitempty"`
+	PipeLineName   string             `json:"piplinename" bson:"piplinename"`
+	Policies       []string           `json:"policies" bson:"policyid"`
+	Schedule       Schedule           `json:"schedule" bson:"schedule"`
+	Enabled        bool               `json:"enabled" bson:"enabled"`
+	RunStatus      RunStatus          `json:"status" bson:"status"`
 }
 
 type RunStatus int
@@ -48,19 +68,11 @@ const (
 )
 
 type Schedule struct {
-	Hourly int            `json:"hourly" bson:"hourly"`
-	Daily  ScheduleDaily  `json:"daily" bson:"daily"`
-	Weekly ScheduleWeekly `json:"weekly" bson:"weekly"`
-}
-
-type ScheduleDaily struct {
-	Intreval int       `json:"intreval" bson:"intreval"`
-	Time     time.Time `json:"time" bson:"time"`
-}
-
-type ScheduleWeekly struct {
-	DaysOfWeek string    `json:"daysofweek" bson:"daysofweek"`
-	Time       time.Time `json:"time" bson:"time"`
+	Minute     string `json:"minute" bson:"minute"`
+	Hour       string `json:"hour" bson:"hour"`
+	DayOfMonth string `json:"dayofmonth" bson:"dayofmonth"`
+	Month      string `json:"month" bson:"month"`
+	DayOfWeek  string `json:"dayofweek" bson:"dayofweek"`
 }
 
 type Response200 struct {

@@ -1,4 +1,4 @@
-package policy_generator
+package policy_converter
 
 import (
 	"fmt"
@@ -28,9 +28,9 @@ func TestJsonToYamlPrint(t *testing.T) {
 		  }
 		]
 	}`
-    if got,_ := convertJsonToYaml(json); len(got) != 0 {
-        t.Logf("Yaml %v", got)
-    }
+	if got, _ := ConvertJsonToYaml(json); len(got) != 0 {
+		t.Logf("Yaml %v", got)
+	}
 }
 
 func TestJsonToYamlAndWriteToFilePrint(t *testing.T) {
@@ -54,9 +54,9 @@ func TestJsonToYamlAndWriteToFilePrint(t *testing.T) {
 		  }
 		]
 	}`
-    if err := convertJsonToYamlAndWriteToFile(json, "/tmp/json2yaml"); err != nil {
-        t.Fatalf("Failed to convert Json to Yaml and Write to File. %v", err)
-    } else {
+	if err := ConvertJsonToYamlAndWriteToFile(json, "/tmp/json2yaml"); err != nil {
+		t.Fatalf("Failed to convert Json to Yaml and Write to File. %v", err)
+	} else {
 		t.Logf("Successfully converted json to yaml and wrote to the file.")
 	}
 }
@@ -82,7 +82,7 @@ func TestJsonToYamlSingle(t *testing.T) {
 		  }
 		]
 	}`
-    want := `policies:
+	want := `policies:
 	- name: ec2-require-imdsv2
 	  resource: ec2
 	  description: |
@@ -92,14 +92,14 @@ func TestJsonToYamlSingle(t *testing.T) {
 	  actions:
 		- type: set-metadata-access
 		  tokens: required`
-	
+
 	replacements := map[string]string{
 		" ":  "",
-		"\n": "",	
+		"\n": "",
 		"\t": "",
 	}
 	want = replaceAll(want, replacements)
-	if yaml, err := convertJsonToYaml(json); err != nil {
+	if yaml, err := ConvertJsonToYaml(json); err != nil {
 		t.Logf("Error %v", err)
 	} else {
 		if got := replaceAll(yaml, replacements); got != want {
@@ -148,8 +148,8 @@ func TestJsonToYamlRecurse(t *testing.T) {
 		]
 	}`
 	noOfIterations := 100000
-	for iteration:=0; iteration < noOfIterations; iteration++ {
-		if got,_ := convertJsonToYaml(json); len(got) == 0 {
+	for iteration := 0; iteration < noOfIterations; iteration++ {
+		if got, _ := ConvertJsonToYaml(json); len(got) == 0 {
 			t.Errorf("jsonToYaml() = %q", got)
 		}
 	}
@@ -190,8 +190,8 @@ func TestJsonToYamlAndWriteToFileRecurse(t *testing.T) {
 		]
 	}`
 	noOfIterations := 100000
-	for iteration:=0; iteration < noOfIterations; iteration++ {
-		if err := convertJsonToYamlAndWriteToFile(json, "/tmp/json2yaml"); err != nil {
+	for iteration := 0; iteration < noOfIterations; iteration++ {
+		if err := ConvertJsonToYamlAndWriteToFile(json, "/tmp/json2yaml"); err != nil {
 			t.Errorf("jsonToYaml() = %q", err)
 		}
 	}
