@@ -27,7 +27,7 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 	} else if rc == 404 {
 		srv.SendResponse404(writer, nil)
 	} else if rc == 409 {
-		srv.SendResponse404(writer, errors.New("No policy Defined for Pipeline."))
+		srv.SendResponse404(writer, err)
 	}
 }
 

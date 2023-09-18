@@ -56,6 +56,7 @@ func main() {
 	pipelineScheduler := scheduler.StartDefaultPipelineScheduler()
 	pipelineScheduler.ScheduleAllPipelines()
 
+	utils.ValidateAwsCredentials("AKIA4T2VWH7A67Z", "Yaf6n5d2xQBzmo")
 	// Start Server
 	startServer(dbo, utils.GetConfig().Server.Host, utils.GetConfig().Server.Port)
 

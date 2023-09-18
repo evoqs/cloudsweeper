@@ -70,6 +70,28 @@ func RunCustodianPolicy(envvars []string, runfolder string, policyfile string, a
 	runchan <- string(stdout)
 }
 
+func ValidateAwsCredentials(accesskey string, accesssecret string) bool {
+	var envvars []string
+	envvars = append(envvars, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", accesskey))
+	envvars = append(envvars, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", accesssecret))
+	cmd := "aws sts get-caller-identity"
+	out := exec.Command("bash", "-c", cmd)
+	stdout, err := out.CombinedOutput()
+	if err != nil {
+		fmt.Printf(fmt.Sprintf("Failed to execute command: %s \n %s \n %s", cmd, err, stdout))
+		return false
+	}
+
+	fmt.Println("Exit code ===========> ", out.ProcessState.ExitCode())
+	fmt.Println(string(stdout))
+	if strings.Contains(string(stdout), "error") {
+		return false
+	} else {
+		return true
+	}
+
+}
+
 func GetFirstMatchingGroup(sentence string, regex string) (string, error) {
 
 	rgx, err := regexp.Compile(regex)

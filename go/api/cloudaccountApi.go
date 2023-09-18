@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"cloudsweep/model"
+	"cloudsweep/utils"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -199,6 +200,44 @@ func (srv *Server) GetCloudAccount(writer http.ResponseWriter, request *http.Req
 	account := accounts[0]
 	json.NewEncoder(writer).Encode(account)
 
+}
+
+func (srv *Server) AuthCheckCloudAccount(writer http.ResponseWriter, request *http.Request) {
+	defer request.Body.Close()
+	writer.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(request)
+
+	accountid := vars["cloudaccountid"]
+	if !primitive.IsValidObjectID(accountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid ObjectID: %s", accountid)))
+		return
+	}
+
+	accounts, err := srv.opr.AccountOperator.GetCloudAccount(accountid)
+	if err != nil {
+		srv.SendResponse500(writer, err)
+		return
+	}
+
+	//TODO when length >1
+
+	if len(accounts) == 0 {
+
+		srv.SendResponse404(writer, nil)
+		return
+	} else if len(accounts) > 1 {
+		err := errors.New("Internal Server Error, DB data consistency issue")
+		srv.SendResponse500(writer, err)
+		return
+	}
+
+	account := accounts[0]
+	if utils.ValidateAwsCredentials(account.AwsCredentials.AccessKeyID, account.AwsCredentials.SecretAccessKey) {
+		srv.SendResponse200(writer, "Authentication Succeeded")
+	} else {
+		srv.SendResponse409(writer, errors.New("Authentication Failed"))
+	}
 }
 
 func (srv *Server) DeleteCloudAccount(writer http.ResponseWriter, request *http.Request) {

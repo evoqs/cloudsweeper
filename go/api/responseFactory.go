@@ -14,6 +14,12 @@ func getResponse400() *model.Response400 {
 	}
 }
 
+func getResponse409() *model.Response409 {
+	return &model.Response409{
+		StatusCode: 409,
+	}
+}
+
 func getResponse200() *model.Response200 {
 	return &model.Response200{
 		StatusCode: 200,
