@@ -46,6 +46,9 @@ func ValidateAndRunPipeline(pipelineid string) (int, error) {
 	}
 	// Why will the pipeline list be greater than 1?
 	pipeLine := pipeLineList[0]
+	if !pipeLine.Enabled {
+		return 409, errors.New("Cannot Run Pipeline in disabled state.")
+	}
 	//Validate the policy
 	policyids := pipeLine.Policies
 	if len(policyids) == 0 {
