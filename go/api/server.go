@@ -44,6 +44,7 @@ func (srv *Server) StartApiServer(socket string, dbO storage.DbOperators) {
 	router.HandleFunc("/pipeline", srv.AddPipeLine).Methods("POST")
 	router.HandleFunc("/pipeline/{pipelineid}", srv.GetPipeLine).Methods("GET")
 	router.HandleFunc("/pipeline/{pipelineid}", srv.DeletePipeLine).Methods("DELETE")
+	router.HandleFunc("/pipeline", srv.UpdatePipeLine).Methods("PUT")
 
 	http.ListenAndServe(socket, router)
 }
@@ -60,6 +61,15 @@ func (srv *Server) SendResponse500(writer http.ResponseWriter, err error) {
 func (srv *Server) SendResponse400(writer http.ResponseWriter, err error) {
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusBadRequest)
+	resp := getResponse400()
+	resp.Error = err.Error()
+
+	json.NewEncoder(writer).Encode(resp)
+}
+
+func (srv *Server) SendResponse409(writer http.ResponseWriter, err error) {
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusConflict)
 	resp := getResponse400()
 	resp.Error = err.Error()
 

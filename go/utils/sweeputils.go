@@ -71,11 +71,13 @@ func RunCustodianPolicy(envvars []string, runfolder string, policyfile string, a
 }
 
 func ValidateAwsCredentials(accesskey string, accesssecret string) bool {
-	var envvars []string
+	/*var envvars []string
 	envvars = append(envvars, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", accesskey))
-	envvars = append(envvars, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", accesssecret))
+	envvars = append(envvars, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", accesssecret))*/
 	cmd := "aws sts get-caller-identity"
 	out := exec.Command("bash", "-c", cmd)
+	out.Env = append(out.Environ(), fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", accesskey))
+	out.Env = append(out.Environ(), fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", accesssecret))
 	stdout, err := out.CombinedOutput()
 	if err != nil {
 		fmt.Printf(fmt.Sprintf("Failed to execute command: %s \n %s \n %s", cmd, err, stdout))
