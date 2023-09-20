@@ -15,7 +15,7 @@ type AccountData struct {
 }
 
 type AwsCredentials struct {
-	Region          string `json:"aws_region" bson:"aws_region"`
+	//Region          string `json:"aws_region" bson:"aws_region"`
 	AccessKeyID     string `json:"aws_access_key_id" bson:"aws_access_key_id"`
 	SecretAccessKey string `json:"aws_secret_access_key" bson:"aws_secret_access_key"`
 }
@@ -26,13 +26,20 @@ type Policy struct {
 	AccountID        string             `json:"accountid" bson:"accountid"`
 	CloudAccountID   string             `json:"cloudaccountid" bson:"cloudaccountid"`
 	PolicyDefinition string             `json:"policydefinition" bson:"policydefinition"`
+	ExecutionRegions []string           `json:"execregions" bson:"execregions"`
 }
 
 type PolicyResult struct {
 	PolicyResultID primitive.ObjectID `json:"policyresultid" bson:"_id,omitempty"`
 	PolicyID       string             `json:"policyid" bson:"policyid"`
 	Resource       string             `json:"resource" bson:"resource"`
-	Result         string             `json:"result" bson:"result"`
+	Resultlist     []RegionResult     `json:"resultlist" bson:"resultlist"`
+	LastRunStatus  string             `json:"lastrunstatus" bson:"lastrunstatus"`
+}
+
+type RegionResult struct {
+	Result string `json:"result" bson:"result"`
+	Region string `json:"region" bson:"region"`
 }
 
 // ******************* TO BE used in case needed to parse the policy json
@@ -48,14 +55,15 @@ type CSPolicy struct {
 //******************* TO BE used in case needed to parse the policy json
 
 type PipeLine struct {
-	AccountID      string             `json:"accountid" bson:"accountid"`
-	CloudAccountID string             `json:"cloudaccountid" bson:"cloudaccountid"`
-	PipeLineID     primitive.ObjectID `json:"piplineid" bson:"_id,omitempty"`
-	PipeLineName   string             `json:"piplinename" bson:"piplinename"`
-	Policies       []string           `json:"policies" bson:"policyid"`
-	Schedule       Schedule           `json:"schedule" bson:"schedule"`
-	Enabled        bool               `json:"enabled" bson:"enabled"`
-	RunStatus      RunStatus          `json:"status" bson:"status"`
+	AccountID       string             `json:"accountid" bson:"accountid"`
+	CloudAccountID  string             `json:"cloudaccountid" bson:"cloudaccountid"`
+	PipeLineID      primitive.ObjectID `json:"piplineid" bson:"_id,omitempty"`
+	PipeLineName    string             `json:"piplinename" bson:"piplinename"`
+	Policies        []string           `json:"policies" bson:"policyid"`
+	Schedule        Schedule           `json:"schedule" bson:"schedule"`
+	Enabled         bool               `json:"enabled" bson:"enabled"`
+	RunStatus       RunStatus          `json:"status" bson:"status"`
+	PolicyRunStatus []DetailRunStatus  `json:"policyrunstatus" bson:"policyrunstatus"`
 }
 
 type RunStatus int
@@ -67,6 +75,10 @@ const (
 	UNKNOWN   RunStatus = 3
 )
 
+type DetailRunStatus struct {
+	PolicyID   string `json:"policyid" bson:"policyid"`
+	ExecStatus string `json:"execstatus" bson:"execstatus"`
+}
 type Schedule struct {
 	Minute     string `json:"minute" bson:"minute"`
 	Hour       string `json:"hour" bson:"hour"`
@@ -86,6 +98,11 @@ type Response201 struct {
 }
 
 type Response400 struct {
+	Error      string `json:"error"`
+	StatusCode int    `json:"responsecode"`
+}
+
+type Response409 struct {
 	Error      string `json:"error"`
 	StatusCode int    `json:"responsecode"`
 }
