@@ -11,9 +11,9 @@ type AccountOperator struct {
 	dbM DBManger
 }
 
-func (opr *AccountOperator) GetAllAccounts(accountquery string) ([]model.AccountData, error) {
+func (opr *AccountOperator) GetAllAccounts(accountquery string) ([]model.CloudAccountData, error) {
 
-	var results []model.AccountData
+	var results []model.CloudAccountData
 
 	cursor, err := opr.dbM.QueryRecord(accountTable, accountquery)
 
@@ -27,9 +27,9 @@ func (opr *AccountOperator) GetAllAccounts(accountquery string) ([]model.Account
 	return results, err
 }
 
-func (opr *AccountOperator) GetCloudAccount(cloudaccountid string) ([]model.AccountData, error) {
+func (opr *AccountOperator) GetCloudAccount(cloudaccountid string) ([]model.CloudAccountData, error) {
 
-	var results []model.AccountData
+	var results []model.CloudAccountData
 
 	cursor, err := opr.dbM.QueryRecordWithObjectID(accountTable, cloudaccountid)
 
@@ -42,13 +42,13 @@ func (opr *AccountOperator) GetCloudAccount(cloudaccountid string) ([]model.Acco
 	return results, err
 }
 
-func (opr *AccountOperator) AddCloudAccount(acc model.AccountData) (string, error) {
+func (opr *AccountOperator) AddCloudAccount(acc model.CloudAccountData) (string, error) {
 
 	id, err := opr.dbM.InsertRecord(accountTable, acc)
 	return id, err
 }
 
-func (opr *AccountOperator) UpdateCloudAccount(acc model.AccountData) (int64, error) {
+func (opr *AccountOperator) UpdateCloudAccount(acc model.CloudAccountData) (int64, error) {
 
 	objectId := acc.CloudAccountID
 	result, err := opr.dbM.UpdateRecordWithObjectId(accountTable, objectId.Hex(), acc)

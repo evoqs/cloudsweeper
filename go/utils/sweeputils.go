@@ -94,6 +94,31 @@ func ValidateAwsCredentials(accesskey string, accesssecret string) bool {
 
 }
 
+// Fetches the regions subscribed by an account
+func GetAwsSubscribedRegions(accesskey string, accesssecret string) bool {
+	/*var envvars []string
+	envvars = append(envvars, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", accesskey))
+	envvars = append(envvars, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", accesssecret))*/
+	cmd := "aws ec2 describe-availability-zones | jq '.AvailabilityZones[].RegionName' | sort | uniq"
+	out := exec.Command("bash", "-c", cmd)
+	out.Env = append(out.Environ(), fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", accesskey))
+	out.Env = append(out.Environ(), fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", accesssecret))
+	stdout, err := out.CombinedOutput()
+	if err != nil {
+		fmt.Printf(fmt.Sprintf("Failed to execute command: %s \n %s \n %s", cmd, err, stdout))
+		return false
+	}
+
+	fmt.Println("Exit code ===========> ", out.ProcessState.ExitCode())
+	fmt.Println(string(stdout))
+	if strings.Contains(string(stdout), "error") {
+		return false
+	} else {
+		return true
+	}
+
+}
+
 func GetFirstMatchingGroup(sentence string, regex string) (string, error) {
 
 	rgx, err := regexp.Compile(regex)

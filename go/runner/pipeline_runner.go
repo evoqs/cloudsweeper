@@ -62,13 +62,13 @@ func ValidateAndRunPipeline(pipelineid string) (int, error) {
 	if len(policies) == 0 {
 		return 404, fmt.Errorf("Policy not found with id %s", policyId)
 	}
-	policy := policies[0]
-	accounts, err := opr.AccountOperator.GetCloudAccount(policy.CloudAccountID)
+
+	accounts, err := opr.AccountOperator.GetCloudAccount(pipeLine.CloudAccountID)
 	if err != nil {
 		return 500, err
 	}
 	if len(accounts) == 0 {
-		return 404, fmt.Errorf("Account not found with id %s", policy.CloudAccountID)
+		return 404, fmt.Errorf("Account not found with id %s", pipeLine.CloudAccountID)
 	}
 	account := accounts[0]
 
@@ -82,7 +82,8 @@ func ValidateAndRunPipeline(pipelineid string) (int, error) {
 }
 
 func runPipeline(pipeLine model.PipeLine) {
-	logger.NewDefaultLogger().Info("Running the pipeline: " + pipeLine.PipeLineID.String())
+	logwriter := logger.NewDefaultLogger()
+	logwriter.Info("Running the pipeline: " + pipeLine.PipeLineID.String())
 	//Step 1
 	if pipeLine.RunStatus == model.RUNNING {
 		fmt.Println("Run is already in progress")
@@ -103,14 +104,14 @@ func runPipeline(pipeLine model.PipeLine) {
 		policyList, err := opr.PolicyOperator.GetPolicyDetails(policyid)
 		if err != nil {
 			fmt.Println("Failed to get policy")
-			updatePolicyRunResult(policyid, "", "Internal DB Error", nil, false)
+			updatePolicyRunResult(pipeLine.AccountID, policyid, "", "Internal DB Error", nil, false)
 			isPolicyRunFailed = true
 			continue
 		}
 
 		if len(policyList) == 0 {
 			fmt.Println("Policy not found")
-			updatePolicyRunResult(policyid, "", "Policy Definition missing", nil, false)
+			updatePolicyRunResult(pipeLine.AccountID, policyid, "", "Policy Definition missing", nil, false)
 			isPolicyRunFailed = true
 			continue
 		}
@@ -139,16 +140,16 @@ func runPipeline(pipeLine model.PipeLine) {
 		err = policy_converter.ConvertJsonToYamlAndWriteToFile(policyJson, policyFile)
 		if err != nil {
 			fmt.Println("Failed to convert json policy to yaml, for policy id ", policy.PolicyID)
-			updatePolicyRunResult(policyid, "", "Invalid policy definition", nil, false)
+			updatePolicyRunResult(pipeLine.AccountID, policyid, "", "Invalid policy definition", nil, false)
 			isPolicyRunFailed = true
 			continue
 		}
 
 		//Get creds
-		cloudAccList, err := opr.AccountOperator.GetCloudAccount(policy.CloudAccountID)
+		cloudAccList, err := opr.AccountOperator.GetCloudAccount(pipeLine.CloudAccountID)
 		if err != nil || len(cloudAccList) < 1 {
-			fmt.Println("Failed to get cloundaccount details for policy id ", policy.PolicyID, policy.CloudAccountID)
-			updatePolicyRunResult(policyid, "", "Missing Cloud Account definition for policy", nil, false)
+			fmt.Println("Failed to get cloundaccount details for policy id ", policy.PolicyID, pipeLine.CloudAccountID)
+			updatePolicyRunResult(pipeLine.AccountID, policyid, "", "Missing Cloud Account definition for policy", nil, false)
 			isPolicyRunFailed = true
 			continue
 		}
@@ -158,7 +159,7 @@ func runPipeline(pipeLine model.PipeLine) {
 
 		if cloudAcc.AccountType == model.AWS {
 			if !utils.ValidateAwsCredentials(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey) {
-				updatePolicyRunResult(policyid, "", "Authentication Failed", nil, false)
+				updatePolicyRunResult(pipeLine.AccountID, policyid, "", "Authentication Failed", nil, false)
 				isPolicyRunFailed = true
 				continue
 			}
@@ -174,14 +175,14 @@ func runPipeline(pipeLine model.PipeLine) {
 			close(c)
 			if !ok {
 				fmt.Println("Failed to read from channel")
-				updatePolicyRunResult(policyid, "", "Internal Error", nil, false)
+				updatePolicyRunResult(pipeLine.AccountID, policyid, "", "Internal Error", nil, false)
 				isPolicyRunFailed = true
 				continue
 			}
 
 			if strings.Contains(strings.ToUpper(runres), "ERROR") {
 				fmt.Println("policy run failed with result", runres)
-				updatePolicyRunResult(policyid, "", "Internal Error", nil, false)
+				updatePolicyRunResult(pipeLine.AccountID, policyid, "", "Internal Error", nil, false)
 				isPolicyRunFailed = true
 			} else {
 				fmt.Println("policy run successful with result", runres)
@@ -210,7 +211,7 @@ func runPipeline(pipeLine model.PipeLine) {
 					regionResult.Result = resourceList
 					regionResult.Region = policy.ExecutionRegions[0]
 					resultList = append(resultList, *regionResult)
-					updatePolicyRunResult(policyid, resourceName, "SUCCESS", resultList, true)
+					updatePolicyRunResult(pipeLine.AccountID, policyid, resourceName, "SUCCESS", resultList, true)
 					/*policyRunresult := new(model.PolicyResult)
 
 					policyRunresult.PolicyID = policy.PolicyID.Hex()
@@ -255,12 +256,13 @@ func runPipeline(pipeLine model.PipeLine) {
 	// TODO: How do you inform back to the UI the reason for failure. pipeline model should be updated to have the reason for last failure and number of previous failures
 }
 
-func updatePolicyRunResult(policyID string, resourceName string, runStatus string, regionWiseResult []model.RegionResult, isSuccess bool) {
+func updatePolicyRunResult(accountID string, policyID string, resourceName string, runStatus string, regionWiseResult []model.RegionResult, isSuccess bool) {
 	opr := storage.GetDefaultDBOperators()
 	query := fmt.Sprintf(`{"policyid": "%s"}`, policyID)
 	results, _ := opr.PolicyOperator.GetPolicyResultDetails(query)
 	if len(results) == 0 {
 		var policyRunresult model.PolicyResult
+		policyRunresult.AccountID = accountID
 		policyRunresult.PolicyID = policyID
 		policyRunresult.Resource = resourceName
 		policyRunresult.LastRunStatus = runStatus

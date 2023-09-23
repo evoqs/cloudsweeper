@@ -335,11 +335,7 @@ func (srv *Server) GetAllPipeLine(writer http.ResponseWriter, request *http.Requ
 
 	vars := mux.Vars(request)
 	accountid := vars["accountid"]
-	//query := `{"accountid": ` + accountid + `}`
-	query := fmt.Sprintf(`{"accountid": "%s"}`, accountid)
-	fmt.Println(query)
-
-	pipelines, err := srv.opr.PipeLineOperator.RunQuery(query)
+	pipelines, err := srv.opr.PipeLineOperator.GetAccountPipeLines(accountid)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)
@@ -353,6 +349,36 @@ func (srv *Server) GetAllPipeLine(writer http.ResponseWriter, request *http.Requ
 	} else {
 		writer.WriteHeader(http.StatusOK)
 		json.NewEncoder(writer).Encode(pipelines)
+	}
+
+}
+
+func (srv *Server) GetAllPolicies(writer http.ResponseWriter, request *http.Request) {
+	defer request.Body.Close()
+	writer.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(request)
+	accountid := vars["accountid"]
+	query := fmt.Sprintf(`{"accountid": "%s"}`, accountid)
+	srv.logwriter.Infof("Get all policies for account: ", accountid)
+
+	policies, err := srv.opr.PolicyOperator.GetAllPolicyDetails(query)
+
+	if err != nil {
+		srv.logwriter.Errorf("Get all policies for account: ", accountid, ",failed with error:", err)
+		srv.SendResponse500(writer, err)
+		return
+	}
+	//TODO when length >1
+	if len(policies) == 0 {
+		srv.logwriter.Infof("Get all policies for account: ", accountid, ",returned empty")
+		srv.SendResponse404(writer, nil)
+		return
+
+	} else {
+		srv.logwriter.Infof("Get all policies for account: ", accountid, "succcess")
+		writer.WriteHeader(http.StatusOK)
+		json.NewEncoder(writer).Encode(policies)
 	}
 
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"cloudsweep/model"
 	"cloudsweep/utils"
@@ -75,7 +76,7 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 	defer request.Body.Close()
 
 	//decoding post json to Accountdata Model
-	var acc model.AccountData
+	var acc model.CloudAccountData
 	err := json.NewDecoder(request.Body).Decode(&acc)
 
 	if err != nil {
@@ -102,18 +103,41 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 		return
 	}
 
+	//Validate Cloud credentials
+	if strings.TrimSpace(acc.AccountType) == "aws" {
+		if !utils.ValidateAwsCredentials(acc.AwsCredentials.AccessKeyID, acc.AwsCredentials.SecretAccessKey) {
+			errString := fmt.Sprintf("AWS Authentication Failed with given access key and secret")
+			err := errors.New(errString)
+			srv.logwriter.Warnf(errString)
+			srv.SendResponse409(writer, err)
+			return
+		}
+
+	} else {
+		errString := fmt.Sprintf("Unknown Account type %s , supported account types are aws,gcp,azure and oci.", acc.AccountType)
+		err := errors.New(errString)
+		srv.logwriter.Warnf(errString)
+		srv.SendResponse400(writer, err)
+		return
+	}
+
 	//Writing cloundaccount data to MongoDB
-	id, err := srv.opr.AccountOperator.AddCloudAccount(acc)
+	//TODO Remove comment
+	//id, err := srv.opr.AccountOperator.AddCloudAccount(acc)
+	id := "changeme"
 	if err != nil {
 		srv.SendResponse500(writer, err)
 		return
 	}
 
+	//Sending response
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 	objID, err := primitive.ObjectIDFromHex(id)
 	acc.CloudAccountID = objID
 	json.NewEncoder(writer).Encode(acc)
+
+	//Getting default regions
 
 }
 
@@ -121,7 +145,7 @@ func (srv *Server) UpdateCloudAccount(writer http.ResponseWriter, request *http.
 	defer request.Body.Close()
 
 	//decoding post json to Accountdata Model
-	var acc model.AccountData
+	var acc model.CloudAccountData
 	err := json.NewDecoder(request.Body).Decode(&acc)
 
 	if err != nil {

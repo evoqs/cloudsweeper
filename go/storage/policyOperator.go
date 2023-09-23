@@ -42,6 +42,21 @@ func (opr *PolicyOperator) GetPolicyDetails(policyid string) ([]model.Policy, er
 	return results, err
 }
 
+func (opr *PolicyOperator) GetAllPolicyDetails(query string) ([]model.Policy, error) {
+
+	var results []model.Policy
+
+	cursor, err := opr.dbM.QueryRecord(policyTable, query)
+
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		panic(err)
+	}
+	if results != nil {
+		fmt.Println("Length " + strconv.Itoa(len(results)))
+	}
+	return results, err
+}
+
 func (opr *PolicyOperator) DeleteCustodianPolicy(objectid string) (int64, error) {
 
 	result, err := opr.dbM.DeleteOneRecordWithObjectID(policyTable, objectid)
@@ -82,4 +97,42 @@ func (opr *PolicyOperator) GetPolicyResultDetails(query string) ([]model.PolicyR
 		fmt.Println("Length " + strconv.Itoa(len(results)))
 	}
 	return results, err
+}
+
+// Default Policy Operations
+func (opr *PolicyOperator) AddDefaultPolicy(policy model.DefaultPolicy) (string, error) {
+
+	id, err := opr.dbM.InsertRecord(defaultpolicyTable, policy)
+	return id, err
+}
+
+func (opr *PolicyOperator) UpdateDefaultPolicy(policy model.DefaultPolicy) (int64, error) {
+
+	objectId := policy.PolicyID
+	result, err := opr.dbM.UpdateRecordWithObjectId(defaultpolicyTable, objectId.Hex(), policy)
+	if err != nil {
+		return 0, err
+	}
+	return result.ModifiedCount, err
+}
+
+func (opr *PolicyOperator) GetAllDefaultPolicyDetails() ([]model.DefaultPolicy, error) {
+
+	var results []model.DefaultPolicy
+
+	cursor, err := opr.dbM.QueryAllRecords(defaultpolicyTable)
+
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		panic(err)
+	}
+	if results != nil {
+		fmt.Println("Length " + strconv.Itoa(len(results)))
+	}
+	return results, err
+}
+
+func (opr *PolicyOperator) DeleteDefaultCustodianPolicy(objectid string) (int64, error) {
+
+	result, err := opr.dbM.DeleteOneRecordWithObjectID(defaultpolicyTable, objectid)
+	return result.DeletedCount, err
 }
