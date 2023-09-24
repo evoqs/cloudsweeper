@@ -2,6 +2,7 @@ package cost_estimator
 
 import (
 	"encoding/json"
+	"reflect"
 	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -31,9 +32,79 @@ func buildFilterInput(filters []Filter) []*pricing.Filter {
 	return filtersInput
 }*/
 
+func CollectResourceCost(serviceCode string, filters []*pricing.Filter, resultContainer interface{}) error {
+	sess, err := awsutil.GetAwsSession()
+	if err != nil {
+		logger.NewDefaultLogger().Errorf("Error while creating AWS Session %v. Skipping Instance Cost Collection.", err)
+		return err
+	}
+	pricingClient := pricing.New(sess)
+	pricingInput := &pricing.GetProductsInput{
+		ServiceCode: aws.String(serviceCode),
+		Filters:     filters,
+		NextToken:   aws.String(""),
+	}
+
+	// Get the element type of the resultContainer slice
+	resultElemType := reflect.TypeOf(resultContainer).Elem().Elem()
+
+	for {
+		var pricingData aws_model.PricingDataInstance
+		pricingResult, err := pricingClient.GetProducts(pricingInput)
+		if err != nil {
+			return err
+		}
+
+		pricingJSON, err := json.Marshal(pricingResult)
+		if err != nil {
+			return err
+		}
+
+		err = json.Unmarshal(pricingJSON, &pricingData)
+		if err != nil {
+			return err
+		}
+
+		for _, priceItem := range pricingData.PriceList {
+			for _, term := range priceItem.Terms.OnDemand {
+				for _, priceDimension := range term.PriceDimensions {
+					prices := make(map[string]float64)
+					cost, err := strconv.ParseFloat(priceDimension.PricePerUnit.USD, 64)
+					if err != nil {
+						prices["USD"] = -1
+					}
+					prices["USD"] = cost
+
+					// Create an instance of the desired type using reflection
+					instanceValue := reflect.New(resultElemType).Elem()
+
+					// Populate the instance
+					instanceValue.FieldByName("CloudProvider").SetString("AWS")
+					instanceValue.FieldByName("Version").SetString(priceItem.Version)
+					instanceValue.FieldByName("PublicationDate").SetString(priceItem.PublicationDate)
+					instanceValue.FieldByName("ProductFamily").SetString(priceItem.Product.ProductFamily)
+					instanceValue.FieldByName("PricePerUnit").Set(reflect.ValueOf(prices))
+					instanceValue.FieldByName("Unit").SetString(priceDimension.Unit)
+					instanceValue.FieldByName("ProductAttributes").Set(reflect.ValueOf(priceItem.Product.Attributes))
+
+					// Append the instance to the result container slice
+					resultSlice := reflect.ValueOf(resultContainer).Elem()
+					resultSlice.Set(reflect.Append(resultSlice, instanceValue))
+				}
+			}
+		}
+		if pricingResult.NextToken != nil {
+			pricingInput.NextToken = pricingResult.NextToken
+		} else {
+			break
+		}
+	}
+	return nil
+}
+
 // Note: This function calculates the cost for currency USD. filter can not be used to filter out different currencies.
 // TODO: Update model and support multiple currencies - future. Enhancement support is provided
-func CollectComputeInstanceCost(filters []*pricing.Filter) ([]aws_model.ResourceCostInstance, error) {
+/*func CollectComputeInstanceCost(filters []*pricing.Filter) ([]aws_model.ResourceCostInstance, error) {
 	var pricingDataList []aws_model.ResourceCostInstance
 	sess, err := awsutil.GetAwsSession()
 	if err != nil {
@@ -99,3 +170,80 @@ func CollectComputeInstanceCost(filters []*pricing.Filter) ([]aws_model.Resource
 	}
 	return pricingDataList, nil
 }
+
+// Note used, just for reference
+func CollectResourceCostNoReflect(serviceCode string, filters []*pricing.Filter, resultContainer interface{}, factory func() interface{}) error {
+	sess, err := awsutil.GetAwsSession()
+	if err != nil {
+		logger.NewDefaultLogger().Errorf("Error while creating AWS Session %v. Skipping Instance Cost Collection.", err)
+		return err
+	}
+	pricingClient := pricing.New(sess)
+	pricingInput := &pricing.GetProductsInput{
+		ServiceCode: aws.String(serviceCode),
+		Filters:     filters,
+		NextToken:   aws.String(""),
+	}
+
+	for {
+		var pricingData aws_model.PricingDataInstance
+		pricingResult, err := pricingClient.GetProducts(pricingInput)
+		if err != nil {
+			return err
+		}
+
+		pricingJSON, err := json.Marshal(pricingResult)
+		if err != nil {
+			return err
+		}
+
+		err = json.Unmarshal(pricingJSON, &pricingData)
+		if err != nil {
+			return err
+		}
+
+		for _, priceItem := range pricingData.PriceList {
+			for _, term := range priceItem.Terms.OnDemand {
+				for _, priceDimension := range term.PriceDimensions {
+					prices := make(map[string]float64)
+					cost, err := strconv.ParseFloat(priceDimension.PricePerUnit.USD, 64)
+					if err != nil {
+						prices["USD"] = -1
+					}
+					prices["USD"] = cost
+
+					// Create an instance of the desired type using the factory function
+					instance := factory()
+
+					// Populate the instance with the received data
+					if rci, ok := instance.(*aws_model.ResourceCostInstance); ok {
+						rci.CloudProvider = "AWS"
+						rci.Version = priceItem.Version
+						rci.PublicationDate = priceItem.PublicationDate
+						rci.ProductFamily = priceItem.Product.ProductFamily
+						rci.PricePerUnit = prices
+						rci.ProductAttributes = priceItem.Product.Attributes
+						rci.Unit = priceDimension.Unit
+					} else if rce, ok := instance.(*aws_model.ResourceCostEBS); ok {
+						rce.CloudProvider = "AWS"
+						rce.Version = priceItem.Version
+						rce.PublicationDate = priceItem.PublicationDate
+						rce.ProductFamily = priceItem.Product.ProductFamily
+						rce.PricePerUnit = prices
+						rce.ProductAttributes = priceItem.Product.Attributes
+						rce.Unit = priceDimension.Unit
+					}
+
+					// Append the populated instance to the result container slice
+					reflect.ValueOf(resultContainer).Elem().Set(reflect.Append(reflect.ValueOf(resultContainer).Elem(), reflect.ValueOf(instance).Elem()))
+				}
+			}
+		}
+		if pricingResult.NextToken != nil {
+			pricingInput.NextToken = pricingResult.NextToken
+		} else {
+			break
+		}
+	}
+	return nil
+}*/

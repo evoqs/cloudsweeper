@@ -108,7 +108,9 @@ func GetComputeInstanceCostFromAws(productAttributes aws_model.ProductAttributes
 		}
 	}
 	//fmt.Printf("Filters %v", filters)
-	resourceCosts, err := CollectComputeInstanceCost(filters)
+	//resourceCosts, err := CollectComputeInstanceCost(filters)
+	var resourceCosts []aws_model.ResourceCostInstance
+	err := CollectResourceCost("AmazonEC2", filters, &resourceCosts)
 	if err != nil {
 		return aws_model.ResourceCostInstance{},
 			aws_model.ResourceCostInstance{},

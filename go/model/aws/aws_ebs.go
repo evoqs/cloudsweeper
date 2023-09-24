@@ -22,17 +22,17 @@ type ProductInfoEBS struct {
 }
 
 type ProductAttributesEBS struct {
-	VolumeType              string `json:"volumeType"`
-	RegionCode              string `json:"regionCode"`
-	ServiceCode             string `json:"servicecode"`
-	ServiceName             string `json:"servicename"`
-	LocationType            string `json:"locationtype"`
-	UsageType               string `json:"usagetype"`
-	StorageMedia            string `json:"storageMedia"`
-	MaxIopsBurstPerformance string `json:"maxIopsBurstPerformance"`
-	MaxIopsvolume           string `json:"maxIopsvolume"`
-	MaxThroughputvolume     string `json:"maxThroughputvolume"`
-	VolumeApiName           string `json:"volumeApiName"`
+	VolumeType              string `json:"volumeType" bson:"volumeType"`
+	RegionCode              string `json:"regionCode" bson:"regionCode"`
+	ServiceCode             string `json:"servicecode" bson:"servicecode"`
+	ServiceName             string `json:"servicename" bson:"servicename"`
+	LocationType            string `json:"locationtype" bson:"locationtype"`
+	UsageType               string `json:"usagetype" bson:"usagetype"`
+	StorageMedia            string `json:"storageMedia" bson:"storageMedia"`
+	MaxIopsBurstPerformance string `json:"maxIopsBurstPerformance" bson:"maxIopsBurstPerformance"`
+	MaxIopsvolume           string `json:"maxIopsvolume" bson:"maxIopsvolume"`
+	MaxThroughputvolume     string `json:"maxThroughputvolume" bson:"maxThroughputvolume"`
+	VolumeApiName           string `json:"volumeApiName" bson:"volumeApiName"`
 }
 
 type TermsEBS struct {

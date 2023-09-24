@@ -38,7 +38,7 @@ func TestCollector(t *testing.T) {
 	storage.MakeDBOperators(dbM)
 	product := aws_model.ProductAttributesInstance{
 		InstanceFamily:  "",
-		InstanceType:    "t2.large",
+		InstanceType:    "t3.large",
 		Memory:          "",
 		RegionCode:      "us-east-1",
 		OperatingSystem: "Linux",
