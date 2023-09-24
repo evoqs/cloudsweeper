@@ -1,8 +1,8 @@
-package aws
+package cloud_lib
 
 import (
-	aws_model "cloudsweep/aws/model"
 	logger "cloudsweep/logging"
+	aws_model "cloudsweep/model/aws"
 	"encoding/json"
 	"fmt"
 

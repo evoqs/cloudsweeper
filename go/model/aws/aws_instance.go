@@ -1,5 +1,7 @@
 package aws_model
 
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
 type PricingDataInstance struct {
 	FormatVersion string              `json:"FormatVersion"`
 	NextToken     string              `json:"NextToken"`
@@ -20,17 +22,17 @@ type ProductInfoInstance struct {
 }
 
 type ProductAttributesInstance struct {
-	InstanceFamily  string `json:"instanceFamily"`
-	InstanceType    string `json:"instanceType"`
-	Memory          string `json:"memory"`
-	RegionCode      string `json:"regionCode"`
-	ServiceCode     string `json:"serviceCode"`
-	ServiceName     string `json:"serviceName"`
-	Tenancy         string `json:"tenancy"`
-	UsageType       string `json:"usageType"`
-	VCPU            string `json:"vcpu"`
-	OperatingSystem string `json:"operatingSystem"`
-	ClockSpeed      string `json:"clockSpeed"`
+	InstanceFamily  string `json:"instanceFamily" bson:"instanceFamily"`
+	InstanceType    string `json:"instanceType" bson:"instanceType"`
+	Memory          string `json:"memory" bson:"memory"`
+	RegionCode      string `json:"regionCode" bson:"regionCode"`
+	ServiceCode     string `json:"serviceCode" bson:"serviceCode"`
+	ServiceName     string `json:"serviceName" bson:"serviceName"`
+	Tenancy         string `json:"tenancy" bson:"tenancy"`
+	UsageType       string `json:"usageType" bson:"usageType"`
+	VCPU            string `json:"vcpu" bson:"vcpu"`
+	OperatingSystem string `json:"operatingSystem" bson:"operatingSystem"`
+	ClockSpeed      string `json:"clockSpeed" bson:"clockSpeed"`
 }
 
 type TermsInstance struct {
@@ -58,10 +60,12 @@ type PricePerUnitInstance struct {
 }
 
 type ResourceCostInstance struct {
+	Id                primitive.ObjectID        `json:"id" bson:"_id,omitempty"`
+	CloudProvider     string                    `json:"cloudProvider" bson:"cloudProvider"`
 	Version           string                    `json:"version" bson:"version"`
-	PublicationDate   string                    `json:"publicationdate" bson:"publicationDate"`
-	ProductFamily     string                    `json:"productfamily" bson:"productFamily"`
-	PricePerUnit      map[string]float64        `json:"priceperunit" bson:"pricePerUnit"`
+	PublicationDate   string                    `json:"publicationDate" bson:"publicationDate"`
+	ProductFamily     string                    `json:"productFamily" bson:"productFamily"`
+	PricePerUnit      map[string]float64        `json:"pricePerUnit" bson:"pricePerUnit"`
 	Unit              string                    `json:"unit" bson:"unit"`
-	ProductAttributes ProductAttributesInstance `json:"productattributes" bson:"productAttributes"`
+	ProductAttributes ProductAttributesInstance `json:"productAttributes" bson:"productAttributes"`
 }

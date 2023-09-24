@@ -1,5 +1,7 @@
 package aws_model
 
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
 type PricingDataEBS struct {
 	FormatVersion string         `json:"FormatVersion"`
 	NextToken     string         `json:"NextToken"`
@@ -53,6 +55,7 @@ type PricePerUnitEBS struct {
 }
 
 type ResourceCostEBS struct {
+	Id                primitive.ObjectID   `json:"id" bson:"_id,omitempty"`
 	Version           string               `json:"version" bson:"version"`
 	PublicationDate   string               `json:"publicationdate" bson:"publicationdate"`
 	ProductFamily     string               `json:"productfamily" bson:"productfamily"`

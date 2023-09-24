@@ -7,9 +7,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/pricing"
 
-	awsutil "cloudsweep/aws"
-	aws_model "cloudsweep/aws/model"
+	awsutil "cloudsweep/cloud_lib"
 	logger "cloudsweep/logging"
+	aws_model "cloudsweep/model/aws"
 )
 
 /*type Filter struct {
@@ -72,19 +72,21 @@ func CollectComputeInstanceCost(filters []*pricing.Filter) ([]aws_model.Resource
 
 					// Filters - Price should not be 0
 					//var cost float64
-					cost, err := strconv.ParseFloat(priceDimension.PricePerUnit.USD, 32)
+					cost, err := strconv.ParseFloat(priceDimension.PricePerUnit.USD, 64)
 					if err != nil {
 						prices["USD"] = -1
 					}
 					prices["USD"] = cost
 					pricingDataList = append(pricingDataList, aws_model.ResourceCostInstance{
+						CloudProvider:     "AWS",
 						Version:           priceItem.Version,
 						PublicationDate:   priceItem.PublicationDate,
 						ProductFamily:     priceItem.Product.ProductFamily,
 						PricePerUnit:      prices,
 						ProductAttributes: priceItem.Product.Attributes,
+						Unit:              priceDimension.Unit,
 					})
-					//fmt.Printf("USD Cost: %v  -- %s --  %s\n", prices, priceItem.Product.Attributes.RegionCode, priceDimension.Description)
+					//fmt.Printf("USD Cost: %v  -- %s --  %s\n", prices, priceItem.Product.Attributes.InstanceType, priceDimension.Description)
 				}
 			}
 		}
