@@ -39,7 +39,9 @@ func (srv *Server) StartApiServer(socket string, dbO storage.DbOperators) {
 	router.HandleFunc("/policy", srv.UpdateCustodianPolicy).Methods("PUT")
 	router.HandleFunc("/policy/{policyid}", srv.GetCustodianPolicy).Methods("GET")
 	router.HandleFunc("/policy/{policyid}", srv.DeleteCustodianPolicy).Methods("DELETE")
-	router.HandleFunc("/policy/{policyid}/results", srv.GetPolicyRunResult).Methods("GET")
+
+	//policyResults
+	router.HandleFunc("/policyresults", srv.GetPolicyRunResult).Methods("GET")
 
 	//Default Policy related operations
 	router.HandleFunc("/defaultpolicy", srv.GetDefaultCustodianPolicies).Methods("GET")

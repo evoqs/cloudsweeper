@@ -5,7 +5,7 @@ import "cloudsweep/utils"
 const policyTable = "policies"
 const defaultpolicyTable = "defaultpolicies"
 const policyResultTable = "policyrunresult"
-const accountTable = "account"
+const cloudaccountTable = "cloudaccount"
 const pipelineTable = "pipeline"
 
 var operatorRepo = make(map[string]*DbOperators)

@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"cloudsweep/model"
+	"cloudsweep/runner"
+	"cloudsweep/scheduler"
 	"cloudsweep/utils"
 
 	"github.com/gorilla/mux"
@@ -122,9 +124,7 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 	}
 
 	//Writing cloundaccount data to MongoDB
-	//TODO Remove comment
-	//id, err := srv.opr.AccountOperator.AddCloudAccount(acc)
-	id := "changeme"
+	id, err := srv.opr.AccountOperator.AddCloudAccount(acc)
 	if err != nil {
 		srv.SendResponse500(writer, err)
 		return
@@ -138,7 +138,57 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 	json.NewEncoder(writer).Encode(acc)
 
 	//Getting default regions
+	defaultPolicyList, _ := srv.opr.PolicyOperator.GetAllDefaultPolicyDetails()
+	var policyIDList []string
+	for _, defaultpolicy := range defaultPolicyList {
+		var policy model.Policy
+		policy.PolicyName = defaultpolicy.PolicyName
+		policy.PolicyDefinition = defaultpolicy.PolicyDefinition
+		policy.PolicyType = "Default"
+		policy.AccountID = acc.AccountID
+		//TODO make regions to all
+		policy.ExecutionRegions = []string{"ap-southeast-2"}
 
+		query := fmt.Sprintf(`{"policyname": "%s", "policytype": "Default"}`, policy.PolicyName)
+		result, _ := srv.opr.PolicyOperator.GetAllPolicyDetails(query)
+		if len(result) == 0 {
+			id, err := srv.opr.PolicyOperator.AddPolicy(policy)
+
+			if err != nil {
+				srv.logwriter.Errorf(fmt.Sprintf("Failed to add default policy %s, with error %s.", policy.PolicyName, err.Error()))
+			} else {
+				srv.logwriter.Infof(fmt.Sprintf("Added default policy for account %s, policy name %s", acc.AccountID, policy.PolicyName))
+				policyIDList = append(policyIDList, id)
+			}
+		} else {
+			policyIDList = append(policyIDList, result[0].PolicyID.Hex())
+			srv.logwriter.Infof(fmt.Sprintf("Default policy  with name %s, already existing for account %s", policy.PolicyName, acc.AccountID))
+		}
+	}
+
+	if len(policyIDList) != 0 {
+		var pipeline model.PipeLine
+		pipeline.AccountID = acc.AccountID
+		pipeline.CloudAccountID = acc.CloudAccountID.Hex()
+		pipeline.Enabled = true
+		pipeline.PipeLineName = fmt.Sprintf("Default_%s", acc.Name)
+		pipeline.RunStatus = model.UNKNOWN
+		schedule := model.Schedule{Minute: "0", Hour: "12", DayOfMonth: "*", Month: "*", DayOfWeek: "*"}
+		pipeline.Schedule = schedule
+		pipeline.Policies = policyIDList
+		pipeline.Default = true
+		//Add pipeline
+		pipelineid, err := srv.opr.PipeLineOperator.AddPipeLine(pipeline)
+		if err != nil {
+			srv.logwriter.Errorf(fmt.Sprintf("Failed to add default pipeline for cloud account %s, with error %s", acc.CloudAccountID, err.Error()))
+		} else {
+			srv.logwriter.Infof(fmt.Sprintf("Added default pipeline for account %s, policy name %s", acc.AccountID, pipelineid))
+			pipelines, _ := srv.opr.PipeLineOperator.GetPipeLineDetails(pipelineid)
+			scheduler.GetDefaultPipelineScheduler().AddPipelineSchedule(pipelines[0])
+			runner.ValidateAndRunPipeline(pipelineid)
+		}
+
+	}
 }
 
 func (srv *Server) UpdateCloudAccount(writer http.ResponseWriter, request *http.Request) {

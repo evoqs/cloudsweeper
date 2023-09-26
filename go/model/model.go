@@ -7,6 +7,7 @@ import (
 const AWS = "aws"
 
 type CloudAccountData struct {
+	Name           string             `json:"name" bson:"name"`
 	AccountID      string             `json:"accountid" bson:"accountid"`
 	CloudAccountID primitive.ObjectID `json:"cloudaccountid,omitempty" bson:"_id,omitempty"`
 	AccountType    string             `json:"accounttype" bson:"accounttype"`
@@ -38,7 +39,7 @@ type DefaultPolicy struct {
 type PolicyResult struct {
 	PolicyResultID primitive.ObjectID `json:"policyresultid" bson:"_id,omitempty"`
 	PolicyID       string             `json:"policyid" bson:"policyid"`
-	AccountID      string             `json:"accountid" bson:"accountid"`
+	CloudAccountID string             `json:"cloudaccountid" bson:"cloudaccountid"`
 	Resource       string             `json:"resource" bson:"resource"`
 	Resultlist     []RegionResult     `json:"resultlist" bson:"resultlist"`
 	LastRunStatus  string             `json:"lastrunstatus" bson:"lastrunstatus"`
@@ -69,8 +70,9 @@ type PipeLine struct {
 	Policies       []string           `json:"policies" bson:"policyid"`
 	Schedule       Schedule           `json:"schedule" bson:"schedule"`
 	Enabled        bool               `json:"enabled" bson:"enabled"`
+	Default        bool               `json:"default" bson:"default"`
 	RunStatus      RunStatus          `json:"status" bson:"status"`
-	LastRunTime    string             `json:"lastruntime" bson:"lastruntime"`
+	LastRunTime    int64              `json:"lastruntime" bson:"lastruntime"`
 }
 
 type RunStatus int

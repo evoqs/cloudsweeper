@@ -130,14 +130,21 @@ func (srv *Server) DeleteCustodianPolicy(writer http.ResponseWriter, request *ht
 func (srv *Server) GetPolicyRunResult(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	writer.Header().Set("Content-Type", "application/json")
-	vars := mux.Vars(request)
-	policyid := vars["policyid"]
+	policyid := request.URL.Query().Get("policyid")
+	cloudaccountid := request.URL.Query().Get("cloudaccountid")
 
 	if !primitive.IsValidObjectID(policyid) {
-		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid ObjectID: %s", policyid)))
+		srv.logwriter.Warnf(fmt.Sprintf("Invalid Policy ObjectID: %s, received in get result query", policyid))
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Policy ObjectID: %s", policyid)))
 		return
 	}
-	query := fmt.Sprintf(`{"policyid": "%s"}`, policyid)
+
+	if !primitive.IsValidObjectID(cloudaccountid) {
+		srv.logwriter.Warnf(fmt.Sprintf("Invalid Cloud AccountID: %s, received in get result query", policyid))
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Cloud AccountID: %s", cloudaccountid)))
+		return
+	}
+	query := fmt.Sprintf(`{"policyid": "%s", "cloudaccountid":"%s"}`, policyid, cloudaccountid)
 	policieResults, err := srv.opr.PolicyOperator.GetPolicyResultDetails(query)
 
 	if err != nil {

@@ -15,7 +15,7 @@ func (opr *AccountOperator) GetAllAccounts(accountquery string) ([]model.CloudAc
 
 	var results []model.CloudAccountData
 
-	cursor, err := opr.dbM.QueryRecord(accountTable, accountquery)
+	cursor, err := opr.dbM.QueryRecord(cloudaccountTable, accountquery)
 
 	fmt.Println(err)
 	if err = cursor.All(context.TODO(), &results); err != nil {
@@ -31,7 +31,7 @@ func (opr *AccountOperator) GetCloudAccount(cloudaccountid string) ([]model.Clou
 
 	var results []model.CloudAccountData
 
-	cursor, err := opr.dbM.QueryRecordWithObjectID(accountTable, cloudaccountid)
+	cursor, err := opr.dbM.QueryRecordWithObjectID(cloudaccountTable, cloudaccountid)
 
 	if err = cursor.All(context.TODO(), &results); err != nil {
 		panic(err)
@@ -44,14 +44,14 @@ func (opr *AccountOperator) GetCloudAccount(cloudaccountid string) ([]model.Clou
 
 func (opr *AccountOperator) AddCloudAccount(acc model.CloudAccountData) (string, error) {
 
-	id, err := opr.dbM.InsertRecord(accountTable, acc)
+	id, err := opr.dbM.InsertRecord(cloudaccountTable, acc)
 	return id, err
 }
 
 func (opr *AccountOperator) UpdateCloudAccount(acc model.CloudAccountData) (int64, error) {
 
 	objectId := acc.CloudAccountID
-	result, err := opr.dbM.UpdateRecordWithObjectId(accountTable, objectId.Hex(), acc)
+	result, err := opr.dbM.UpdateRecordWithObjectId(cloudaccountTable, objectId.Hex(), acc)
 	if err != nil {
 		return 0, err
 	}
@@ -61,7 +61,7 @@ func (opr *AccountOperator) UpdateCloudAccount(acc model.CloudAccountData) (int6
 
 func (opr *AccountOperator) DeleteAllCloudAccounts(query string) (int64, error) {
 
-	result, err := opr.dbM.DeleteMultipleRecord(accountTable, query)
+	result, err := opr.dbM.DeleteMultipleRecord(cloudaccountTable, query)
 	fmt.Printf("Delete Count %d,", result.DeletedCount)
 	fmt.Println(err)
 	if err != nil {
@@ -73,7 +73,7 @@ func (opr *AccountOperator) DeleteAllCloudAccounts(query string) (int64, error) 
 
 func (opr *AccountOperator) DeleteCloudAccount(objectid string) (int64, error) {
 
-	result, err := opr.dbM.DeleteOneRecordWithObjectID(accountTable, objectid)
+	result, err := opr.dbM.DeleteOneRecordWithObjectID(cloudaccountTable, objectid)
 
 	return result.DeletedCount, err
 }

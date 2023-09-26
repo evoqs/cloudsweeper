@@ -84,6 +84,7 @@ func (opr *PolicyOperator) GetPolicyResultDetails(query string) ([]model.PolicyR
 
 	var results []model.PolicyResult
 
+	fmt.Println("Query: ", query)
 	cursor, err := opr.dbM.QueryRecord(policyResultTable, query)
 
 	/*if cursor == nil {
@@ -92,6 +93,7 @@ func (opr *PolicyOperator) GetPolicyResultDetails(query string) ([]model.PolicyR
 	}*/
 	if err = cursor.All(context.TODO(), &results); err != nil {
 		fmt.Println(err)
+		return nil, err
 	}
 	if results != nil {
 		fmt.Println("Length " + strconv.Itoa(len(results)))
