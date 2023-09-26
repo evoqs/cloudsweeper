@@ -167,7 +167,7 @@ func getAttributeValues(serviceCode string, attributeName string) ([]string, err
 
 func GetProductFamilyList(serviceCode string) ([]string, error) {
 	var productFamilies []string
-	var pricingData aws_model.PricingDataInstance
+	var pricingData aws_model.PricingData[aws_model.ProductAttributesInstance]
 	pClient, err := GetPriceClient()
 	if err != nil {
 		logger.NewDefaultLogger().Errorf("Error Creating PriceClient : %v", err)

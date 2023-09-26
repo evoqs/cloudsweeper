@@ -2,7 +2,6 @@ package cost_estimator
 
 import (
 	"encoding/json"
-	"reflect"
 	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -32,7 +31,74 @@ func buildFilterInput(filters []Filter) []*pricing.Filter {
 	return filtersInput
 }*/
 
-func CollectResourceCost(serviceCode string, filters []*pricing.Filter, resultContainer interface{}) error {
+// Note: This function calculates the cost for currency USD. filter can not be used to filter out different currencies.
+// TODO: Update model and support multiple currencies - future. Enhancement support is provided
+func CollectResourceCost[T any](serviceCode string, filters []*pricing.Filter, resultContainer *[]aws_model.AwsResourceCost[T]) error {
+	sess, err := awsutil.GetAwsSession()
+	if err != nil {
+		logger.NewDefaultLogger().Errorf("Error while creating AWS Session %v. Skipping Instance Cost Collection.", err)
+		return err
+	}
+	pricingClient := pricing.New(sess)
+	pricingInput := &pricing.GetProductsInput{
+		ServiceCode: aws.String(serviceCode),
+		Filters:     filters,
+		NextToken:   aws.String(""),
+	}
+
+	for {
+		var pricingData aws_model.PricingData[T]
+		pricingResult, err := pricingClient.GetProducts(pricingInput)
+		if err != nil {
+			return err
+		}
+
+		pricingJSON, err := json.Marshal(pricingResult)
+		if err != nil {
+			return err
+		}
+
+		err = json.Unmarshal(pricingJSON, &pricingData)
+		if err != nil {
+			return err
+		}
+
+		for _, priceItem := range pricingData.PriceList {
+			for _, term := range priceItem.Terms.OnDemand {
+				for _, priceDimension := range term.PriceDimensions {
+					prices := make(map[string]float64)
+					cost, err := strconv.ParseFloat(priceDimension.PricePerUnit.USD, 64)
+					if err != nil {
+						prices["USD"] = -1
+					}
+					prices["USD"] = cost
+
+					// Create a new resource cost instance
+					instance := aws_model.AwsResourceCost[T]{
+						CloudProvider:     "AWS",
+						Version:           priceItem.Version,
+						PublicationDate:   priceItem.PublicationDate,
+						ProductFamily:     priceItem.Product.ProductFamily,
+						PricePerUnit:      prices,
+						Unit:              priceDimension.Unit,
+						ProductAttributes: priceItem.Product.Attributes,
+					}
+
+					// Append the instance to the result container slice
+					*resultContainer = append(*resultContainer, instance)
+				}
+			}
+		}
+		if pricingResult.NextToken != nil {
+			pricingInput.NextToken = pricingResult.NextToken
+		} else {
+			break
+		}
+	}
+	return nil
+}
+
+/*func CollectResourceCost(serviceCode string, filters []*pricing.Filter, resultContainer interface{}) error {
 	sess, err := awsutil.GetAwsSession()
 	if err != nil {
 		logger.NewDefaultLogger().Errorf("Error while creating AWS Session %v. Skipping Instance Cost Collection.", err)
@@ -55,6 +121,7 @@ func CollectResourceCost(serviceCode string, filters []*pricing.Filter, resultCo
 			return err
 		}
 
+		// TODO: Check for JSON encode / decode
 		pricingJSON, err := json.Marshal(pricingResult)
 		if err != nil {
 			return err
@@ -100,7 +167,7 @@ func CollectResourceCost(serviceCode string, filters []*pricing.Filter, resultCo
 		}
 	}
 	return nil
-}
+}*/
 
 // Note: This function calculates the cost for currency USD. filter can not be used to filter out different currencies.
 // TODO: Update model and support multiple currencies - future. Enhancement support is provided
