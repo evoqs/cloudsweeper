@@ -33,12 +33,9 @@ func (opr *CostOperator) AddResourceCost(resource interface{}) (string, error) {
 func (opr *CostOperator) UpdateResourceCost(resource interface{}) (int64, error) {
 	var Id primitive.ObjectID
 	switch r := resource.(type) {
-	case *aws_model.ResourceCostInstance:
-		Id = r.Id
-	case *aws_model.ResourceCostEBS:
+	case *aws_model.AwsResourceCost[any]:
 		Id = r.Id
 	default:
-		// Shouldn't reach here. Unsupported Type
 	}
 	result, err := opr.dbM.UpdateRecordWithObjectId(opr.tableName, Id.Hex(), resource)
 	if err != nil {

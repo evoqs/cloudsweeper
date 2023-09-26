@@ -17,7 +17,7 @@ func GetAwsSession() (*session.Session, error) {
 	// Synchronize the function call
 	// Create AWS credentials with your access key and secret key.
 	// TODO: Read it from config file
-	creds := credentials.NewStaticCredentials("AKIA4T2VWH7A6GQYCS7Z", "YAf6nke9U5SgXN3zGWZ+nYISOPTsWt55d2xQBzmt", "")
+	creds := credentials.NewStaticCredentials("", "", "")
 
 	// Create an AWS session with your credentials and desired region.
 	sess, err := session.NewSession(&aws.Config{
@@ -167,7 +167,7 @@ func getAttributeValues(serviceCode string, attributeName string) ([]string, err
 
 func GetProductFamilyList(serviceCode string) ([]string, error) {
 	var productFamilies []string
-	var pricingData aws_model.PricingDataInstance
+	var pricingData aws_model.PricingData[aws_model.ProductAttributesInstance]
 	pClient, err := GetPriceClient()
 	if err != nil {
 		logger.NewDefaultLogger().Errorf("Error Creating PriceClient : %v", err)
