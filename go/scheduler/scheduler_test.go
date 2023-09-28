@@ -16,7 +16,7 @@ func TestScheduler(t *testing.T) {
 		log:       logger.NewDefaultLogger(),
 	}
 	scheduler.AddCron("CronOne", "*/5 * * * *", func() { fmt.Println("Scheduled call") })
-	scheduler.startScheduler()
+	scheduler.StartScheduler()
 	time.Sleep(20 * time.Second)
-	scheduler.stopScheduler()
+	scheduler.StopScheduler()
 }
