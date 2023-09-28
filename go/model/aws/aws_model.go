@@ -53,6 +53,7 @@ type AwsResourceCost[T any] struct {
 	ProductFamily     string             `json:"productFamily" bson:"productFamily"`
 	PricePerUnit      map[string]float64 `json:"pricePerUnit" bson:"pricePerUnit"`
 	Unit              string             `json:"unit" bson:"unit"`
+	TimeStamp         int64              `json:"timeStamp" bson:"timeStamp"`
 	ProductAttributes T                  `json:"productAttributes" bson:"productAttributes"`
 }
 

@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const defaultTableName = "cloudresourcecost"
@@ -70,7 +72,7 @@ func (opr *CostOperator) RunQuery(query string) ([]interface{}, error) {
 }
 
 func (opr *CostOperator) GetQueryResult(query string, results interface{}) error {
-	logger.NewDefaultLogger().Debug("Querying DB collection %v", opr.tableName)
+	logger.NewDefaultLogger().Debugf("Querying DB collection %v", opr.tableName)
 	cursor, err := opr.dbM.QueryRecord(opr.tableName, query)
 	if err != nil {
 		return err
@@ -90,22 +92,35 @@ func (opr *CostOperator) GetQueryResult(query string, results interface{}) error
 	return nil
 }
 
-/*func (opr *CostOperator) GetAllResourceCosts() ([]model.ResourceCost, error) {
-	var results []model.ResourceCost
-	cursor, err := opr.dbM.QueryAllRecords(opr.tableName)
-
-	fmt.Println(err)
-	if err = cursor.All(context.TODO(), &results); err != nil {
-		fmt.Println(err)
+func (opr *CostOperator) GetQueryResultCount(query string) (int, error) {
+	logger.NewDefaultLogger().Debugf("Querying DB collection %v", opr.tableName)
+	cursor, err := opr.dbM.QueryRecord(opr.tableName, query)
+	if err != nil {
+		return 0, err
 	}
-	if results != nil {
-		fmt.Println("Length " + strconv.Itoa(len(results)))
+	var count int
+	for cursor.Next(context.TODO()) {
+		count++
 	}
-	return results, err
-}*/
+	return count, nil
+}
 
 func (opr *CostOperator) DeleteResourceCost(resourdId string) (int64, error) {
 
 	result, err := opr.dbM.DeleteOneRecordWithObjectID(opr.tableName, resourdId)
 	return result.DeletedCount, err
+}
+
+func (opr *CostOperator) DeleteOldResourceCosts(thresholdTime time.Time) (*mongo.DeleteResult, error) {
+	filterJSON := `{
+		"timeStamp": {
+			"$lt": ` + strconv.FormatInt(thresholdTime.Unix(), 10) + `
+		}
+	}`
+	result, err := opr.dbM.DeleteMultipleRecord(opr.tableName, filterJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

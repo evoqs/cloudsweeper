@@ -3,6 +3,7 @@ module cloudsweep
 go 1.20
 
 require (
+	github.com/aws/aws-sdk-go v1.45.24
 	github.com/go-co-op/gocron v1.33.1
 	github.com/gorilla/mux v1.8.0
 	github.com/itchyny/json2yaml v0.1.4
@@ -16,6 +17,7 @@ require (
 require (
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/uuid v1.3.1 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
