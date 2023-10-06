@@ -116,7 +116,7 @@ func runPipeline(pipeLine model.PipeLine) {
 			isPolicyRunFailed = true
 			continue
 		}
-		//fmt.Println("Length", len(policyList))
+
 		policy := policyList[0]
 		policyJson := policy.PolicyDefinition
 
@@ -135,6 +135,7 @@ func runPipeline(pipeLine model.PipeLine) {
 		//Step 2 create runfolder
 		RunFolder := fmt.Sprintf("/tmp/%s.%s", policyid, strconv.Itoa(rand.Intn(100000)))
 		os.Mkdir(RunFolder, os.ModePerm)
+		defer os.RemoveAll(RunFolder)
 
 		//Step 3
 		policyFile := fmt.Sprintf("%s/%s", RunFolder, "policy.yml")
@@ -164,15 +165,29 @@ func runPipeline(pipeLine model.PipeLine) {
 				isPolicyRunFailed = true
 				continue
 			}
+
+			isSingleRegionExecution := true
+			if len(pipeLine.ExecutionRegions) > 1 {
+				isSingleRegionExecution = false
+			} else if pipeLine.ExecutionRegions[0] == "all" {
+				isSingleRegionExecution = false
+			}
+
+			if isSingleRegionExecution {
+				logger.NewDefaultLogger().Logger.Info("Execution for single region")
+			}
+
+			//
+			regionFlag := utils.ConstructRegionList(&pipeLine.ExecutionRegions)
 			var envvars []string
-			envvars = append(envvars, fmt.Sprintf("AWS_DEFAULT_REGION=%s", policy.ExecutionRegions[0]))
+			//envvars = append(envvars, fmt.Sprintf("AWS_DEFAULT_REGION=%s", strings.Join(policy.ExecutionRegions, ",")))
 			envvars = append(envvars, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", cloudAcc.AwsCredentials.AccessKeyID))
 			envvars = append(envvars, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", cloudAcc.AwsCredentials.SecretAccessKey))
 
 			pipeLine.LastRunTime = time.Now().Unix()
 			activatePath := utils.GetConfig().Custodian.C7nAwsInstall
 			c := make(chan string, 1)
-			go utils.RunCustodianPolicy(envvars, RunFolder, policyFile, activatePath, c)
+			go utils.RunCustodianPolicy(envvars, RunFolder, policyFile, regionFlag, activatePath, c)
 			runres, ok := <-c
 			close(c)
 			if !ok {
@@ -187,20 +202,38 @@ func runPipeline(pipeLine model.PipeLine) {
 				updatePolicyRunResult(pipeLine.CloudAccountID, policyid, "", "Internal Error", nil, false)
 				isPolicyRunFailed = true
 			} else {
-				fmt.Println("policy run successful with result", runres)
+				logger.NewDefaultLogger().Infof("policy run successful with result", runres)
+				folderList := utils.GetFolderList(RunFolder)
 				var resultList = make([]model.RegionResult, 0)
-				fmt.Println(resultList)
-				regionResult := new(model.RegionResult)
+				resourceName := utils.GetResourceName(policyFile)
 
-				//get policy name and resource
-				policyName, _ := utils.GetFirstMatchingGroup(runres, "policy:.*?policy:(.*?)\\sresource:")
-				if policyName != "" {
-					resourceFile := fmt.Sprintf("%s/%s/%s", RunFolder, policyName, "resources.json")
+				for _, element := range folderList {
+					var regionName, resourceFile, policyName string
+					if isSingleRegionExecution {
+						regionName = pipeLine.ExecutionRegions[0]
+						resourceFile = fmt.Sprintf("%s/%s/%s", RunFolder, element, "resources.json")
+						policyName = element
+					} else {
+						regionName = element
+						policyFolder := utils.GetFolderList(fmt.Sprintf("%s/%s", RunFolder, element))
+						if len(folderList) != 1 {
+							logger.NewDefaultLogger().Error("Invalid number of folders in c7n multi region execution folder.", policyFolder)
+							isPolicyRunFailed = true
+							continue
+						}
+						policyName = policyFolder[0]
+						resourceFile = fmt.Sprintf("%s/%s/%s/%s", RunFolder, element, policyName, "resources.json")
+					}
+
+					logger.NewDefaultLogger().Infof("Reading resource file", resourceFile, "for region", regionName)
+
+					regionResult := new(model.RegionResult)
+
+					//get policy name and resource
 					resourceList, err := utils.ReadFile(resourceFile)
 					replacer := strings.NewReplacer("\r", "", "\n", "")
 					resourceList = replacer.Replace(string(resourceList))
-					//var jsonMap map[string]interface{}
-					//json.Unmarshal([]byte(resourceList), &jsonMap)
+
 					if err != nil {
 						logwriter.Errorf("Failed to read policy result from result %s, Error %s", resourceFile, err.Error())
 						isPolicyRunFailed = true
@@ -208,22 +241,22 @@ func runPipeline(pipeLine model.PipeLine) {
 					} else {
 						logwriter.Infof("Successfully completed the policy run, %s", policyName)
 					}
-					resourceName, err := utils.GetFirstMatchingGroup(runres, "resource:(.*?)\\s")
 
 					regionResult.Result = resourceList
-					regionResult.Region = policy.ExecutionRegions[0]
+					regionResult.Region = regionName
 					resultList = append(resultList, *regionResult)
-					updatePolicyRunResult(pipeLine.CloudAccountID, policyid, resourceName, "SUCCESS", resultList, true)
-					//9. Delete the run result folder
-					err = os.RemoveAll(RunFolder)
-					if err != nil {
-						logwriter.Infof("Failed to delete the Runfolder %s, Error %s", RunFolder, err.Error())
-					}
+
 				}
+				updatePolicyRunResult(pipeLine.CloudAccountID, policyid, resourceName, "SUCCESS", resultList, true)
+
 			}
+
+			//9. Delete the run result folder
+
 		}
 
 	}
+
 	if isPolicyRunFailed {
 		pipeLine.RunStatus = model.FAILED
 		upcount, err := opr.PipeLineOperator.UpdatePipeLine(pipeLine)

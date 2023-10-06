@@ -146,8 +146,6 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 		policy.PolicyDefinition = defaultpolicy.PolicyDefinition
 		policy.PolicyType = "Default"
 		policy.AccountID = acc.AccountID
-		//TODO make regions to all
-		policy.ExecutionRegions = []string{"ap-southeast-2"}
 
 		query := fmt.Sprintf(`{"policyname": "%s", "policytype": "Default"}`, policy.PolicyName)
 		result, _ := srv.opr.PolicyOperator.GetAllPolicyDetails(query)
@@ -177,6 +175,7 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 		pipeline.Schedule = schedule
 		pipeline.Policies = policyIDList
 		pipeline.Default = true
+		pipeline.ExecutionRegions = []string{"ap-southeast-2"} //TODO make regions to all
 		//Add pipeline
 		pipelineid, err := srv.opr.PipeLineOperator.AddPipeLine(pipeline)
 		if err != nil {

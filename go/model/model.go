@@ -27,7 +27,6 @@ type Policy struct {
 	AccountID        string             `json:"accountid" bson:"accountid"`
 	PolicyType       string             `json:"policytype" bson:"policytype"`
 	PolicyDefinition string             `json:"policydefinition" bson:"policydefinition"`
-	ExecutionRegions []string           `json:"execregions" bson:"execregions"`
 }
 
 type DefaultPolicy struct {
@@ -63,16 +62,17 @@ type CSPolicy struct {
 //******************* TO BE used in case needed to parse the policy json
 
 type PipeLine struct {
-	AccountID      string             `json:"accountid" bson:"accountid"`
-	CloudAccountID string             `json:"cloudaccountid" bson:"cloudaccountid"`
-	PipeLineID     primitive.ObjectID `json:"piplineid" bson:"_id,omitempty"`
-	PipeLineName   string             `json:"piplinename" bson:"piplinename"`
-	Policies       []string           `json:"policies" bson:"policyid"`
-	Schedule       Schedule           `json:"schedule" bson:"schedule"`
-	Enabled        bool               `json:"enabled" bson:"enabled"`
-	Default        bool               `json:"default" bson:"default"`
-	RunStatus      RunStatus          `json:"status" bson:"status"`
-	LastRunTime    int64              `json:"lastruntime" bson:"lastruntime"`
+	AccountID        string             `json:"accountid" bson:"accountid"`
+	CloudAccountID   string             `json:"cloudaccountid" bson:"cloudaccountid"`
+	PipeLineID       primitive.ObjectID `json:"piplineid" bson:"_id,omitempty"`
+	PipeLineName     string             `json:"piplinename" bson:"piplinename"`
+	Policies         []string           `json:"policies" bson:"policyid"`
+	Schedule         Schedule           `json:"schedule" bson:"schedule"`
+	Enabled          bool               `json:"enabled" bson:"enabled"`
+	Default          bool               `json:"default" bson:"default"`
+	RunStatus        RunStatus          `json:"status" bson:"status"`
+	LastRunTime      int64              `json:"lastruntime" bson:"lastruntime"`
+	ExecutionRegions []string           `json:"execregions" bson:"execregions"`
 }
 
 type RunStatus int

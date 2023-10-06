@@ -1,10 +1,13 @@
 package utils
 
 import (
+	"bufio"
+	logger "cloudsweep/logging"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/url"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -53,11 +56,11 @@ func RunPolicy() string {
 	return string(stdout)
 }
 
-func RunCustodianPolicy(envvars []string, runfolder string, policyfile string, activation string, runchan chan string) {
+func RunCustodianPolicy(envvars []string, runfolder string, policyfile string, activation string, regionlist string, runchan chan string) {
 	//cmd := "cat /proc/cpuinfo | egrep '^model name' | uniq | awk '{print substr($0, index($0,$4))}'"
 	//cmd := "source /home/vboxuser/custodian/bin/activate; custodian run --dryrun -s /tmp /home/vboxuser/c7npolicies/policy1.yml"
 
-	cmd := fmt.Sprintf("source %s; custodian run --dryrun -s %s %s", activation, runfolder, policyfile)
+	cmd := fmt.Sprintf("source %s; custodian run --dryrun -s %s %s %s", activation, runfolder, regionlist, policyfile)
 	out := exec.Command("bash", "-c", cmd)
 	for _, envvar := range envvars {
 		out.Env = append(out.Environ(), envvar)
@@ -139,4 +142,47 @@ func ReadFile(fileName string) (string, error) {
 	fileContent, err := ioutil.ReadFile(fileName)
 	return string(fileContent), err
 
+}
+
+func ConstructRegionList(listOfregions *[]string) string {
+
+	var regionCmd string
+	for _, region := range *listOfregions {
+		regionCmd = fmt.Sprintf("%s --region %s", regionCmd, region)
+	}
+	return strings.TrimSpace(regionCmd)
+}
+
+func GetFolderList(path string) []string {
+	entries, err := os.ReadDir("/home/vboxuser/c7npolicies")
+	folderList := []string{}
+	if err != nil {
+		logger.NewDefaultLogger().Logger.Error("Unable to read folder ", path)
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			folderList = append(folderList, e.Name())
+		}
+	}
+
+	return folderList
+}
+
+func GetResourceName(yamlFile string) string {
+	file, err := os.Open(yamlFile)
+	if err != nil {
+		logger.NewDefaultLogger().Logger.Error(err.Error())
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	// optionally, resize scanner's capacity for lines over 64K, see next example
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix((line), "resource:") {
+			return strings.Split(line, " ")[1]
+		}
+	}
+
+	return ""
 }
