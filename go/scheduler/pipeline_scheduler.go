@@ -184,7 +184,7 @@ func startPipelineScheduler(name string) *PipeLineScheduler {
 		pipelineScheduler, err = pipelineSchedulerStore.CreatePipelineScheduler(name, logger.NewDefaultLogger(), &opr.PipeLineOperator)
 	}
 	logger.NewDefaultLogger().Infof("Starting PipelineScheduler: " + name)
-	pipelineScheduler.startScheduler()
+	pipelineScheduler.StartScheduler()
 	logger.NewDefaultLogger().Infof("Started PipelineScheduler: " + name)
 	return pipelineSchedulerStore.pipelineSchedulers[name]
 }

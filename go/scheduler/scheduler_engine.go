@@ -11,37 +11,53 @@ import (
 )
 
 type SchedulerStore struct {
-	schedulers  map[string]*Scheduler
-	scheduleMux sync.Mutex
-	log         logger.Logger
+	Schedulers  map[string]*Scheduler
+	ScheduleMux sync.Mutex
+	Log         logger.Logger
 }
 
 func (ss *SchedulerStore) CreateScheduler(name string, log logger.Logger) (*Scheduler, error) {
-	ss.scheduleMux.Lock()
-	defer ss.scheduleMux.Unlock()
+	ss.ScheduleMux.Lock()
+	defer ss.ScheduleMux.Unlock()
 	// Check if a scheduler with the given ID already exists
-	if _, exists := ss.schedulers[name]; exists {
+	if _, exists := ss.Schedulers[name]; exists {
 		return nil, fmt.Errorf("Scheduler with name " + name + " already exists.")
 	}
-	ss.schedulers[name] = &Scheduler{Name: name,
+	ss.Schedulers[name] = &Scheduler{Name: name,
 		taskMap:   make(map[string]Task),
 		scheduler: gocron.NewScheduler(time.UTC),
 		log:       log,
 	}
 	log.Infof("Created new scheduler with name: " + name)
-	return ss.schedulers[name], nil
+	return ss.Schedulers[name], nil
 }
 
 // Gets the Scheduler. Creates a new Scheduler if not present.
 func (ss *SchedulerStore) GetScheduler(name string) (*Scheduler, error) {
-	ss.scheduleMux.Lock()
-	defer ss.scheduleMux.Unlock()
+	ss.ScheduleMux.Lock()
+	defer ss.ScheduleMux.Unlock()
 
 	// Check if a scheduler with the given ID already exists
-	if existingScheduler, exists := ss.schedulers[name]; exists {
+	if existingScheduler, exists := ss.Schedulers[name]; exists {
 		return existingScheduler, nil
 	}
 	return nil, fmt.Errorf("Scheduler with name " + name + " doesn't exist.")
+}
+
+func (ss *SchedulerStore) DeleteScheduler(name string) error {
+	ss.ScheduleMux.Lock()
+	defer ss.ScheduleMux.Unlock()
+
+	// Check if a scheduler with the given name exists
+	if _, exists := ss.Schedulers[name]; exists {
+		// Stop and remove the scheduler
+		ss.Schedulers[name].scheduler.Stop()
+		delete(ss.Schedulers, name)
+		ss.Log.Infof("Deleted scheduler with name: " + name)
+		return nil
+	}
+
+	return fmt.Errorf("Scheduler with name " + name + " doesn't exist.")
 }
 
 type Scheduler struct {
@@ -61,12 +77,12 @@ type Task struct {
 *  This method can be called any number of times, without having any additional effect
 *  because, s.scheduler.StartXXX() will be ignored if it is already running
  */
-func (s *Scheduler) startScheduler() {
+func (s *Scheduler) StartScheduler() {
 	s.log.Infof("Start the Scheduler id: " + s.Name)
 	go s.scheduler.StartAsync()
 }
 
-func (s *Scheduler) stopScheduler() {
+func (s *Scheduler) StopScheduler() {
 	s.log.Infof("Stop the Scheduler id: " + s.Name)
 	go s.scheduler.Stop()
 }
@@ -97,22 +113,15 @@ func (s *Scheduler) UpdateCron(id string, cronExpression string, jobFun interfac
 }
 
 func (s *Scheduler) DeleteCron(id string) error {
-	s.log.Debugf("111111111")
 	job := s.getJobByID(id)
-	s.log.Debugf("222222222")
 	s.taskMapMux.Lock()
 	defer s.taskMapMux.Unlock()
 	if job == nil {
-		s.log.Debugf("3333333")
 		delete(s.taskMap, id)
-		s.log.Debugf("4444444")
 		return fmt.Errorf("Unable to delete Cron Job for pipeline: " + id + ". Reason: CronJob not found.")
 	}
-	s.log.Debugf("5555555555")
 	s.scheduler.RemoveByID(job)
-	s.log.Debugf("666666666")
 	delete(s.taskMap, id)
-	s.log.Debugf("777777777")
 	s.log.Debugf("Successfully deleted the cron with Id: %s with Scheduler: %s", id, s.Name)
 	return nil
 }

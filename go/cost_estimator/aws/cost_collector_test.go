@@ -65,7 +65,7 @@ func TestCostProviderInstance(t *testing.T) {
 	storage.MakeDBOperators(dbM)
 	product := aws_model.ProductAttributesInstance{
 		InstanceFamily:  "",
-		InstanceType:    "t3.large",
+		InstanceType:    "t2.medium",
 		Memory:          "",
 		RegionCode:      "us-east-1",
 		OperatingSystem: "Linux",

@@ -101,6 +101,18 @@ func (dbm DBManger) QueryAllRecords(collection string) (*mongo.Cursor, error) {
 	return cursor, err
 }
 
+func (dbm DBManger) QueryRecordsWithPagination(collection string, page, pageSize int, sortField string, query bson.M) (*mongo.Cursor, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Define options for sorting, limiting, and querying
+	options := options.Find().SetSort(bson.D{{Key: sortField, Value: 1}}).
+		SetSkip(int64((page - 1) * pageSize)).SetLimit(int64(pageSize))
+
+	cursor, err := dbm.mongoClinet.Database(dbm.dbName).Collection(collection).Find(ctx, query, options)
+	return cursor, err
+}
+
 func (dbm DBManger) QueryRecordWithObjectID(collection string, mongoObjectid string) (*mongo.Cursor, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

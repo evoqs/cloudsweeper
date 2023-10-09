@@ -3,6 +3,7 @@ package cost_estimator
 import (
 	"encoding/json"
 	"strconv"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/pricing"
@@ -81,6 +82,7 @@ func CollectResourceCost[T any](serviceCode string, filters []*pricing.Filter, r
 						ProductFamily:     priceItem.Product.ProductFamily,
 						PricePerUnit:      prices,
 						Unit:              priceDimension.Unit,
+						TimeStamp:         time.Now().Unix(),
 						ProductAttributes: priceItem.Product.Attributes,
 					}
 
