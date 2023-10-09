@@ -14,3 +14,10 @@ database:
 #Custodian configurations
 custodian:
   c7nawsinstall: "/home/vboxuser/custodian/bin/activate"
+
+# Admin AWS Creds
+Aws:
+  Creds:
+    aws_access_key_id: ""
+    aws_default_region: ""
+    aws_secret_access_key: ""
