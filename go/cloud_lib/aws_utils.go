@@ -3,6 +3,7 @@ package cloud_lib
 import (
 	logger "cloudsweep/logging"
 	aws_model "cloudsweep/model/aws"
+	"cloudsweep/utils"
 	"encoding/json"
 	"fmt"
 
@@ -16,12 +17,11 @@ import (
 func GetAwsSession() (*session.Session, error) {
 	// Synchronize the function call
 	// Create AWS credentials with your access key and secret key.
-	// TODO: Read it from config file
-	creds := credentials.NewStaticCredentials("", "", "")
+	creds := credentials.NewStaticCredentials(utils.GetConfig().Aws.Creds.Aws_access_key_id, utils.GetConfig().Aws.Creds.Aws_secret_access_key, "")
 
 	// Create an AWS session with your credentials and desired region.
 	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String("us-east-1"), // TOD0: Read the CS home region from the config file
+		Region:      aws.String(utils.GetConfig().Aws.Creds.Aws_default_region),
 		Credentials: creds,
 	})
 	// TODO: Make it a singleton
@@ -55,20 +55,28 @@ func GetPriceClient() (*pricing.Pricing, error) {
 }
 
 func GetAllRegions() ([]*ec2.Region, error) {
-	// TODO: Check for error
 	ec2Client, err := GetEC2Client()
+	if err != nil {
+		return nil, err
+	}
 	input := &ec2.DescribeRegionsInput{AllRegions: aws.Bool(true)}
 	regions, err := ec2Client.DescribeRegions(input)
-
+	if err != nil {
+		return nil, err
+	}
 	return regions.Regions, err
 }
 
 func GetSubscribedRegions() ([]*ec2.Region, error) {
-	// TODO: Check for error
 	ec2Client, err := GetEC2Client()
+	if err != nil {
+		return nil, err
+	}
 	input := &ec2.DescribeRegionsInput{AllRegions: aws.Bool(false)}
 	regions, err := ec2Client.DescribeRegions(input)
-
+	if err != nil {
+		return nil, err
+	}
 	return regions.Regions, err
 }
 

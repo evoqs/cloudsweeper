@@ -26,6 +26,13 @@ type Config struct {
 	Custodian struct {
 		C7nAwsInstall string `yaml:"c7nawsinstall" envconfig:"C7N_AWS_INSTALL"`
 	} `yaml:"custodian"`
+	Aws struct {
+		Creds struct {
+			Aws_access_key_id     string `yaml:"aws_access_key_id" envconfig:"AWS_ACCESS_KEY_ID"`
+			Aws_default_region    string `yaml:"aws_default_region" envconfig:"AWS_DEFAULT_REGION"`
+			Aws_secret_access_key string `yaml:"aws_secret_access_key" envconfig:"AWS_SECRET_ACCESS_KEY"`
+		} `yaml:"creds"`
+	} `yaml:"aws"`
 }
 
 // Loading the cfg

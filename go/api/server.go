@@ -46,6 +46,9 @@ func (srv *Server) StartApiServer(socket string, dbO storage.DbOperators) {
 	router.HandleFunc("/pipeline/{pipelineid}", srv.DeletePipeLine).Methods("DELETE")
 	router.HandleFunc("/pipeline", srv.UpdatePipeLine).Methods("PUT")
 
+	//AWS
+	router.HandleFunc("/aws/regions", srv.GetAllRegions).Methods("GET")
+
 	http.ListenAndServe(socket, router)
 }
 
