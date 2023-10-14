@@ -33,6 +33,12 @@ type Config struct {
 			Aws_secret_access_key string `yaml:"aws_secret_access_key" envconfig:"AWS_SECRET_ACCESS_KEY"`
 		} `yaml:"creds"`
 	} `yaml:"aws"`
+	Logging struct {
+		Default_log_file string `yaml:"default_log_file" envconfig:"DEFAULT_LOG_FILE"`
+		Max_size         int    `yaml:"max_size" envconfig:"MAX_SIZE"`
+		Max_backups      int    `yaml:"max_backups" envconfig:"MAX_BACKUPS"`
+		Max_age          int    `yaml:"max_age" envconfig:"MAX_AGE"`
+	} `yaml:"logging"`
 }
 
 // Loading the cfg
