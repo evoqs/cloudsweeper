@@ -33,12 +33,12 @@ func main2() {
 		}
 	}()
 
-	var jsonD model.AccountData
+	var jsonD model.CloudAccountData
 
 	fmt.Println(jsonD)
 
-	var acc model.AccountData
-	acc = model.AccountData{
+	var acc model.CloudAccountData
+	acc = model.CloudAccountData{
 		AccountID:   "123213",
 		AccountType: "aws",
 		Description: "AWS account ",
@@ -90,8 +90,8 @@ func main1() {
 		}
 	}()
 
-	var acc model.AccountData
-	acc = model.AccountData{
+	var acc model.CloudAccountData
+	acc = model.CloudAccountData{
 		AccountID:   "123213",
 		AccountType: "aws",
 		Description: "AWS account ",
@@ -99,8 +99,8 @@ func main1() {
 
 	fmt.Println(acc.AccountID)
 
-	var dataSet map[int]*model.AccountData
-	dataSet = make(map[int]*model.AccountData)
+	var dataSet map[int]*model.CloudAccountData
+	dataSet = make(map[int]*model.CloudAccountData)
 
 	// Send a ping to confirm a successful connection
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

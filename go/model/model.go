@@ -6,7 +6,8 @@ import (
 
 const AWS = "aws"
 
-type AccountData struct {
+type CloudAccountData struct {
+	Name           string             `json:"name" bson:"name"`
 	AccountID      string             `json:"accountid" bson:"accountid"`
 	CloudAccountID primitive.ObjectID `json:"cloudaccountid,omitempty" bson:"_id,omitempty"`
 	AccountType    string             `json:"accounttype" bson:"accounttype"`
@@ -24,14 +25,20 @@ type Policy struct {
 	PolicyName       string             `json:"policyname" bson:"policyname"`
 	PolicyID         primitive.ObjectID `json:"policyid" bson:"_id,omitempty"`
 	AccountID        string             `json:"accountid" bson:"accountid"`
-	CloudAccountID   string             `json:"cloudaccountid" bson:"cloudaccountid"`
+	PolicyType       string             `json:"policytype" bson:"policytype"`
 	PolicyDefinition string             `json:"policydefinition" bson:"policydefinition"`
-	ExecutionRegions []string           `json:"execregions" bson:"execregions"`
+}
+
+type DefaultPolicy struct {
+	PolicyName       string             `json:"policyname" bson:"policyname"`
+	PolicyID         primitive.ObjectID `json:"policyid" bson:"_id,omitempty"`
+	PolicyDefinition string             `json:"policydefinition" bson:"policydefinition"`
 }
 
 type PolicyResult struct {
 	PolicyResultID primitive.ObjectID `json:"policyresultid" bson:"_id,omitempty"`
 	PolicyID       string             `json:"policyid" bson:"policyid"`
+	CloudAccountID string             `json:"cloudaccountid" bson:"cloudaccountid"`
 	Resource       string             `json:"resource" bson:"resource"`
 	Resultlist     []RegionResult     `json:"resultlist" bson:"resultlist"`
 	LastRunStatus  string             `json:"lastrunstatus" bson:"lastrunstatus"`
@@ -55,15 +62,17 @@ type CSPolicy struct {
 //******************* TO BE used in case needed to parse the policy json
 
 type PipeLine struct {
-	AccountID       string             `json:"accountid" bson:"accountid"`
-	CloudAccountID  string             `json:"cloudaccountid" bson:"cloudaccountid"`
-	PipeLineID      primitive.ObjectID `json:"piplineid" bson:"_id,omitempty"`
-	PipeLineName    string             `json:"piplinename" bson:"piplinename"`
-	Policies        []string           `json:"policies" bson:"policyid"`
-	Schedule        Schedule           `json:"schedule" bson:"schedule"`
-	Enabled         bool               `json:"enabled" bson:"enabled"`
-	RunStatus       RunStatus          `json:"status" bson:"status"`
-	PolicyRunStatus []DetailRunStatus  `json:"policyrunstatus" bson:"policyrunstatus"`
+	AccountID        string             `json:"accountid" bson:"accountid"`
+	CloudAccountID   string             `json:"cloudaccountid" bson:"cloudaccountid"`
+	PipeLineID       primitive.ObjectID `json:"piplineid" bson:"_id,omitempty"`
+	PipeLineName     string             `json:"piplinename" bson:"piplinename"`
+	Policies         []string           `json:"policies" bson:"policyid"`
+	Schedule         Schedule           `json:"schedule" bson:"schedule"`
+	Enabled          bool               `json:"enabled" bson:"enabled"`
+	Default          bool               `json:"default" bson:"default"`
+	RunStatus        RunStatus          `json:"status" bson:"status"`
+	LastRunTime      int64              `json:"lastruntime" bson:"lastruntime"`
+	ExecutionRegions []string           `json:"execregions" bson:"execregions"`
 }
 
 type RunStatus int
@@ -75,10 +84,6 @@ const (
 	UNKNOWN   RunStatus = 3
 )
 
-type DetailRunStatus struct {
-	PolicyID   string `json:"policyid" bson:"policyid"`
-	ExecStatus string `json:"execstatus" bson:"execstatus"`
-}
 type Schedule struct {
 	Minute     string `json:"minute" bson:"minute"`
 	Hour       string `json:"hour" bson:"hour"`

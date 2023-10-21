@@ -1,6 +1,7 @@
 package api
 
 import (
+	logger "cloudsweep/logging"
 	"cloudsweep/storage"
 	"encoding/json"
 	"net/http"
@@ -9,21 +10,22 @@ import (
 )
 
 type Server struct {
-	//dbM  storage.DBManger
-	opr    storage.DbOperators
-	socket string
+	logwriter logger.Logger
+	opr       storage.DbOperators
+	socket    string
 }
 
 func (srv *Server) StartApiServer(socket string, dbO storage.DbOperators) {
 	srv.socket = socket
-	//srv.dbM = dbM
+	srv.logwriter = logger.NewDefaultLogger()
 	srv.opr = dbO
 	router := mux.NewRouter()
 
 	//SweepAccount Level operations
-	router.HandleFunc("/accounts/{accountid}", srv.GetAllCloudAccount).Methods("GET")
-	router.HandleFunc("/accounts/{accountid}", srv.DeleteAllCloudAccount).Methods("DELETE")
-	router.HandleFunc("/accounts/{accountid}/pipeline", srv.GetAllPipeLine).Methods("GET")
+	router.HandleFunc("/accounts/{accountid}/cloudaccounts", srv.GetAllCloudAccount).Methods("GET")
+	router.HandleFunc("/accounts/{accountid}/cloudaccounts", srv.DeleteAllCloudAccount).Methods("DELETE")
+	router.HandleFunc("/accounts/{accountid}/pipelines", srv.GetAllPipeLine).Methods("GET")
+	router.HandleFunc("/accounts/{accountid}/policies", srv.GetAllPolicies).Methods("GET")
 
 	//Cloud Account operations
 	router.HandleFunc("/cloudaccount", srv.AddCloudAccount).Methods("POST")
@@ -37,7 +39,15 @@ func (srv *Server) StartApiServer(socket string, dbO storage.DbOperators) {
 	router.HandleFunc("/policy", srv.UpdateCustodianPolicy).Methods("PUT")
 	router.HandleFunc("/policy/{policyid}", srv.GetCustodianPolicy).Methods("GET")
 	router.HandleFunc("/policy/{policyid}", srv.DeleteCustodianPolicy).Methods("DELETE")
-	router.HandleFunc("/policy/{policyid}/results", srv.GetPolicyRunResult).Methods("GET")
+
+	//policyResults
+	router.HandleFunc("/policyresults", srv.GetPolicyRunResult).Methods("GET")
+
+	//Default Policy related operations
+	router.HandleFunc("/defaultpolicy", srv.GetDefaultCustodianPolicies).Methods("GET")
+	router.HandleFunc("/defaultpolicy", srv.AddDefaultCustodianPolicy).Methods("POST")
+	router.HandleFunc("/defaultpolicy", srv.UpdateDefaultCustodianPolicy).Methods("PUT")
+	router.HandleFunc("/defaultpolicy/{defaultpolicyid}", srv.DeleteDefaultCustodianPolicy).Methods("DELETE")
 
 	//Run a pipeline
 	router.HandleFunc("/pipeline/{pipelineid}/run", srv.RunPipeLine).Methods("POST")
