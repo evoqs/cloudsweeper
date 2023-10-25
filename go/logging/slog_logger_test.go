@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"cloudsweep/utils"
 	"sync"
 	"testing"
 )
@@ -14,8 +15,12 @@ func NewModule(log Logger) *Module {
 }
 
 func (m *Module) logDemoSimple() {
-	m.logger.Debugf("This is a Debug log message")
-	m.logger.Infof("This is a Info log message")
+	m.logger.Debugf("This is a Debugf log message")
+	m.logger.Infof("This is a Infof log message")
+	m.logger.Warnf("This is a Warnf log message")
+	m.logger.Errorf("This is a Errorf log message")
+	m.logger.Debug("This is a Debug log message")
+	m.logger.Info("This is a Info log message")
 	m.logger.Warnf("This is a Warn log message")
 	m.logger.Errorf("This is a Error log message")
 }
@@ -26,10 +31,16 @@ func (m *Module) logDemoRotation() {
 		m.logger.Infof("This is a Info log message")
 		m.logger.Warnf("This is a Warn log message")
 		m.logger.Errorf("This is a Error log message")
+		m.logger.Debugf("This is a Debug log message")
+		m.logger.Infof("This is a Info log message")
+		m.logger.Warnf("This is a Warn log message")
+		m.logger.Errorf("This is a Error log message")
 	}
 }
 
 func TestDefaultLogger(t *testing.T) {
+	utils.LoadConfig()
+
 	module := NewModule(NewDefaultLogger())
 	module.logDemoSimple()
 	module.logDemoRotation()
