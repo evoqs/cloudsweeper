@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"cloudsweep/utils"
 	"context"
 	"fmt"
 	"path/filepath"
@@ -30,24 +31,26 @@ type LoggerFactory struct {
 type LoggerConfig struct {
 	LogFilePath string
 	LogFormat   string
+	MaxSize     int
+	MaxBackups  int
+	MaxAge      int
 }
 
 // TODO: Read all the values from config
 func NewDefaultLogger() *SlogLogger {
-	logFilePath := "./cs_runner.log"
 	factory.mu.Lock()
 	defer factory.mu.Unlock()
 
 	// Check if a logger instance for this log file already exists
-	if logger, ok := factory.loggers[logFilePath]; ok {
+	if logger, ok := factory.loggers[utils.GetConfig().Logging.Default_log_file]; ok {
 		return logger
 	}
 	lumberjack := &lumberjack.Logger{
-		Filename:   logFilePath,
-		MaxSize:    1, // megabytes
-		MaxBackups: 5,
-		MaxAge:     28,   //days
-		Compress:   true, // disabled by default
+		Filename:   utils.GetConfig().Logging.Default_log_file,
+		MaxSize:    utils.GetConfig().Logging.Max_size, // megabytes
+		MaxBackups: utils.GetConfig().Logging.Max_backups,
+		MaxAge:     utils.GetConfig().Logging.Max_age, //days
+		Compress:   true,                              // disabled by default
 	}
 	replace := func(groups []string, a slog.Attr) slog.Attr {
 		// Remove time.
@@ -68,7 +71,7 @@ func NewDefaultLogger() *SlogLogger {
 		ReplaceAttr: replace,
 	}))
 	logger := &SlogLogger{l, lumberjack}
-	factory.loggers[logFilePath] = logger
+	factory.loggers[utils.GetConfig().Logging.Default_log_file] = logger
 	return logger
 }
 
@@ -82,10 +85,10 @@ func NewLogger(config *LoggerConfig) *SlogLogger {
 	}
 	lumberjack := &lumberjack.Logger{
 		Filename:   config.LogFilePath,
-		MaxSize:    1, // megabytes
-		MaxBackups: 5,
-		MaxAge:     28,   //days
-		Compress:   true, // disabled by default
+		MaxSize:    config.MaxSize, // megabytes
+		MaxBackups: config.MaxBackups,
+		MaxAge:     config.MaxAge, //days
+		Compress:   true,          // disabled by default
 	}
 	replace := func(groups []string, a slog.Attr) slog.Attr {
 		// Remove time.
@@ -150,5 +153,33 @@ func (l *SlogLogger) Errorf(format string, args ...interface{}) {
 	var pcs [1]uintptr
 	runtime.Callers(2, pcs[:])
 	r := slog.NewRecord(time.Now(), slog.LevelError, fmt.Sprintf(format, args...), pcs[0])
+	_ = l.Handler().Handle(context.Background(), r)
+}
+
+func (l *SlogLogger) Debug(message string) {
+	var pcs [1]uintptr
+	runtime.Callers(2, pcs[:])
+	r := slog.NewRecord(time.Now(), slog.LevelDebug, fmt.Sprint(message), pcs[0])
+	_ = l.Handler().Handle(context.Background(), r)
+}
+
+func (l *SlogLogger) Info(message string) {
+	var pcs [1]uintptr
+	runtime.Callers(2, pcs[:]) // skip [Callers, Infof]
+	r := slog.NewRecord(time.Now(), slog.LevelInfo, fmt.Sprint(message), pcs[0])
+	_ = l.Handler().Handle(context.Background(), r)
+}
+
+func (l *SlogLogger) Warn(message string) {
+	var pcs [1]uintptr
+	runtime.Callers(2, pcs[:])
+	r := slog.NewRecord(time.Now(), slog.LevelWarn, fmt.Sprint(message), pcs[0])
+	_ = l.Handler().Handle(context.Background(), r)
+}
+
+func (l *SlogLogger) Error(message string) {
+	var pcs [1]uintptr
+	runtime.Callers(2, pcs[:])
+	r := slog.NewRecord(time.Now(), slog.LevelError, fmt.Sprint(message), pcs[0])
 	_ = l.Handler().Handle(context.Background(), r)
 }

@@ -217,7 +217,7 @@ func runPipeline(pipeLine model.PipeLine) {
 						regionName = element
 						policyFolder := utils.GetFolderList(fmt.Sprintf("%s/%s", RunFolder, element))
 						if len(folderList) != 1 {
-							logger.NewDefaultLogger().Error("Invalid number of folders in c7n multi region execution folder.", policyFolder)
+							logger.NewDefaultLogger().Errorf("Invalid number of folders in c7n multi region execution folder. %s", policyFolder)
 							isPolicyRunFailed = true
 							continue
 						}

@@ -2,7 +2,7 @@ package utils
 
 import (
 	"bufio"
-	logger "cloudsweep/logging"
+	//logger "cloudsweep/logging"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -157,7 +157,7 @@ func GetFolderList(path string) []string {
 	entries, err := os.ReadDir("/home/vboxuser/c7npolicies")
 	folderList := []string{}
 	if err != nil {
-		logger.NewDefaultLogger().Logger.Error("Unable to read folder ", path)
+		//logger.NewDefaultLogger().Logger.Error("Unable to read folder ", path)
 	}
 	for _, e := range entries {
 		if e.IsDir() {
@@ -171,7 +171,7 @@ func GetFolderList(path string) []string {
 func GetResourceName(yamlFile string) string {
 	file, err := os.Open(yamlFile)
 	if err != nil {
-		logger.NewDefaultLogger().Logger.Error(err.Error())
+		//logger.NewDefaultLogger().Logger.Error(err.Error())
 	}
 	defer file.Close()
 

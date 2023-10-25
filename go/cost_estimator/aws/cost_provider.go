@@ -51,7 +51,7 @@ func getCost[T any](serviceCode string, pAttr T) (ResourceCost, error) {
 
 	min, max, err = GetCostFromAws(serviceCode, pAttr)
 	if err != nil {
-		return ResourceCost{MinPrice: -1}, fmt.Errorf("Unable to get the cost for the Instance. %v", err)
+		return ResourceCost{MinPrice: -1}, err
 	}
 
 	opr := storage.GetDefaultDBOperators()
@@ -88,7 +88,7 @@ func buildFilterInput(productAttributes interface{}) []*pricing.Filter {
 // Get the Cost From AWS for any resource
 func GetCostFromAws[T any](serviceCode string, productAttributes T) (aws_model.AwsResourceCost[T],
 	aws_model.AwsResourceCost[T], error) {
-	logger.NewDefaultLogger().Infof("Getting Cost for Compute EBS: %v", productAttributes)
+	logger.NewDefaultLogger().Infof("Getting Cost for AWS Resouce: %v", productAttributes)
 	/*if err := validateMinimumFilterFieldsEbs(productAttributes); err != nil {
 		return aws_model.AwsResourceCost[T]{}, aws_model.AwsResourceCost[T]{}, err
 	}*/
@@ -99,7 +99,7 @@ func GetCostFromAws[T any](serviceCode string, productAttributes T) (aws_model.A
 	if err != nil {
 		return aws_model.AwsResourceCost[T]{},
 			aws_model.AwsResourceCost[T]{},
-			fmt.Errorf("Unable to get the Cost for Compute EBS. Error:  %v", err)
+			fmt.Errorf("Unable to get the Cost for AWS Resouce. Error:  %v\n", err)
 	}
 
 	//fmt.Println("Total Number of Resource Costs: ", len(resourceCosts))
