@@ -16,8 +16,15 @@ custodian:
   c7nawsinstall: "/home/vboxuser/custodian/bin/activate"
 
 # Admin AWS Creds
-Aws:
-  Creds:
+aws:
+  creds:
     aws_access_key_id: ""
     aws_default_region: ""
     aws_secret_access_key: ""
+
+# Logging details, max_size in MB, max_age in Days
+logging:
+  default_log_file: "./cs_runner.log"
+  max_size: 1
+  max_backups: 5
+  max_age: 28
