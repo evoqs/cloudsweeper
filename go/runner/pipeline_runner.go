@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"cloudsweep/config"
 	logger "cloudsweep/logging"
 	"cloudsweep/model"
 	"cloudsweep/policy_converter"
@@ -185,7 +186,7 @@ func runPipeline(pipeLine model.PipeLine) {
 			envvars = append(envvars, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", cloudAcc.AwsCredentials.SecretAccessKey))
 
 			pipeLine.LastRunTime = time.Now().Unix()
-			activatePath := utils.GetConfig().Custodian.C7nAwsInstall
+			activatePath := config.GetConfig().Custodian.C7nAwsInstall
 			c := make(chan string, 1)
 			go utils.RunCustodianPolicy(envvars, RunFolder, policyFile, regionFlag, activatePath, c)
 			runres, ok := <-c

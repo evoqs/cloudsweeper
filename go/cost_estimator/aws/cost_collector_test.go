@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"testing"
 
+	"cloudsweep/config"
 	aws_model "cloudsweep/model/aws"
 	"cloudsweep/storage"
 	"cloudsweep/utils"
 )
 
 func preSetUp() {
-	cfg := utils.LoadConfig()
+	cfg := config.LoadConfig()
 	dbUrl, err := utils.GetDBUrl(&cfg)
 
 	if err != nil {
@@ -21,7 +22,7 @@ func preSetUp() {
 
 	dbM := storage.GetDBManager()
 	dbM.SetDbUrl(dbUrl)
-	dbM.SetDatabase(utils.GetConfig().Database.Name)
+	dbM.SetDatabase(config.GetConfig().Database.Name)
 
 	_, err = dbM.Connect()
 	if err != nil {
@@ -38,7 +39,7 @@ func preSetUp() {
 }
 
 func TestCostProviderInstance(t *testing.T) {
-	cfg := utils.LoadConfig()
+	cfg := config.LoadConfig()
 	dbUrl, err := utils.GetDBUrl(&cfg)
 
 	if err != nil {
@@ -49,7 +50,7 @@ func TestCostProviderInstance(t *testing.T) {
 
 	dbM := storage.GetDBManager()
 	dbM.SetDbUrl(dbUrl)
-	dbM.SetDatabase(utils.GetConfig().Database.Name)
+	dbM.SetDatabase(config.GetConfig().Database.Name)
 
 	_, err = dbM.Connect()
 	if err != nil {
@@ -79,7 +80,7 @@ func TestCostProviderInstance(t *testing.T) {
 }
 
 func TestCostProviderEbs(t *testing.T) {
-	cfg := utils.LoadConfig()
+	cfg := config.LoadConfig()
 	dbUrl, err := utils.GetDBUrl(&cfg)
 
 	if err != nil {
@@ -90,7 +91,7 @@ func TestCostProviderEbs(t *testing.T) {
 
 	dbM := storage.GetDBManager()
 	dbM.SetDbUrl(dbUrl)
-	dbM.SetDatabase(utils.GetConfig().Database.Name)
+	dbM.SetDatabase(config.GetConfig().Database.Name)
 
 	_, err = dbM.Connect()
 	if err != nil {

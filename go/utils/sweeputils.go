@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bufio"
+	"cloudsweep/config"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -12,7 +13,7 @@ import (
 	"strings"
 )
 
-func GetDBUrl(c *Config) (string, error) {
+func GetDBUrl(c *config.Config) (string, error) {
 	var mongoDBUrl string
 	mongoDBUrl = "mongodb://"
 	if c.Database.Username != "" {

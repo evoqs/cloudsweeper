@@ -1,9 +1,9 @@
 package cloud_lib
 
 import (
+	"cloudsweep/config"
 	logger "cloudsweep/logging"
 	aws_model "cloudsweep/model/aws"
-	"cloudsweep/utils"
 	"encoding/json"
 	"fmt"
 
@@ -17,11 +17,11 @@ import (
 func GetAwsSession() (*session.Session, error) {
 	// Synchronize the function call
 	// Create AWS credentials with your access key and secret key.
-	creds := credentials.NewStaticCredentials(utils.GetConfig().Aws.Creds.Aws_access_key_id, utils.GetConfig().Aws.Creds.Aws_secret_access_key, "")
+	creds := credentials.NewStaticCredentials(config.GetConfig().Aws.Creds.Aws_access_key_id, config.GetConfig().Aws.Creds.Aws_secret_access_key, "")
 
 	// Create an AWS session with your credentials and desired region.
 	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(utils.GetConfig().Aws.Creds.Aws_default_region),
+		Region:      aws.String(config.GetConfig().Aws.Creds.Aws_default_region),
 		Credentials: creds,
 	})
 	// TODO: Make it a singleton

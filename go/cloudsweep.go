@@ -2,6 +2,7 @@ package main
 
 import (
 	"cloudsweep/api"
+	"cloudsweep/config"
 	"cloudsweep/scheduler"
 	"cloudsweep/storage"
 	"cloudsweep/utils"
@@ -9,7 +10,7 @@ import (
 )
 
 func main() {
-	cfg := utils.LoadConfig()
+	cfg := config.LoadConfig()
 	dbUrl, err := utils.GetDBUrl(&cfg)
 
 	if err != nil {
@@ -20,7 +21,7 @@ func main() {
 
 	dbM := storage.GetDBManager()
 	dbM.SetDbUrl(dbUrl)
-	dbM.SetDatabase(utils.GetConfig().Database.Name)
+	dbM.SetDatabase(config.GetConfig().Database.Name)
 
 	_, err = dbM.Connect()
 	if err != nil {
@@ -58,7 +59,7 @@ func main() {
 
 	//utils.ValidateAwsCredentials("AKIA4T2VWH7A67Z", "Yaf6n5d2xQBzmo")
 	// Start Server
-	startServer(dbo, utils.GetConfig().Server.Host, utils.GetConfig().Server.Port)
+	startServer(dbo, config.GetConfig().Server.Host, config.GetConfig().Server.Port)
 
 	//cpumodel := utils.GetCPUmodel()
 	//fmt.Println(cpumodel)

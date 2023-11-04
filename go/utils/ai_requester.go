@@ -2,11 +2,12 @@ package utils
 
 import (
 	"bytes"
+	"cloudsweep/config"
 )
 
 func QueryOpenAI(query string) (*APIResponse, error) {
-	apiKey := GetConfig().OpenAI.ApiKey
-	apiUrl := GetConfig().OpenAI.Url
+	apiKey := config.GetConfig().OpenAI.ApiKey
+	apiUrl := config.GetConfig().OpenAI.Url
 
 	// Build the request body with the initial message for GPT-3.5 Turbo
 	requestBody := []byte(`{

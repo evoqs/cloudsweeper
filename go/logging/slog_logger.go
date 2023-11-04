@@ -1,7 +1,7 @@
 package logger
 
 import (
-	"cloudsweep/utils"
+	"cloudsweep/config"
 	"context"
 	"fmt"
 	"path/filepath"
@@ -42,15 +42,15 @@ func NewDefaultLogger() *SlogLogger {
 	defer factory.mu.Unlock()
 
 	// Check if a logger instance for this log file already exists
-	if logger, ok := factory.loggers[utils.GetConfig().Logging.Default_log_file]; ok {
+	if logger, ok := factory.loggers[config.GetConfig().Logging.Default_log_file]; ok {
 		return logger
 	}
 	lumberjack := &lumberjack.Logger{
-		Filename:   utils.GetConfig().Logging.Default_log_file,
-		MaxSize:    utils.GetConfig().Logging.Max_size, // megabytes
-		MaxBackups: utils.GetConfig().Logging.Max_backups,
-		MaxAge:     utils.GetConfig().Logging.Max_age, //days
-		Compress:   true,                              // disabled by default
+		Filename:   config.GetConfig().Logging.Default_log_file,
+		MaxSize:    config.GetConfig().Logging.Max_size, // megabytes
+		MaxBackups: config.GetConfig().Logging.Max_backups,
+		MaxAge:     config.GetConfig().Logging.Max_age, //days
+		Compress:   true,                               // disabled by default
 	}
 	replace := func(groups []string, a slog.Attr) slog.Attr {
 		// Remove time.
@@ -71,7 +71,7 @@ func NewDefaultLogger() *SlogLogger {
 		ReplaceAttr: replace,
 	}))
 	logger := &SlogLogger{l, lumberjack}
-	factory.loggers[utils.GetConfig().Logging.Default_log_file] = logger
+	factory.loggers[config.GetConfig().Logging.Default_log_file] = logger
 	return logger
 }
 

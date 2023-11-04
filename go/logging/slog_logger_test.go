@@ -1,7 +1,7 @@
 package logger
 
 import (
-	"cloudsweep/utils"
+	"cloudsweep/config"
 	"sync"
 	"testing"
 )
@@ -39,7 +39,7 @@ func (m *Module) logDemoRotation() {
 }
 
 func TestDefaultLogger(t *testing.T) {
-	utils.LoadConfig()
+	config.LoadConfig()
 
 	module := NewModule(NewDefaultLogger())
 	module.logDemoSimple()
