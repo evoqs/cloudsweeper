@@ -1,6 +1,6 @@
 package storage
 
-import "cloudsweep/utils"
+import "cloudsweep/config"
 
 const policyTable = "policies"
 const defaultpolicyTable = "defaultpolicies"
@@ -43,5 +43,5 @@ func GetDBOperators(dbName string) *DbOperators {
 }
 
 func GetDefaultDBOperators() *DbOperators {
-	return operatorRepo[utils.GetConfig().Database.Name]
+	return operatorRepo[config.GetConfig().Database.Name]
 }
