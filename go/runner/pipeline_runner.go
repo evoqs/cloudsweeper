@@ -105,14 +105,14 @@ func runPipeline(pipeLine model.PipeLine) {
 		policyList, err := opr.PolicyOperator.GetPolicyDetails(policyid)
 		if err != nil {
 			fmt.Println("Failed to get policy")
-			updatePolicyRunResult(pipeLine.CloudAccountID, policyid, "", "Internal DB Error", nil, false)
+			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Internal DB Error", nil, false)
 			isPolicyRunFailed = true
 			continue
 		}
 
 		if len(policyList) == 0 {
 			fmt.Println("Policy not found")
-			updatePolicyRunResult(pipeLine.CloudAccountID, policyid, "", "Policy Definition missing", nil, false)
+			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Policy Definition missing", nil, false)
 			isPolicyRunFailed = true
 			continue
 		}
@@ -142,7 +142,7 @@ func runPipeline(pipeLine model.PipeLine) {
 		err = policy_converter.ConvertJsonToYamlAndWriteToFile(policyJson, policyFile)
 		if err != nil {
 			fmt.Println("Failed to convert json policy to yaml, for policy id ", policy.PolicyID)
-			updatePolicyRunResult(pipeLine.CloudAccountID, policyid, "", "Invalid policy definition", nil, false)
+			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Invalid policy definition", nil, false)
 			isPolicyRunFailed = true
 			continue
 		}
@@ -151,7 +151,7 @@ func runPipeline(pipeLine model.PipeLine) {
 		cloudAccList, err := opr.AccountOperator.GetCloudAccount(pipeLine.CloudAccountID)
 		if err != nil || len(cloudAccList) < 1 {
 			fmt.Println("Failed to get cloundaccount details for policy id ", policy.PolicyID, pipeLine.CloudAccountID)
-			updatePolicyRunResult(pipeLine.CloudAccountID, policyid, "", "Missing Cloud Account definition for policy", nil, false)
+			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Missing Cloud Account definition for policy", nil, false)
 			isPolicyRunFailed = true
 			continue
 		}
@@ -161,7 +161,7 @@ func runPipeline(pipeLine model.PipeLine) {
 
 		if cloudAcc.AccountType == model.AWS {
 			if !utils.ValidateAwsCredentials(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey) {
-				updatePolicyRunResult(pipeLine.CloudAccountID, policyid, "", "Authentication Failed", nil, false)
+				updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Authentication Failed", nil, false)
 				isPolicyRunFailed = true
 				continue
 			}
@@ -192,14 +192,14 @@ func runPipeline(pipeLine model.PipeLine) {
 			close(c)
 			if !ok {
 				fmt.Println("Failed to read from channel")
-				updatePolicyRunResult(pipeLine.CloudAccountID, policyid, "", "Internal Error", nil, false)
+				updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Internal Error", nil, false)
 				isPolicyRunFailed = true
 				continue
 			}
 
 			if strings.Contains(strings.ToUpper(runres), "ERROR") {
 				fmt.Println("policy run failed with result", runres)
-				updatePolicyRunResult(pipeLine.CloudAccountID, policyid, "", "Internal Error", nil, false)
+				updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Internal Error", nil, false)
 				isPolicyRunFailed = true
 			} else {
 				logger.NewDefaultLogger().Infof("policy run successful with result %s", runres)
@@ -247,7 +247,7 @@ func runPipeline(pipeLine model.PipeLine) {
 					resultList = append(resultList, *regionResult)
 
 				}
-				updatePolicyRunResult(pipeLine.CloudAccountID, policyid, resourceName, "SUCCESS", resultList, true)
+				updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, resourceName, "SUCCESS", resultList, true)
 
 			}
 
@@ -275,13 +275,13 @@ func runPipeline(pipeLine model.PipeLine) {
 	// TODO: How do you inform back to the UI the reason for failure. pipeline model should be updated to have the reason for last failure and number of previous failures
 }
 
-func updatePolicyRunResult(cloudAccountID string, policyID string, resourceName string, runStatus string, regionWiseResult []model.RegionResult, isSuccess bool) {
+func updatePolicyRunResult(pipeLineID string, policyID string, resourceName string, runStatus string, regionWiseResult []model.RegionResult, isSuccess bool) {
 	opr := storage.GetDefaultDBOperators()
 	query := fmt.Sprintf(`{"policyid": "%s"}`, policyID)
 	results, _ := opr.PolicyOperator.GetPolicyResultDetails(query)
 	if len(results) == 0 {
 		var policyRunresult model.PolicyResult
-		policyRunresult.CloudAccountID = cloudAccountID
+		policyRunresult.PipelIneID = pipeLineID
 		policyRunresult.PolicyID = policyID
 		policyRunresult.Resource = resourceName
 		policyRunresult.LastRunStatus = runStatus

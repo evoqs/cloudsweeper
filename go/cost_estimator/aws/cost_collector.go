@@ -44,7 +44,7 @@ func CollectResourceCost[T any](serviceCode string, filters []*pricing.Filter, r
 	pricingInput := &pricing.GetProductsInput{
 		ServiceCode: aws.String(serviceCode),
 		Filters:     filters,
-		NextToken:   aws.String(""),
+		NextToken:   nil,
 	}
 
 	for {
