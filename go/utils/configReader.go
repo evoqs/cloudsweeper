@@ -39,6 +39,10 @@ type Config struct {
 		Max_backups      int    `yaml:"max_backups" envconfig:"MAX_BACKUPS"`
 		Max_age          int    `yaml:"max_age" envconfig:"MAX_AGE"`
 	} `yaml:"logging"`
+	OpenAI struct {
+		ApiKey string `yaml:"openai_apikey" envconfig:"OPENAI_APIKEY"`
+		Url    string `yaml:"openai_url" envconfig:"OPENAI_URL"`
+	} `yaml:"openai"`
 }
 
 // Loading the cfg

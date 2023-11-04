@@ -28,3 +28,7 @@ logging:
   max_size: 1
   max_backups: 5
   max_age: 28
+
+openai:
+  openai_url: "https://api.openai.com/v1/chat/completions"
+  openai_apikey: ""

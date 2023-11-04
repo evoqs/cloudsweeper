@@ -202,7 +202,7 @@ func runPipeline(pipeLine model.PipeLine) {
 				updatePolicyRunResult(pipeLine.CloudAccountID, policyid, "", "Internal Error", nil, false)
 				isPolicyRunFailed = true
 			} else {
-				logger.NewDefaultLogger().Infof("policy run successful with result", runres)
+				logger.NewDefaultLogger().Infof("policy run successful with result %s", runres)
 				folderList := utils.GetFolderList(RunFolder)
 				var resultList = make([]model.RegionResult, 0)
 				resourceName := utils.GetResourceName(policyFile)
@@ -217,7 +217,7 @@ func runPipeline(pipeLine model.PipeLine) {
 						regionName = element
 						policyFolder := utils.GetFolderList(fmt.Sprintf("%s/%s", RunFolder, element))
 						if len(folderList) != 1 {
-							logger.NewDefaultLogger().Error("Invalid number of folders in c7n multi region execution folder.", policyFolder)
+							logger.NewDefaultLogger().Errorf("Invalid number of folders in c7n multi region execution folder. %v", policyFolder)
 							isPolicyRunFailed = true
 							continue
 						}
@@ -225,7 +225,7 @@ func runPipeline(pipeLine model.PipeLine) {
 						resourceFile = fmt.Sprintf("%s/%s/%s/%s", RunFolder, element, policyName, "resources.json")
 					}
 
-					logger.NewDefaultLogger().Infof("Reading resource file", resourceFile, "for region", regionName)
+					logger.NewDefaultLogger().Infof("Reading resource file %s for region %s", resourceFile, regionName)
 
 					regionResult := new(model.RegionResult)
 
