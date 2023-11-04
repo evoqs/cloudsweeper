@@ -38,7 +38,7 @@ type DefaultPolicy struct {
 type PolicyResult struct {
 	PolicyResultID primitive.ObjectID `json:"policyresultid" bson:"_id,omitempty"`
 	PolicyID       string             `json:"policyid" bson:"policyid"`
-	CloudAccountID string             `json:"cloudaccountid" bson:"cloudaccountid"`
+	PipelIneID     string             `json:"pipelineid" bson:"pipelineid"`
 	Resource       string             `json:"resource" bson:"resource"`
 	Resultlist     []RegionResult     `json:"resultlist" bson:"resultlist"`
 	LastRunStatus  string             `json:"lastrunstatus" bson:"lastrunstatus"`

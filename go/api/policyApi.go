@@ -246,11 +246,6 @@ func (srv *Server) GetDefaultCustodianPolicies(writer http.ResponseWriter, reque
 
 		srv.SendResponse404(writer, nil)
 		return
-	} else if len(defaultpolicies) > 1 {
-		err := errors.New("Internal Server Error, DB data consistency issue , duplicate policies with same ID")
-		srv.logwriter.Errorf(err.Error())
-		srv.SendResponse500(writer, err)
-		return
 	}
 
 	writer.WriteHeader(http.StatusOK)
