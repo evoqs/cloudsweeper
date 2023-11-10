@@ -80,17 +80,41 @@ func GetSubscribedRegions() ([]*ec2.Region, error) {
 	return regions.Regions, err
 }
 
-func GetAllInstanceTypes(region string) []*ec2.InstanceTypeInfo {
-	// TODO: Check for error
+func GetAllInstanceTypes(region string, filters []*ec2.Filter, instanceTypes []string) ([]*ec2.InstanceTypeInfo, error) {
 	ec2Client, err := GetEC2ClientWithRegion(region)
-
-	input := &ec2.DescribeInstanceTypesInput{}
-	result, err := ec2Client.DescribeInstanceTypes(input)
 	if err != nil {
 		logger.NewDefaultLogger().Errorf("Error listing instance types: %v", err)
-		return nil
+		return nil, err
 	}
-	return result.InstanceTypes
+
+	var allInstanceTypes []*ec2.InstanceTypeInfo
+	var nextToken *string
+	var instanceTypeFilter []*string
+	if instanceTypes == nil || len(instanceTypes) == 0 {
+		instanceTypeFilter = nil
+	} else {
+		instanceTypeFilter = aws.StringSlice(instanceTypes)
+	}
+	if len(filters) == 0 {
+		filters = nil
+	}
+	for {
+		input := &ec2.DescribeInstanceTypesInput{
+			Filters:       filters,
+			InstanceTypes: instanceTypeFilter,
+			NextToken:     nextToken,
+		}
+		result, err := ec2Client.DescribeInstanceTypes(input)
+		if err != nil {
+			return nil, err
+		}
+		allInstanceTypes = append(allInstanceTypes, result.InstanceTypes...)
+		if result.NextToken == nil {
+			break
+		}
+		nextToken = result.NextToken
+	}
+	return allInstanceTypes, nil
 }
 
 func GetAllServiceCodes() ([]string, error) {
