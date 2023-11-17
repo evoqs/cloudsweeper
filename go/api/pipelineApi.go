@@ -43,6 +43,10 @@ func (srv *Server) AddPipeLine(writer http.ResponseWriter, request *http.Request
 		return
 	}
 
+	if len(pipeline.ExecutionRegions) == 0 {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid request, Atleast once execution region is needed to create pipline.")))
+		return
+	}
 	pipeline.Default = false
 	pipeline.RunStatus = model.UNKNOWN
 	pipeline.LastRunTime = 0
@@ -75,6 +79,11 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 
 	if err != nil {
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid json payload for POST request, %s", err.Error())))
+		return
+	}
+
+	if len(pipeline.ExecutionRegions) == 0 {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid request, Atleast once execution region is needed to create pipline.")))
 		return
 	}
 

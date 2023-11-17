@@ -49,6 +49,18 @@ type RegionResult struct {
 	Region string `json:"region" bson:"region"`
 }
 
+type ResultMetaData struct {
+	Cost           ResourceCost `json:"cost" bson:"cost"`
+	Recommendation string       `json:"recommendation" bson:"recommendation"`
+}
+
+type ResourceCost struct {
+	MinPrice float64
+	MaxPrice float64
+	Unit     string
+	Currency string
+}
+
 // ******************* TO BE used in case needed to parse the policy json
 type CSPolicyDef struct {
 	Policies []CSPolicy `json:"policies" bson:"policies"`

@@ -1,6 +1,10 @@
 package aws_model
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"cloudsweep/model"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type PricingData[T any] struct {
 	FormatVersion string         `json:"FormatVersion"`
@@ -83,4 +87,47 @@ type ProductAttributesEBS struct {
 	MaxIopsvolume           string `json:"maxIopsvolume" bson:"maxIopsvolume"`
 	MaxThroughputvolume     string `json:"maxThroughputvolume" bson:"maxThroughputvolume"`
 	VolumeApiName           string `json:"volumeApiName" bson:"volumeApiName"`
+}
+
+type AwsInstanceResult struct {
+	InstanceId      string `json:"instanceId" bson:"instanceId"`
+	InstanceType    string `json:"instanceType" bson:"instanceType"`
+	Region          string `json:"region" bson:"region"`
+	PlatformDetails string `json:"platformDetails" bson:"platformDetails"`
+
+	Placement struct {
+		AvailabilityZone string `json:"availabilityZone" bson:"availabilityZone"`
+		GroupName        string `json:"groupName" bson:"groupName"`
+		Tenancy          string `json:"tenancy" bson:"tenancy"`
+	} `json:"placement" bson:"placement"`
+
+	State struct {
+		Code string `json:"code" bson:"code"`
+		Name string `json:"name" bson:"name"`
+	} `json:"state" bson:"state"`
+
+	Tags []struct {
+		Key   string `json:"key" bson:"key"`
+		Value string `json:"value" bson:"value"`
+	} `json:"tags" bson:"tags"`
+
+	MetaData model.ResultMetaData `json:"resultMetaData" bson:"resultMetaData"`
+}
+
+type AwsBlockVolumeResult struct {
+	VolumeId         string                     `json:"volumeId" bson:"volumeId"`
+	VolumeType       string                     `json:"volumeType" bson:"volumeType"`
+	Encrypted        string                     `json:"encrypted" bson:"encrypted"`
+	SnapshotId       string                     `json:"snapshotId" bson:"snapshotId"`
+	Region           string                     `json:"region" bson:"region"`
+	State            string                     `json:"state" bson:"state"`
+	AvailabilityZone string                     `json:"availabilityZone" bson:"availabilityZone"`
+	Attachments      []AwsBlockVolumeAttachment `json:"attachments" bson:"attachments"`
+	MetaData         model.ResultMetaData       `json:"resultMetaData" bson:"resultMetaData"`
+}
+
+type AwsBlockVolumeAttachment struct {
+	InstanceId string `json:"instanceId" bson:"instanceId"`
+	State      string `json:"state" bson:"state"`
+	Device     string `json:"device" bson:"device"`
 }
