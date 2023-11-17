@@ -43,6 +43,10 @@ type Config struct {
 		ApiKey string `yaml:"openai_apikey" envconfig:"OPENAI_APIKEY"`
 		Url    string `yaml:"openai_url" envconfig:"OPENAI_URL"`
 	} `yaml:"openai"`
+	MakerSuite struct {
+		ApiKey string `yaml:"palm_key" envconfig:"PALM_KEY"`
+		Url    string `yaml:"palm_url" envconfig:"PALM_URL"`
+	} `yaml:"makersuite"`
 }
 
 // Loading the cfg

@@ -186,3 +186,14 @@ func GetResourceName(yamlFile string) string {
 
 	return ""
 }
+
+func ExtractJsonFromString(input string) ([]string, error) {
+	jsonRegex := regexp.MustCompile(`\{.*\}`)
+
+	// Find the first match
+	matches := jsonRegex.FindStringSubmatch(input)
+	if len(matches) == 0 {
+		return []string{}, fmt.Errorf("JSON not found in the input string")
+	}
+	return matches, nil
+}
