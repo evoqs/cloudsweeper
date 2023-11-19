@@ -4,9 +4,11 @@ import (
 	"cloudsweep/config"
 	logger "cloudsweep/logging"
 	"cloudsweep/model"
+	aws_model "cloudsweep/model/aws"
 	"cloudsweep/policy_converter"
 	"cloudsweep/storage"
 	"cloudsweep/utils"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -99,6 +101,7 @@ func runPipeline(pipeLine model.PipeLine) {
 		return
 	}
 
+	//TODO Implement Parallel processing of polices
 	policyids := pipeLine.Policies
 	isPolicyRunFailed := false
 	for _, policyid := range policyids {
@@ -188,7 +191,7 @@ func runPipeline(pipeLine model.PipeLine) {
 			pipeLine.LastRunTime = time.Now().Unix()
 			activatePath := config.GetConfig().Custodian.C7nAwsInstall
 			c := make(chan string, 1)
-			go utils.RunCustodianPolicy(envvars, RunFolder, policyFile, regionFlag, activatePath, c)
+			go utils.RunCustodianPolicy(envvars, RunFolder, policyFile, activatePath, regionFlag, c)
 			runres, ok := <-c
 			close(c)
 			if !ok {
@@ -214,10 +217,11 @@ func runPipeline(pipeLine model.PipeLine) {
 						regionName = pipeLine.ExecutionRegions[0]
 						resourceFile = fmt.Sprintf("%s/%s/%s", RunFolder, element, "resources.json")
 						policyName = element
+						fmt.Println("Single Region", element)
 					} else {
 						regionName = element
 						policyFolder := utils.GetFolderList(fmt.Sprintf("%s/%s", RunFolder, element))
-						if len(folderList) != 1 {
+						if len(policyFolder) != 1 {
 							logger.NewDefaultLogger().Errorf("Invalid number of folders in c7n multi region execution folder. %v", policyFolder)
 							isPolicyRunFailed = true
 							continue
@@ -235,6 +239,9 @@ func runPipeline(pipeLine model.PipeLine) {
 					replacer := strings.NewReplacer("\r", "", "\n", "")
 					resourceList = replacer.Replace(string(resourceList))
 
+					var out []byte
+					out = []byte("")
+
 					if err != nil {
 						logwriter.Errorf("Failed to read policy result from result %s, Error %s", resourceFile, err.Error())
 						isPolicyRunFailed = true
@@ -243,7 +250,20 @@ func runPipeline(pipeLine model.PipeLine) {
 						logwriter.Infof("Successfully completed the policy run, %s", policyName)
 					}
 
-					regionResult.Result = resourceList
+					//Converting into shorter json
+					if resourceName == "ec2" {
+						var rList []aws_model.AwsInstanceResult
+						json.Unmarshal([]byte(resourceList), &rList)
+						out, _ = json.Marshal(rList)
+					} else if resourceName == "ebs" {
+						var rList []aws_model.AwsBlockVolumeResult
+						json.Unmarshal([]byte(resourceList), &rList)
+						out, _ = json.Marshal(rList)
+					} else {
+						fmt.Println("Unknown resource type ", resourceName)
+					}
+
+					regionResult.Result = string(out)
 					regionResult.Region = regionName
 					resultList = append(resultList, *regionResult)
 
@@ -278,7 +298,7 @@ func runPipeline(pipeLine model.PipeLine) {
 
 func updatePolicyRunResult(pipeLineID string, policyID string, resourceName string, runStatus string, regionWiseResult []model.RegionResult, isSuccess bool) {
 	opr := storage.GetDefaultDBOperators()
-	query := fmt.Sprintf(`{"policyid": "%s"}`, policyID)
+	query := fmt.Sprintf(`{"policyid": "%s","pipelineid": "%s"}`, policyID, pipeLineID)
 	results, _ := opr.PolicyOperator.GetPolicyResultDetails(query)
 	if len(results) == 0 {
 		var policyRunresult model.PolicyResult
@@ -297,6 +317,7 @@ func updatePolicyRunResult(pipeLineID string, policyID string, resourceName stri
 		result.LastRunStatus = runStatus
 		result.Resource = resourceName
 		result.PolicyID = policyID
+		result.PipelIneID = pipeLineID
 		opr.PolicyOperator.UpdatePolicyResult(result)
 	}
 }

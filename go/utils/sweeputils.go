@@ -154,7 +154,7 @@ func ConstructRegionList(listOfregions *[]string) string {
 }
 
 func GetFolderList(path string) []string {
-	entries, err := os.ReadDir("/home/vboxuser/c7npolicies")
+	entries, err := os.ReadDir(path)
 	folderList := []string{}
 	if err != nil {
 		//logger.NewDefaultLogger().Logger.Error("Unable to read folder ", path)

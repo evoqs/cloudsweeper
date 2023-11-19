@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	logger "cloudsweep/logging"
+	"cloudsweep/model"
 	aws_model "cloudsweep/model/aws"
 	"cloudsweep/storage"
 
@@ -13,35 +14,28 @@ import (
 	"github.com/aws/aws-sdk-go/service/pricing"
 )
 
-type ResourceCost struct {
-	MinPrice float64
-	MaxPrice float64
-	Unit     string
-	Currency string
-}
-
-func GetComputeInstanceCost(pAttr aws_model.ProductAttributesInstance) (ResourceCost, error) {
+func GetComputeInstanceCost(pAttr aws_model.ProductAttributesInstance) (model.ResourceCost, error) {
 	if pAttr.RegionCode == "" || pAttr.InstanceType == "" || pAttr.OperatingSystem == "" {
-		return ResourceCost{MinPrice: -1}, fmt.Errorf("Unable to get the Cost for ComputeInstance. RegionCode and/or InstanceType values are empty.")
+		return model.ResourceCost{MinPrice: -1}, fmt.Errorf("Unable to get the Cost for ComputeInstance. RegionCode and/or InstanceType values are empty.")
 	}
 	return getCost("AmazonEC2", pAttr)
 }
 
 // =============================================== EBS ================================================================
 
-func GetEbsCost(pAttr aws_model.ProductAttributesEBS) (ResourceCost, error) {
+func GetEbsCost(pAttr aws_model.ProductAttributesEBS) (model.ResourceCost, error) {
 	if pAttr.RegionCode == "" || (pAttr.StorageMedia == "" && pAttr.VolumeApiName == "") {
-		return ResourceCost{MinPrice: -1}, fmt.Errorf("Unable to get the Cost for EBS. RegionCode and/or StorageMedia/VolumeApiName values are empty.")
+		return model.ResourceCost{MinPrice: -1}, fmt.Errorf("Unable to get the Cost for EBS. RegionCode and/or StorageMedia/VolumeApiName values are empty.")
 	}
 	return getCost("AmazonEC2", pAttr)
 }
 
 // ==================================== Generic Functions ==================================================
 
-func getCost[T any](serviceCode string, pAttr T) (ResourceCost, error) {
+func getCost[T any](serviceCode string, pAttr T) (model.ResourceCost, error) {
 	min, max, err := GetCostFromDB(pAttr)
 	if err == nil {
-		return ResourceCost{
+		return model.ResourceCost{
 			MinPrice: min.PricePerUnit["USD"],
 			MaxPrice: max.PricePerUnit["USD"],
 			Unit:     min.Unit,
@@ -51,14 +45,14 @@ func getCost[T any](serviceCode string, pAttr T) (ResourceCost, error) {
 
 	min, max, err = GetCostFromAws(serviceCode, pAttr)
 	if err != nil {
-		return ResourceCost{MinPrice: -1}, fmt.Errorf("Unable to get the cost for the Instance. %v", err)
+		return model.ResourceCost{MinPrice: -1}, fmt.Errorf("Unable to get the cost for the Instance. %v", err)
 	}
 
 	opr := storage.GetDefaultDBOperators()
 	opr.CostOperator.AddResourceCost(min)
 	opr.CostOperator.AddResourceCost(max)
 
-	return ResourceCost{
+	return model.ResourceCost{
 		MinPrice: min.PricePerUnit["USD"],
 		MaxPrice: max.PricePerUnit["USD"],
 		Unit:     min.Unit,
