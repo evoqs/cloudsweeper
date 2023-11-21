@@ -110,7 +110,12 @@ func TestRecommenderInstances(t *testing.T) {
 
 	//instanceTypes := []string{"t2", "t3", "m4", "m5", "m6", "m7"}
 	instanceTypes := []string{"t2", "t3", "c5"}
-	allInstanceTypes, err := cloud_lib.GetAllInstanceTypes(config.GetConfig().Aws.Creds.Aws_default_region, nil, nil)
+	csAdminAwsClient, err := cloud_lib.GetCSAdminAwsClient()
+	if err != nil {
+		fmt.Println("Error creating CS Admin AWS Client:", err)
+		return
+	}
+	allInstanceTypes, err := csAdminAwsClient.GetAllInstanceTypes(config.GetConfig().Aws.Creds.Aws_default_region, nil, nil)
 	if err != nil {
 		fmt.Println("Error getting instance types:", err)
 		return
@@ -150,10 +155,10 @@ func TestRecommenderInstances(t *testing.T) {
 				pAttr.OperatingSystem,
 				fmt.Sprintf("%v", peakCPU),
 				fmt.Sprintf("%v", avgCPU),
-				fmt.Sprintf("%.2f", recommendation.CurrentCost.MinPrice),
-				recommendation.Recommendation,
-				fmt.Sprintf("%.2f", recommendation.NewCost.MinPrice),
-				recommendation.EstimatedCostSavings,
+				fmt.Sprintf("%.2f", recommendation.CurrentResourceDetails.CurrentCost.MinPrice),
+				recommendation.RecommendationItems[0].Resource,
+				fmt.Sprintf("%.2f", recommendation.RecommendationItems[0].NewCost.MinPrice),
+				recommendation.RecommendationItems[0].EstimatedCostSavings,
 			}
 
 			fmt.Printf("Data: %v", data)
@@ -162,7 +167,7 @@ func TestRecommenderInstances(t *testing.T) {
 				continue
 			}
 
-			fmt.Printf("Recommendation for %s with PeakCPU %d: %s\n", *instanceType.InstanceType, peakCPU, recommendation.Recommendation)
+			fmt.Printf("Recommendation for %s with PeakCPU %d: %s\n", *instanceType.InstanceType, peakCPU, recommendation.RecommendationItems[0].Resource)
 		}
 		writer.Flush()
 	}

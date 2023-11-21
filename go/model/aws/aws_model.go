@@ -131,3 +131,24 @@ type AwsBlockVolumeAttachment struct {
 	State      string `json:"state" bson:"state"`
 	Device     string `json:"device" bson:"device"`
 }
+
+type Recommendation[T any] struct {
+	CurrentResourceDetails T
+	RecommendationItems    []RecommendationItem `json:"recommendationItems"`
+}
+
+type RecommendationItem struct {
+	Resource             string `json:"resource"`
+	NewCost              model.ResourceCost
+	EstimatedCostSavings string `json:"estimatedCostSavings"`
+}
+
+// TODO: This is not possible. May be possible.
+type CurrentInstanceDetails struct {
+	InstanceType  string
+	InstanceName  string
+	InstanceState string
+	Region        string
+	InstanceArn   string
+	CurrentCost   model.ResourceCost
+}

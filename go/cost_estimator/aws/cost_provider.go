@@ -155,13 +155,13 @@ func GetCostFromDB[T any](pAttr T) (aws_model.AwsResourceCost[T],
 		}
 	}
 	query := "{" + strings.Join(queryParts, ", ") + "}"
-	fmt.Printf("DB Query: %s", query)
+	logger.NewDefaultLogger().Debugf("DB Query: %s", query)
 
 	//results,err := storage.GetDefaultCostOperator().RunQuery(query)
 	var resourceCosts []aws_model.AwsResourceCost[T]
 	opr := storage.GetDefaultDBOperators()
 	opr.CostOperator.GetQueryResult(query, &resourceCosts)
-	fmt.Printf("1st Length of resourceCostInstances from DB: %d\n", len(resourceCosts))
+	logger.NewDefaultLogger().Debugf("Length of resourceCostInstances from DB: %d\n", len(resourceCosts))
 
 	if len(resourceCosts) >= 2 {
 		if resourceCosts[0].PricePerUnit["USD"] < resourceCosts[1].PricePerUnit["USD"] {

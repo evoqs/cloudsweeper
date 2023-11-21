@@ -10,32 +10,34 @@ import (
 	"regexp"
 )
 
-type Recommendation struct {
-	CurrentCost          ResourceCost
-	Recommendation       string `json:"recommendation"`
-	NewCost              ResourceCost
-	EstimatedCostSavings string `json:"estimated_cost_savings"`
-}
-
-func GetInstanceTypeRecommendation(pAttr aws_model.ProductAttributesInstance, resourceUsageParams map[string]interface{}) (Recommendation, error) {
+func GetInstanceTypeRecommendation(pAttr aws_model.ProductAttributesInstance, resourceUsageParams map[string]interface{}) (aws_model.Recommendation[aws_model.CurrentInstanceDetails], error) {
 	currentCost, err := GetComputeInstanceCost(pAttr)
 	if err != nil {
-		return Recommendation{}, err
+		return aws_model.Recommendation[aws_model.CurrentInstanceDetails]{}, err
 	}
-	recommendation := Recommendation{
-		CurrentCost: currentCost,
+	recommendation := aws_model.Recommendation[aws_model.CurrentInstanceDetails]{
+		CurrentResourceDetails: aws_model.CurrentInstanceDetails{
+			CurrentCost: currentCost,
+		},
 	}
 	newResAttr, err := GetRecommendedResource(pAttr, resourceUsageParams)
 	if err != nil {
-		return recommendation, nil
+		return recommendation, err
 	}
 	newCost, err := GetComputeInstanceCost(*newResAttr)
 	if currentCost.MinPrice > newCost.MinPrice {
-		return Recommendation{
-			CurrentCost:          currentCost,
-			Recommendation:       newResAttr.InstanceType,
-			NewCost:              newCost,
-			EstimatedCostSavings: fmt.Sprintf("%.2f", (currentCost.MinPrice-newCost.MinPrice)*100/currentCost.MinPrice) + "%",
+		return aws_model.Recommendation[aws_model.CurrentInstanceDetails]{
+			CurrentResourceDetails: aws_model.CurrentInstanceDetails{
+				InstanceType: pAttr.InstanceType,
+				CurrentCost:  currentCost,
+			},
+			RecommendationItems: []aws_model.RecommendationItem{
+				{
+					Resource:             newResAttr.InstanceType,
+					NewCost:              newCost,
+					EstimatedCostSavings: fmt.Sprintf("%.2f", (currentCost.MinPrice-newCost.MinPrice)*100/currentCost.MinPrice) + "%",
+				},
+			},
 		}, nil
 	}
 	return recommendation, err
