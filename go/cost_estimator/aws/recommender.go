@@ -2,6 +2,7 @@ package cost_estimator
 
 import (
 	logger "cloudsweep/logging"
+	model "cloudsweep/model"
 	aws_model "cloudsweep/model/aws"
 	"cloudsweep/utils"
 	"encoding/json"
@@ -11,9 +12,9 @@ import (
 )
 
 type Recommendation struct {
-	CurrentCost          ResourceCost
+	CurrentCost          model.ResourceCost
 	Recommendation       string `json:"recommendation"`
-	NewCost              ResourceCost
+	NewCost              model.ResourceCost
 	EstimatedCostSavings string `json:"estimated_cost_savings"`
 }
 

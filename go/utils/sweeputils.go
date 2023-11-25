@@ -69,6 +69,7 @@ func RunCustodianPolicy(envvars []string, runfolder string, policyfile string, a
 	stdout, err := out.CombinedOutput()
 	if err != nil {
 		runchan <- fmt.Sprintf("Failed to execute command: %s \n %s \n %s", cmd, err, stdout)
+		return
 	}
 	runchan <- string(stdout)
 }

@@ -42,6 +42,7 @@ type PolicyResult struct {
 	Resource       string             `json:"resource" bson:"resource"`
 	Resultlist     []RegionResult     `json:"resultlist" bson:"resultlist"`
 	LastRunStatus  string             `json:"lastrunstatus" bson:"lastrunstatus"`
+	LastRunTime    int64              `json:"lastruntime" bson:"lastruntime"`
 }
 
 type RegionResult struct {

@@ -171,7 +171,8 @@ func (srv *Server) GetAllPipeLine(writer http.ResponseWriter, request *http.Requ
 	}
 	//TODO when length >1
 	if len(pipelines) == 0 {
-		srv.SendResponse404(writer, nil)
+		//srv.SendResponse404(writer, nil)
+		json.NewEncoder(writer).Encode(make([]string, 0))
 		return
 
 	} else {
@@ -200,7 +201,8 @@ func (srv *Server) GetAllPolicies(writer http.ResponseWriter, request *http.Requ
 	//TODO when length >1
 	if len(policies) == 0 {
 		srv.logwriter.Infof("Get all policies for account: ", accountid, ",returned empty")
-		srv.SendResponse404(writer, nil)
+		json.NewEncoder(writer).Encode(make([]string, 0))
+		//srv.SendResponse404(writer, nil)
 		return
 
 	} else {

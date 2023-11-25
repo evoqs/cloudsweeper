@@ -35,7 +35,8 @@ func (srv *Server) GetAllCloudAccount(writer http.ResponseWriter, request *http.
 	}
 	//TODO when length >1
 	if len(accounts) == 0 {
-		srv.SendResponse404(writer, nil)
+		//srv.SendResponse404(writer, nil)
+		json.NewEncoder(writer).Encode(make([]string, 0))
 		return
 
 	} else {
