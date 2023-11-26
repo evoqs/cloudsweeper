@@ -39,6 +39,7 @@ import (
 }*/
 
 func ValidateAndRunPipeline(pipelineid string) (int, error) {
+	logwriter := logger.NewDefaultLogger()
 	opr := storage.GetDefaultDBOperators()
 	// TODO: HTTP Errors should be masked
 	// TODO: Check if pipeline is enabled / inprogress
@@ -52,11 +53,13 @@ func ValidateAndRunPipeline(pipelineid string) (int, error) {
 	// Why will the pipeline list be greater than 1?
 	pipeLine := pipeLineList[0]
 	if !pipeLine.Enabled {
+		logwriter.Infof("Cannot run Pipeline in diabled state : %s", pipelineid)
 		return 409, errors.New("Cannot Run Pipeline in disabled state.")
 	}
 	//Validate the policy
 	policyids := pipeLine.Policies
 	if len(policyids) == 0 {
+		logwriter.Infof("Cannot run Pipeline %s, no policies defined", pipelineid)
 		return 409, errors.New("No policy Defined for Pipeline.")
 	}
 	policyId := policyids[0]
@@ -88,17 +91,17 @@ func ValidateAndRunPipeline(pipelineid string) (int, error) {
 
 func runPipeline(pipeLine model.PipeLine) {
 	logwriter := logger.NewDefaultLogger()
-	logwriter.Infof("Running the pipeline: %s", pipeLine.PipeLineID.String())
+	logwriter.Infof("Running the pipeline: %s", pipeLine.PipeLineID.Hex())
 	//Step 1
 	if pipeLine.RunStatus == model.RUNNING {
-		logwriter.Info("Run is already in progress")
-		return
+		logwriter.Infof("Run is already in progress for pipline %s", pipeLine.PipeLineID.Hex())
+		//return
 	}
 	pipeLine.RunStatus = model.RUNNING
 	opr := storage.GetDefaultDBOperators()
 	upcount, err := opr.PipeLineOperator.UpdatePipeLine(pipeLine)
 	if upcount != 1 {
-		logwriter.Errorf("Failed to update pipline run status, %s", err.Error())
+		logwriter.Errorf("Failed to update pipline run status for pipeline %s, %s", pipeLine.PipeLineID.Hex(), err.Error())
 		return
 	}
 
@@ -109,12 +112,12 @@ func runPipeline(pipeLine model.PipeLine) {
 
 	pipeLine.LastRunTime = time.Now().Unix()
 
-	var cmap map[string]chan bool
+	cmap := make(map[string]chan bool)
 
 	for _, policyid := range policyids {
 
 		policyList, err := opr.PolicyOperator.GetPolicyDetails(policyid)
-		logwriter.Infof("Running policy, %s", policyList[0].PolicyID.Hex())
+		logwriter.Infof("Running pipeline %s policy, %s", pipeLine.PipeLineID.Hex(), policyList[0].PolicyID.Hex())
 		if err != nil {
 			logwriter.Errorf("Failed to get policy, get DB operation failed, %s", err.Error())
 			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Internal DB Error", time.Now().Unix(), nil, false)
@@ -123,7 +126,7 @@ func runPipeline(pipeLine model.PipeLine) {
 		}
 
 		if len(policyList) == 0 {
-			fmt.Println("Policy not found")
+			logwriter.Errorf("Policy not found for pipline %s pilocyid %s", pipeLine.PipeLineID.Hex(), policyList[0].PolicyID.Hex())
 			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Policy Definition missing", time.Now().Unix(), nil, false)
 			isPolicyRunFailed = true
 			continue
@@ -133,14 +136,17 @@ func runPipeline(pipeLine model.PipeLine) {
 		retunChan := make(chan bool, 1)
 		cmap[policyList[0].PolicyID.Hex()] = retunChan
 		go runPolicy(&wg, policyList[0], pipeLine, retunChan)
+		logwriter.Infof("Starting pipeline %s policy run %s", pipeLine.PipeLineID.Hex(), policyList[0].PolicyID.Hex())
 
 	}
 	wg.Wait()
+	logwriter.Infof("Waiting for all policies execution to end for pipeline %s", pipeLine.PipeLineID.Hex())
 
 	for elem := range cmap {
 
 		runResult := <-cmap[elem]
-		logwriter.Infof("Completed policy run %s with result %t", elem, !runResult)
+		close(cmap[elem])
+		logwriter.Infof("Completed pipeline %s policy run %s with result %t", pipeLine.PipeLineID.Hex(), elem, !runResult)
 
 		if runResult {
 			isPolicyRunFailed = true
