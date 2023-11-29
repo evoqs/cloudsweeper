@@ -132,23 +132,36 @@ type AwsBlockVolumeAttachment struct {
 	Device     string `json:"device" bson:"device"`
 }
 
-type Recommendation[T any] struct {
-	CurrentResourceDetails T
-	RecommendationItems    []RecommendationItem `json:"recommendationItems"`
+type Recommendation[T InstanceDetails | EBSVolumeDetails] struct {
+	CurrentResourceDetails T                       `json:"currentResourceDetails" bson:"currentResourceDetails"`
+	CurrentCost            model.ResourceCost      `json:"cost" bson:"cost"`
+	RecommendationItems    []RecommendationItem[T] `json:"recommendationItems" bson:"recommendationItems"`
 }
 
-type RecommendationItem struct {
-	Resource             string `json:"resource"`
-	NewCost              model.ResourceCost
-	EstimatedCostSavings string `json:"estimatedCostSavings"`
+type RecommendationItem[T InstanceDetails | EBSVolumeDetails] struct {
+	Resource             T                  `json:"resource" bson:"resource"`
+	Cost                 model.ResourceCost `json:"instanceName" bson:"instanceName"`
+	EstimatedCostSavings string             `json:"estimatedCostSavings" bson:"estimatedCostSavings"`
 }
 
-// TODO: This is not possible. May be possible.
-type CurrentInstanceDetails struct {
-	InstanceType  string
-	InstanceName  string
-	InstanceState string
-	Region        string
-	InstanceArn   string
-	CurrentCost   model.ResourceCost
+type InstanceDetails struct {
+	InstanceType  string `json:"instanceType" bson:"instanceType"`
+	InstanceName  string `json:"instanceName" bson:"instanceName"`
+	InstanceState string `json:"instanceState" bson:"instanceState"`
+	Region        string `json:"region" bson:"region"`
+	InstanceArn   string `json:"instanceArn" bson:"instanceArn"`
+	//Cost          model.ResourceCost `json:"cost" bson:"cost"`
+}
+
+type EBSVolumeDetails struct {
+	VolumeType               string `json:"volumeType" bson:"volumeType"`
+	VolumeName               string `json:"volumeName" bson:"volumeName"`
+	VolumeSize               string `json:"volumeSize" bson:"volumeSize"`
+	VolumeBaselineIOPS       string `json:"volumeBaselineIOPS" bson:"volumeBaselineIOPS"`
+	VolumeBaselineThroughput string `json:"volumeBaselineThroughput" bson:"volumeBaselineThroughput"`
+	VolumeBurstIOPS          string `json:"volumeBurstIOPS" bson:"volumeBurstIOPS"`
+	VolumeBurstThroughput    string `json:"volumeBurstThroughput" bson:"volumeBurstThroughput"`
+	Region                   string `json:"region" bson:"region"`
+	VolumeArn                string `json:"instanceArn" bson:"instanceArn"`
+	//Cost                     model.ResourceCost `json:"cost" bson:"cost"`
 }

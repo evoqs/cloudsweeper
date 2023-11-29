@@ -53,7 +53,8 @@ func TestRecommenderInstance(t *testing.T) {
 		"PeakCPUUtilization":    80,
 		"AverageCPUUtilization": 4,
 	}
-	recommendation, err := GetInstanceTypeRecommendation(product, resourceUsageParams)
+	recommendation, err := GetInstanceTypeRecommendation(aws_model.ProductInfo[aws_model.ProductAttributesInstance]{
+		Attributes: product}, resourceUsageParams)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
@@ -142,7 +143,8 @@ func TestRecommenderInstances(t *testing.T) {
 				"AverageCPUUtilization": avgCPU,
 			}
 
-			recommendation, err := GetInstanceTypeRecommendation(pAttr, resourceUsageParams)
+			recommendation, err := GetInstanceTypeRecommendation(aws_model.ProductInfo[aws_model.ProductAttributesInstance]{
+				Attributes: pAttr}, resourceUsageParams)
 			if err != nil {
 				fmt.Printf("Error getting recommendation for %s with PeakCPU %d: %v\n", *instanceType.InstanceType, peakCPU, err)
 				continue
@@ -155,9 +157,9 @@ func TestRecommenderInstances(t *testing.T) {
 				pAttr.OperatingSystem,
 				fmt.Sprintf("%v", peakCPU),
 				fmt.Sprintf("%v", avgCPU),
-				fmt.Sprintf("%.2f", recommendation.CurrentResourceDetails.CurrentCost.MinPrice),
-				recommendation.RecommendationItems[0].Resource,
-				fmt.Sprintf("%.2f", recommendation.RecommendationItems[0].NewCost.MinPrice),
+				fmt.Sprintf("%.2f", recommendation.CurrentCost.MinPrice),
+				recommendation.RecommendationItems[0].Resource.InstanceType,
+				fmt.Sprintf("%.2f", recommendation.RecommendationItems[0].Cost.MinPrice),
 				recommendation.RecommendationItems[0].EstimatedCostSavings,
 			}
 
@@ -167,7 +169,7 @@ func TestRecommenderInstances(t *testing.T) {
 				continue
 			}
 
-			fmt.Printf("Recommendation for %s with PeakCPU %d: %s\n", *instanceType.InstanceType, peakCPU, recommendation.RecommendationItems[0].Resource)
+			fmt.Printf("Recommendation for %s with PeakCPU %d: %v\n", *instanceType.InstanceType, peakCPU, recommendation.RecommendationItems[0].Resource)
 		}
 		writer.Flush()
 	}

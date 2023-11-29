@@ -53,7 +53,7 @@ func (ac *AwsClient) GetAwsAccountID() (string, error) {
 func (ac *AwsClient) ensureValidSession() error {
 	var err error
 	if ac.credentials == nil || ac.credentials.IsExpired() {
-		logger.NewDefaultLogger().Infof("Token has expired")
+		logger.NewDefaultLogger().Infof("Token empty or expired")
 		// Recreate the session with new credentials
 		ac.once.Do(func() {
 			ac.session, err = session.NewSession(&aws.Config{

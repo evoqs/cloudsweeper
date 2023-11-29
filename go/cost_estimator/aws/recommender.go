@@ -10,31 +10,38 @@ import (
 	"regexp"
 )
 
-func GetInstanceTypeRecommendation(pAttr aws_model.ProductAttributesInstance, resourceUsageParams map[string]interface{}) (aws_model.Recommendation[aws_model.CurrentInstanceDetails], error) {
-	currentCost, err := GetComputeInstanceCost(pAttr)
+func GetInstanceTypeRecommendation(pInfo aws_model.ProductInfo[aws_model.ProductAttributesInstance], resourceUsageParams map[string]interface{}) (aws_model.Recommendation[aws_model.InstanceDetails], error) {
+	currentCost, err := GetComputeInstanceCost(pInfo)
 	if err != nil {
-		return aws_model.Recommendation[aws_model.CurrentInstanceDetails]{}, err
+		return aws_model.Recommendation[aws_model.InstanceDetails]{}, err
 	}
-	recommendation := aws_model.Recommendation[aws_model.CurrentInstanceDetails]{
-		CurrentResourceDetails: aws_model.CurrentInstanceDetails{
-			CurrentCost: currentCost,
+	recommendation := aws_model.Recommendation[aws_model.InstanceDetails]{
+		CurrentResourceDetails: aws_model.InstanceDetails{
+			InstanceType: pInfo.Attributes.InstanceType,
 		},
+		CurrentCost: currentCost,
 	}
-	newResAttr, err := GetRecommendedResource(pAttr, resourceUsageParams)
+	newResAttr, err := GetRecommendedResource(pInfo.Attributes, resourceUsageParams)
 	if err != nil {
 		return recommendation, err
 	}
-	newCost, err := GetComputeInstanceCost(*newResAttr)
+	newCost, err := GetComputeInstanceCost(aws_model.ProductInfo[aws_model.ProductAttributesInstance]{
+		Attributes: *newResAttr,
+		// TODO: It may be a good idea to get ProductFamily from the GetRecommendedResource function itself.
+		//ProductFamily: pInfo.ProductFamily,
+	})
 	if currentCost.MinPrice > newCost.MinPrice {
-		return aws_model.Recommendation[aws_model.CurrentInstanceDetails]{
-			CurrentResourceDetails: aws_model.CurrentInstanceDetails{
-				InstanceType: pAttr.InstanceType,
-				CurrentCost:  currentCost,
+		return aws_model.Recommendation[aws_model.InstanceDetails]{
+			CurrentResourceDetails: aws_model.InstanceDetails{
+				InstanceType: pInfo.Attributes.InstanceType,
 			},
-			RecommendationItems: []aws_model.RecommendationItem{
+			CurrentCost: currentCost,
+			RecommendationItems: []aws_model.RecommendationItem[aws_model.InstanceDetails]{
 				{
-					Resource:             newResAttr.InstanceType,
-					NewCost:              newCost,
+					Resource: aws_model.InstanceDetails{
+						InstanceType: newResAttr.InstanceType,
+					},
+					Cost:                 newCost,
 					EstimatedCostSavings: fmt.Sprintf("%.2f", (currentCost.MinPrice-newCost.MinPrice)*100/currentCost.MinPrice) + "%",
 				},
 			},

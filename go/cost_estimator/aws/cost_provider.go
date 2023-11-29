@@ -14,26 +14,26 @@ import (
 	"github.com/aws/aws-sdk-go/service/pricing"
 )
 
-func GetComputeInstanceCost(pAttr aws_model.ProductAttributesInstance) (model.ResourceCost, error) {
-	if pAttr.RegionCode == "" || pAttr.InstanceType == "" || pAttr.OperatingSystem == "" {
+func GetComputeInstanceCost(pInfo aws_model.ProductInfo[aws_model.ProductAttributesInstance]) (model.ResourceCost, error) {
+	if pInfo.Attributes.RegionCode == "" || pInfo.Attributes.InstanceType == "" || pInfo.Attributes.OperatingSystem == "" {
 		return model.ResourceCost{MinPrice: -1}, fmt.Errorf("Unable to get the Cost for ComputeInstance. RegionCode and/or InstanceType values are empty.")
 	}
-	return getCost("AmazonEC2", pAttr)
+	return getCost("AmazonEC2", pInfo)
 }
 
 // =============================================== EBS ================================================================
 
-func GetEbsCost(pAttr aws_model.ProductAttributesEBS) (model.ResourceCost, error) {
-	if pAttr.RegionCode == "" || (pAttr.StorageMedia == "" && pAttr.VolumeApiName == "") {
+func GetEbsCost(pInfo aws_model.ProductInfo[aws_model.ProductAttributesEBS]) (model.ResourceCost, error) {
+	if pInfo.Attributes.RegionCode == "" || (pInfo.Attributes.StorageMedia == "" && pInfo.Attributes.VolumeApiName == "") {
 		return model.ResourceCost{MinPrice: -1}, fmt.Errorf("Unable to get the Cost for EBS. RegionCode and/or StorageMedia/VolumeApiName values are empty.")
 	}
-	return getCost("AmazonEC2", pAttr)
+	return getCost("AmazonEC2", pInfo)
 }
 
 // ==================================== Generic Functions ==================================================
 
-func getCost[T any](serviceCode string, pAttr T) (model.ResourceCost, error) {
-	min, max, err := GetCostFromDB(pAttr)
+func getCost[T any](serviceCode string, pInfo aws_model.ProductInfo[T]) (model.ResourceCost, error) {
+	min, max, err := GetCostFromDB(pInfo)
 	if err == nil {
 		return model.ResourceCost{
 			MinPrice: min.PricePerUnit["USD"],
@@ -43,7 +43,7 @@ func getCost[T any](serviceCode string, pAttr T) (model.ResourceCost, error) {
 		}, nil
 	}
 
-	min, max, err = GetCostFromAws(serviceCode, pAttr)
+	min, max, err = GetCostFromAws(serviceCode, pInfo)
 	if err != nil {
 		return model.ResourceCost{MinPrice: -1}, fmt.Errorf("Unable to get the cost for the Instance. %v", err)
 	}
@@ -60,9 +60,9 @@ func getCost[T any](serviceCode string, pAttr T) (model.ResourceCost, error) {
 	}, nil
 }
 
-func buildFilterInput(productAttributes interface{}) []*pricing.Filter {
+func buildFilterInput[T interface{}](productInfo aws_model.ProductInfo[T]) []*pricing.Filter {
 	var filters []*pricing.Filter
-	reflectValue := reflect.ValueOf(productAttributes)
+	reflectValue := reflect.ValueOf(productInfo.Attributes)
 	for i := 0; i < reflectValue.NumField(); i++ {
 		field := reflectValue.Field(i)
 		fieldName := reflectValue.Type().Field(i).Name
@@ -76,17 +76,25 @@ func buildFilterInput(productAttributes interface{}) []*pricing.Filter {
 			})
 		}
 	}
+	if productInfo.ProductFamily != "" {
+		filters = append(filters, &pricing.Filter{
+			Field: aws.String("productFamily"),
+			Type:  aws.String("TERM_MATCH"),
+			Value: aws.String(productInfo.ProductFamily),
+		})
+	}
+
 	return filters
 }
 
 // Get the Cost From AWS for any resource
-func GetCostFromAws[T any](serviceCode string, productAttributes T) (aws_model.AwsResourceCost[T],
+func GetCostFromAws[T any](serviceCode string, pInfo aws_model.ProductInfo[T]) (aws_model.AwsResourceCost[T],
 	aws_model.AwsResourceCost[T], error) {
-	logger.NewDefaultLogger().Infof("Getting Cost for Compute EBS: %v", productAttributes)
+	logger.NewDefaultLogger().Infof("Getting Cost for Compute EBS: %v", pInfo)
 	/*if err := validateMinimumFilterFieldsEbs(productAttributes); err != nil {
 		return aws_model.AwsResourceCost[T]{}, aws_model.AwsResourceCost[T]{}, err
 	}*/
-	filters := buildFilterInput(productAttributes)
+	filters := buildFilterInput(pInfo)
 
 	var resourceCosts []aws_model.AwsResourceCost[T]
 	err := CollectResourceCost(serviceCode, filters, &resourceCosts)
@@ -136,15 +144,15 @@ func isUsageTypeReservation[T any](productAttributes T) bool {
 	return false
 }
 
-func GetCostFromDB[T any](pAttr T) (aws_model.AwsResourceCost[T],
+func GetCostFromDB[T any](pInfo aws_model.ProductInfo[T]) (aws_model.AwsResourceCost[T],
 	aws_model.AwsResourceCost[T], error) {
-	logger.NewDefaultLogger().Debugf("Query DB for Cost for EBS: %v", pAttr)
+	logger.NewDefaultLogger().Debugf("Query DB for Cost for EBS: %v", pInfo)
 	/*if err := validateMinimumFilterFieldsEbs(pAttr); err != nil {
 		return aws_model.AwsResourceCost[T]{}, aws_model.AwsResourceCost[T]{}, err
 	}*/
 	var queryParts []string
 	queryParts = append(queryParts, "\"cloudProvider\": \"AWS\"")
-	reflectValue := reflect.ValueOf(pAttr)
+	reflectValue := reflect.ValueOf(pInfo.Attributes)
 	for i := 0; i < reflectValue.NumField(); i++ {
 		field := reflectValue.Field(i)
 		//fieldName := reflectValue.Type().Field(i).Name
@@ -154,6 +162,9 @@ func GetCostFromDB[T any](pAttr T) (aws_model.AwsResourceCost[T],
 			queryParts = append(queryParts, "\"productAttributes."+jsonTagName+"\": \""+fieldValue+"\"")
 		}
 	}
+	// TODO: Need to enable it
+	queryParts = append(queryParts, "\"productFamily\": \""+pInfo.ProductFamily+"\"")
+
 	query := "{" + strings.Join(queryParts, ", ") + "}"
 	logger.NewDefaultLogger().Debugf("DB Query: %s", query)
 

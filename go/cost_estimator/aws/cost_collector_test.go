@@ -64,12 +64,14 @@ func TestCostProviderInstance(t *testing.T) {
 		defer dbM.Disconnect()
 	}
 	storage.MakeDBOperators(dbM)
-	product := aws_model.ProductAttributesInstance{
-		InstanceFamily:  "",
-		InstanceType:    "t2.medium",
-		Memory:          "",
-		RegionCode:      "us-east-1",
-		OperatingSystem: "Linux",
+	product := aws_model.ProductInfo[aws_model.ProductAttributesInstance]{
+		Attributes: aws_model.ProductAttributesInstance{
+			InstanceFamily:  "",
+			InstanceType:    "t2.medium",
+			Memory:          "",
+			RegionCode:      "us-east-1",
+			OperatingSystem: "Linux",
+		},
 	}
 
 	cost, err := GetComputeInstanceCost(product)
@@ -105,10 +107,13 @@ func TestCostProviderEbs(t *testing.T) {
 		defer dbM.Disconnect()
 	}
 	storage.MakeDBOperators(dbM)
-	product := aws_model.ProductAttributesEBS{
-		StorageMedia:  "SSD-backed",
-		RegionCode:    "us-east-1",
-		VolumeApiName: "gp2",
+	product := aws_model.ProductInfo[aws_model.ProductAttributesEBS]{
+		Attributes: aws_model.ProductAttributesEBS{
+			StorageMedia:  "SSD-backed",
+			RegionCode:    "us-east-1",
+			VolumeApiName: "gp2",
+		},
+		ProductFamily: "",
 	}
 
 	cost, err := GetEbsCost(product)
