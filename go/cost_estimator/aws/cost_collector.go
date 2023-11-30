@@ -2,8 +2,6 @@ package cost_estimator
 
 import (
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"strconv"
 	"time"
 
@@ -58,15 +56,6 @@ func CollectResourceCost[T any](serviceCode string, filters []*pricing.Filter, r
 		pricingJSON, err := json.Marshal(pricingResult)
 		if err != nil {
 			return err
-		}
-
-		// TODO: delete
-		timestamp := time.Now().Format("20060102150405")
-		filename := fmt.Sprintf("/tmp/pricing_%s.json", timestamp)
-		// Write pricingJSON to the file
-		err = ioutil.WriteFile(filename, pricingJSON, 0644)
-		if err != nil {
-			fmt.Println("Error writing to file:", err)
 		}
 
 		err = json.Unmarshal(pricingJSON, &pricingData)

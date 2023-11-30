@@ -139,9 +139,10 @@ type Recommendation[T InstanceDetails | EBSVolumeDetails] struct {
 }
 
 type RecommendationItem[T InstanceDetails | EBSVolumeDetails] struct {
-	Resource             T                  `json:"resource" bson:"resource"`
-	Cost                 model.ResourceCost `json:"instanceName" bson:"instanceName"`
-	EstimatedCostSavings string             `json:"estimatedCostSavings" bson:"estimatedCostSavings"`
+	Resource                T                  `json:"resource" bson:"resource"`
+	Cost                    model.ResourceCost `json:"instanceName" bson:"instanceName"`
+	EstimatedCostSavings    string             `json:"estimatedCostSavings" bson:"estimatedCostSavings"`
+	EstimatedMonthlySavings string             `json:"estimatedMonthlySavings" bson:"estimatedMonthlySavings"`
 }
 
 type InstanceDetails struct {
