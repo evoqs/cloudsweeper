@@ -15,6 +15,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -38,6 +39,7 @@ import (
 }*/
 
 func ValidateAndRunPipeline(pipelineid string) (int, error) {
+	logwriter := logger.NewDefaultLogger()
 	opr := storage.GetDefaultDBOperators()
 	// TODO: HTTP Errors should be masked
 	// TODO: Check if pipeline is enabled / inprogress
@@ -51,11 +53,13 @@ func ValidateAndRunPipeline(pipelineid string) (int, error) {
 	// Why will the pipeline list be greater than 1?
 	pipeLine := pipeLineList[0]
 	if !pipeLine.Enabled {
+		logwriter.Infof("Cannot run Pipeline in diabled state : %s", pipelineid)
 		return 409, errors.New("Cannot Run Pipeline in disabled state.")
 	}
 	//Validate the policy
 	policyids := pipeLine.Policies
 	if len(policyids) == 0 {
+		logwriter.Infof("Cannot run Pipeline %s, no policies defined", pipelineid)
 		return 409, errors.New("No policy Defined for Pipeline.")
 	}
 	policyId := policyids[0]
@@ -87,196 +91,70 @@ func ValidateAndRunPipeline(pipelineid string) (int, error) {
 
 func runPipeline(pipeLine model.PipeLine) {
 	logwriter := logger.NewDefaultLogger()
-	logwriter.Info("Running the pipeline: " + pipeLine.PipeLineID.String())
+	logwriter.Infof("Running the pipeline: %s", pipeLine.PipeLineID.Hex())
 	//Step 1
 	if pipeLine.RunStatus == model.RUNNING {
-		fmt.Println("Run is already in progress")
-		return
+		logwriter.Infof("Run is already in progress for pipline %s", pipeLine.PipeLineID.Hex())
+		//return
 	}
 	pipeLine.RunStatus = model.RUNNING
 	opr := storage.GetDefaultDBOperators()
 	upcount, err := opr.PipeLineOperator.UpdatePipeLine(pipeLine)
 	if upcount != 1 {
-		fmt.Println("Failed to update pipline run status,", err)
+		logwriter.Errorf("Failed to update pipline run status for pipeline %s, %s", pipeLine.PipeLineID.Hex(), err.Error())
 		return
 	}
 
 	//TODO Implement Parallel processing of polices
 	policyids := pipeLine.Policies
 	isPolicyRunFailed := false
+	var wg sync.WaitGroup
+
+	pipeLine.LastRunTime = time.Now().Unix()
+
+	cmap := make(map[string]chan bool)
+
 	for _, policyid := range policyids {
 
 		policyList, err := opr.PolicyOperator.GetPolicyDetails(policyid)
+		logwriter.Infof("Running pipeline %s policy, %s", pipeLine.PipeLineID.Hex(), policyList[0].PolicyID.Hex())
 		if err != nil {
-			fmt.Println("Failed to get policy")
-			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Internal DB Error", nil, false)
+			logwriter.Errorf("Failed to get policy, get DB operation failed, %s", err.Error())
+			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Internal DB Error", time.Now().Unix(), nil, false)
 			isPolicyRunFailed = true
 			continue
 		}
 
 		if len(policyList) == 0 {
-			fmt.Println("Policy not found")
-			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Policy Definition missing", nil, false)
+			logwriter.Errorf("Policy not found for pipline %s pilocyid %s", pipeLine.PipeLineID.Hex(), policyList[0].PolicyID.Hex())
+			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Policy Definition missing", time.Now().Unix(), nil, false)
 			isPolicyRunFailed = true
 			continue
 		}
 
-		policy := policyList[0]
-		policyJson := policy.PolicyDefinition
+		wg.Add(1)
+		retunChan := make(chan bool, 1)
+		cmap[policyList[0].PolicyID.Hex()] = retunChan
+		go runPolicy(&wg, policyList[0], pipeLine, retunChan)
+		logwriter.Infof("Starting pipeline %s policy run %s", pipeLine.PipeLineID.Hex(), policyList[0].PolicyID.Hex())
 
-		/*Steps involved in running
-		1. Validating a run is not already in progress and is Enabled
-		2. create a run folder for policy in /tmp
-		3. fecthing the policy json and converting into yaml
-		4. Fectch the cloud credentails for the policy run
-		5. trigger the run and update the pipleline status as running
-		6. Send Accepted response 200
-		7. Update the results
-		8. Mark as Completed
-		9. Delete the folder
-		*/
+	}
+	wg.Wait()
+	logwriter.Infof("Waiting for all policies execution to end for pipeline %s", pipeLine.PipeLineID.Hex())
 
-		//Step 2 create runfolder
-		RunFolder := fmt.Sprintf("/tmp/%s.%s", policyid, strconv.Itoa(rand.Intn(100000)))
-		os.Mkdir(RunFolder, os.ModePerm)
-		defer os.RemoveAll(RunFolder)
+	for elem := range cmap {
 
-		//Step 3
-		policyFile := fmt.Sprintf("%s/%s", RunFolder, "policy.yml")
-		err = policy_converter.ConvertJsonToYamlAndWriteToFile(policyJson, policyFile)
-		if err != nil {
-			fmt.Println("Failed to convert json policy to yaml, for policy id ", policy.PolicyID)
-			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Invalid policy definition", nil, false)
+		runResult := <-cmap[elem]
+		close(cmap[elem])
+		logwriter.Infof("Completed pipeline %s policy run %s with result %t", pipeLine.PipeLineID.Hex(), elem, !runResult)
+
+		if runResult {
 			isPolicyRunFailed = true
-			continue
-		}
-
-		//Get creds
-		cloudAccList, err := opr.AccountOperator.GetCloudAccount(pipeLine.CloudAccountID)
-		if err != nil || len(cloudAccList) < 1 {
-			fmt.Println("Failed to get cloundaccount details for policy id ", policy.PolicyID, pipeLine.CloudAccountID)
-			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Missing Cloud Account definition for policy", nil, false)
-			isPolicyRunFailed = true
-			continue
-		}
-
-		cloudAcc := cloudAccList[0]
-		//validating cloud authentication
-
-		if cloudAcc.AccountType == model.AWS {
-			if !utils.ValidateAwsCredentials(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey) {
-				updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Authentication Failed", nil, false)
-				isPolicyRunFailed = true
-				continue
-			}
-
-			isSingleRegionExecution := true
-			if len(pipeLine.ExecutionRegions) > 1 {
-				isSingleRegionExecution = false
-			} else if pipeLine.ExecutionRegions[0] == "all" {
-				isSingleRegionExecution = false
-			}
-
-			if isSingleRegionExecution {
-				logger.NewDefaultLogger().Logger.Info("Execution for single region")
-			}
-
-			//
-			regionFlag := utils.ConstructRegionList(&pipeLine.ExecutionRegions)
-			var envvars []string
-			//envvars = append(envvars, fmt.Sprintf("AWS_DEFAULT_REGION=%s", strings.Join(policy.ExecutionRegions, ",")))
-			envvars = append(envvars, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", cloudAcc.AwsCredentials.AccessKeyID))
-			envvars = append(envvars, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", cloudAcc.AwsCredentials.SecretAccessKey))
-
-			pipeLine.LastRunTime = time.Now().Unix()
-			activatePath := config.GetConfig().Custodian.C7nAwsInstall
-			c := make(chan string, 1)
-			go utils.RunCustodianPolicy(envvars, RunFolder, policyFile, activatePath, regionFlag, c)
-			runres, ok := <-c
-			close(c)
-			if !ok {
-				fmt.Println("Failed to read from channel")
-				updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Internal Error", nil, false)
-				isPolicyRunFailed = true
-				continue
-			}
-
-			if strings.Contains(strings.ToUpper(runres), "ERROR") {
-				fmt.Println("policy run failed with result", runres)
-				updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Internal Error", nil, false)
-				isPolicyRunFailed = true
-			} else {
-				logger.NewDefaultLogger().Infof("policy run successful with result %s", runres)
-				folderList := utils.GetFolderList(RunFolder)
-				var resultList = make([]model.RegionResult, 0)
-				resourceName := utils.GetResourceName(policyFile)
-
-				for _, element := range folderList {
-					var regionName, resourceFile, policyName string
-					if isSingleRegionExecution {
-						regionName = pipeLine.ExecutionRegions[0]
-						resourceFile = fmt.Sprintf("%s/%s/%s", RunFolder, element, "resources.json")
-						policyName = element
-						fmt.Println("Single Region", element)
-					} else {
-						regionName = element
-						policyFolder := utils.GetFolderList(fmt.Sprintf("%s/%s", RunFolder, element))
-						if len(policyFolder) != 1 {
-							logger.NewDefaultLogger().Errorf("Invalid number of folders in c7n multi region execution folder. %v", policyFolder)
-							isPolicyRunFailed = true
-							continue
-						}
-						policyName = policyFolder[0]
-						resourceFile = fmt.Sprintf("%s/%s/%s/%s", RunFolder, element, policyName, "resources.json")
-					}
-
-					logger.NewDefaultLogger().Infof("Reading resource file %s for region %s", resourceFile, regionName)
-
-					regionResult := new(model.RegionResult)
-
-					//get policy name and resource
-					resourceList, err := utils.ReadFile(resourceFile)
-					replacer := strings.NewReplacer("\r", "", "\n", "")
-					resourceList = replacer.Replace(string(resourceList))
-
-					var out []byte
-					out = []byte("")
-
-					if err != nil {
-						logwriter.Errorf("Failed to read policy result from result %s, Error %s", resourceFile, err.Error())
-						isPolicyRunFailed = true
-						continue
-					} else {
-						logwriter.Infof("Successfully completed the policy run, %s", policyName)
-					}
-
-					//Converting into shorter json
-					if resourceName == "ec2" {
-						var rList []aws_model.AwsInstanceResult
-						json.Unmarshal([]byte(resourceList), &rList)
-						out, _ = json.Marshal(rList)
-					} else if resourceName == "ebs" {
-						var rList []aws_model.AwsBlockVolumeResult
-						json.Unmarshal([]byte(resourceList), &rList)
-						out, _ = json.Marshal(rList)
-					} else {
-						fmt.Println("Unknown resource type ", resourceName)
-					}
-
-					regionResult.Result = string(out)
-					regionResult.Region = regionName
-					resultList = append(resultList, *regionResult)
-
-				}
-				updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, resourceName, "SUCCESS", resultList, true)
-
-			}
-
-			//9. Delete the run result folder
-
 		}
 
 	}
+
+	//
 
 	if isPolicyRunFailed {
 		pipeLine.RunStatus = model.FAILED
@@ -296,7 +174,170 @@ func runPipeline(pipeLine model.PipeLine) {
 	// TODO: How do you inform back to the UI the reason for failure. pipeline model should be updated to have the reason for last failure and number of previous failures
 }
 
-func updatePolicyRunResult(pipeLineID string, policyID string, resourceName string, runStatus string, regionWiseResult []model.RegionResult, isSuccess bool) {
+func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine, rchan chan bool) {
+	defer wg.Done()
+
+	logwriter := logger.NewDefaultLogger()
+	policyJson := policy.PolicyDefinition
+	policyid := policy.PolicyID.Hex()
+	opr := storage.GetDefaultDBOperators()
+	isPolicyRunFailed := false
+
+	/*Steps involved in running
+	1. Validating a run is not already in progress and is Enabled
+	2. create a run folder for policy in /tmp
+	3. fecthing the policy json and converting into yaml
+	4. Fectch the cloud credentails for the policy run
+	5. trigger the run and update the pipleline status as running
+	6. Send Accepted response 200
+	7. Update the results
+	8. Mark as Completed
+	9. Delete the folder
+	*/
+
+	//Step 2 create runfolder
+	RunFolder := fmt.Sprintf("/tmp/%s.%s", policyid, strconv.Itoa(rand.Intn(100000)))
+	os.Mkdir(RunFolder, os.ModePerm)
+	defer os.RemoveAll(RunFolder)
+
+	//Step 3
+	policyFile := fmt.Sprintf("%s/%s", RunFolder, "policy.yml")
+	err := policy_converter.ConvertJsonToYamlAndWriteToFile(policyJson, policyFile)
+	if err != nil {
+		logwriter.Errorf("Failed to convert json policy to yaml, for policy id %s, %s", policy.PolicyID, err.Error())
+		updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Invalid policy definition", time.Now().Unix(), nil, false)
+		rchan <- isPolicyRunFailed
+		return
+	}
+
+	//Get creds
+	cloudAccList, err := opr.AccountOperator.GetCloudAccount(pipeLine.CloudAccountID)
+	if err != nil || len(cloudAccList) < 1 {
+		logwriter.Errorf("Failed to get cloundaccount details for policy id %s %s , %s", policy.PolicyID, pipeLine.CloudAccountID, err.Error())
+		updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Missing Cloud Account definition for policy", time.Now().Unix(), nil, false)
+		isPolicyRunFailed = true
+	}
+
+	cloudAcc := cloudAccList[0]
+	//validating cloud authentication
+
+	if cloudAcc.AccountType == model.AWS {
+		if !utils.ValidateAwsCredentials(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey) {
+			logwriter.Errorf("AWS Authentication failed for cloud account %s, %s", cloudAcc.CloudAccountID.Hex(), err.Error())
+			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "AWS Authentication Failed, invalid accesskey/secret", time.Now().Unix(), nil, false)
+			rchan <- isPolicyRunFailed
+			return
+
+		}
+
+		isSingleRegionExecution := true
+		if len(pipeLine.ExecutionRegions) > 1 {
+			isSingleRegionExecution = false
+		} else if pipeLine.ExecutionRegions[0] == "all" {
+			isSingleRegionExecution = false
+		}
+
+		if isSingleRegionExecution {
+			logger.NewDefaultLogger().Logger.Info("Execution for single region")
+		}
+
+		//
+		regionFlag := utils.ConstructRegionList(&pipeLine.ExecutionRegions)
+		var envvars []string
+		//envvars = append(envvars, fmt.Sprintf("AWS_DEFAULT_REGION=%s", strings.Join(policy.ExecutionRegions, ",")))
+		envvars = append(envvars, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", cloudAcc.AwsCredentials.AccessKeyID))
+		envvars = append(envvars, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", cloudAcc.AwsCredentials.SecretAccessKey))
+
+		policyRunTime := time.Now().Unix()
+		activatePath := config.GetConfig().Custodian.C7nAwsInstall
+		c := make(chan string, 1)
+		go utils.RunCustodianPolicy(envvars, RunFolder, policyFile, activatePath, regionFlag, c)
+		runres, ok := <-c
+		close(c)
+		if !ok {
+			logwriter.Errorf("Failed to read from channel for policy execution %s", policyid)
+			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Internal Error", policyRunTime, nil, false)
+			rchan <- isPolicyRunFailed
+			return
+
+		}
+
+		if strings.Contains(strings.ToUpper(runres), "ERROR") {
+			fmt.Println("policy run failed with result", runres)
+			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Internal Error", policyRunTime, nil, false)
+			isPolicyRunFailed = true
+		} else {
+			logger.NewDefaultLogger().Infof("policy run successful with result %s", runres)
+			folderList := utils.GetFolderList(RunFolder)
+			var resultList = make([]model.RegionResult, 0)
+			resourceName := utils.GetResourceName(policyFile)
+
+			for _, element := range folderList {
+				var regionName, resourceFile, policyName string
+				if isSingleRegionExecution {
+					regionName = pipeLine.ExecutionRegions[0]
+					resourceFile = fmt.Sprintf("%s/%s/%s", RunFolder, element, "resources.json")
+					policyName = element
+					fmt.Println("Single Region", element)
+				} else {
+					regionName = element
+					policyFolder := utils.GetFolderList(fmt.Sprintf("%s/%s", RunFolder, element))
+					if len(policyFolder) != 1 {
+						logger.NewDefaultLogger().Errorf("Invalid number of folders in c7n multi region execution folder. %v", policyFolder)
+						isPolicyRunFailed = true
+						continue
+					}
+					policyName = policyFolder[0]
+					resourceFile = fmt.Sprintf("%s/%s/%s/%s", RunFolder, element, policyName, "resources.json")
+				}
+
+				logger.NewDefaultLogger().Infof("Reading resource file %s for region %s", resourceFile, regionName)
+
+				regionResult := new(model.RegionResult)
+
+				//get policy name and resource
+				resourceList, err := utils.ReadFile(resourceFile)
+				replacer := strings.NewReplacer("\r", "", "\n", "")
+				resourceList = replacer.Replace(string(resourceList))
+
+				var out []byte
+				out = []byte("")
+
+				if err != nil {
+					logwriter.Errorf("Failed to read policy result from result %s, Error %s", resourceFile, err.Error())
+					isPolicyRunFailed = true
+					continue
+				} else {
+					logwriter.Infof("Successfully completed the policy run, %s", policyName)
+				}
+
+				//Converting into shorter json
+				if resourceName == "ec2" {
+					var rList []aws_model.AwsInstanceResult
+					json.Unmarshal([]byte(resourceList), &rList)
+					out, _ = json.Marshal(rList)
+				} else if resourceName == "ebs" {
+					var rList []aws_model.AwsBlockVolumeResult
+					json.Unmarshal([]byte(resourceList), &rList)
+					out, _ = json.Marshal(rList)
+				} else {
+					fmt.Println("Unknown resource type ", resourceName)
+				}
+
+				regionResult.Result = string(out)
+				regionResult.Region = regionName
+				resultList = append(resultList, *regionResult)
+
+			}
+			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, resourceName, "SUCCESS", policyRunTime, resultList, true)
+		}
+		rchan <- isPolicyRunFailed
+		return
+	}
+	rchan <- false
+}
+
+func updatePolicyRunResult(pipeLineID string, policyID string, resourceName string, runStatus string, runtime int64, regionWiseResult []model.RegionResult, isSuccess bool) {
 	opr := storage.GetDefaultDBOperators()
 	query := fmt.Sprintf(`{"policyid": "%s","pipelineid": "%s"}`, policyID, pipeLineID)
 	results, _ := opr.PolicyOperator.GetPolicyResultDetails(query)
@@ -307,6 +348,7 @@ func updatePolicyRunResult(pipeLineID string, policyID string, resourceName stri
 		policyRunresult.Resource = resourceName
 		policyRunresult.LastRunStatus = runStatus
 		policyRunresult.Resultlist = regionWiseResult
+		policyRunresult.LastRunTime = runtime
 		opr.PolicyOperator.AddPolicyResult(policyRunresult)
 
 	} else {
@@ -315,6 +357,7 @@ func updatePolicyRunResult(pipeLineID string, policyID string, resourceName stri
 			result.Resultlist = regionWiseResult
 		}
 		result.LastRunStatus = runStatus
+		result.LastRunTime = runtime
 		result.Resource = resourceName
 		result.PolicyID = policyID
 		result.PipelIneID = pipeLineID
