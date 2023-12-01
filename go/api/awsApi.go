@@ -11,7 +11,12 @@ func (srv *Server) GetAllRegions(writer http.ResponseWriter, request *http.Reque
 	defer request.Body.Close()
 	writer.Header().Set("Content-Type", "application/json")
 
-	regions, err := awsutil.GetAllRegions()
+	csAdminAwsClient, err := awsutil.GetCSAdminAwsClient()
+	if err != nil {
+		srv.SendResponse500(writer, err)
+		return
+	}
+	regions, err := csAdminAwsClient.GetAllRegions()
 
 	if err != nil {
 		srv.SendResponse500(writer, err)

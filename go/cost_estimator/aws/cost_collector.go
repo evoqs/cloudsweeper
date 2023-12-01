@@ -35,12 +35,11 @@ func buildFilterInput(filters []Filter) []*pricing.Filter {
 // Note: This function calculates the cost for currency USD. filter can not be used to filter out different currencies.
 // TODO: Update model and support multiple currencies - future. Enhancement support is provided
 func CollectResourceCost[T any](serviceCode string, filters []*pricing.Filter, resultContainer *[]aws_model.AwsResourceCost[T]) error {
-	sess, err := awsutil.GetAwsSession()
+	csAdminAwsClient, err := awsutil.GetCSAdminAwsClient()
 	if err != nil {
 		logger.NewDefaultLogger().Errorf("Error while creating AWS Session %v. Skipping Instance Cost Collection.", err)
 		return err
 	}
-	pricingClient := pricing.New(sess)
 	pricingInput := &pricing.GetProductsInput{
 		ServiceCode: aws.String(serviceCode),
 		Filters:     filters,
@@ -49,7 +48,7 @@ func CollectResourceCost[T any](serviceCode string, filters []*pricing.Filter, r
 
 	for {
 		var pricingData aws_model.PricingData[T]
-		pricingResult, err := pricingClient.GetProducts(pricingInput)
+		pricingResult, err := csAdminAwsClient.GetPriceClient().GetProducts(pricingInput)
 		if err != nil {
 			return err
 		}
