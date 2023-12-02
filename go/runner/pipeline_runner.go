@@ -320,6 +320,32 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 					var rList []aws_model.AwsBlockVolumeResult
 					json.Unmarshal([]byte(resourceList), &rList)
 					out, _ = json.Marshal(rList)
+				} else if resourceName == "elastic-ip" {
+					var rList []aws_model.AwsElasticIPResult
+					json.Unmarshal([]byte(resourceList), &rList)
+					if policy.PolicyType == "Default" {
+						for _, item := range rList {
+							item.MetaData.Recommendation = "Delete the eip, No associated resources found."
+							item.MetaData.Cost.MaxPrice = 0.1
+							item.MetaData.Cost.MinPrice = 0.1
+							item.MetaData.Cost.Unit = "USD"
+						}
+					}
+					out, _ = json.Marshal(rList)
+				} else if resourceName == "ebs-snapshot" {
+					var rList []aws_model.AwsSnapshotResult
+					json.Unmarshal([]byte(resourceList), &rList)
+					if policy.PolicyType == "Default" {
+						for elem, _ := range rList {
+							rList[elem].MetaData.Recommendation = "Consider deleting the snapshot"
+							rList[elem].MetaData.Cost.MaxPrice = 0.5
+							rList[elem].MetaData.Cost.MinPrice = 0.3
+							rList[elem].MetaData.Cost.Unit = "USD"
+							fmt.Println("Adding recommendations")
+						}
+					}
+					out, _ = json.Marshal(rList)
+
 				} else {
 					fmt.Println("Unknown resource type ", resourceName)
 				}
