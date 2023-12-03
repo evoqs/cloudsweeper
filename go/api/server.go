@@ -42,6 +42,8 @@ func (srv *Server) StartApiServer(socket string, dbO storage.DbOperators) {
 
 	//policyResults
 	router.HandleFunc("/policyresults", srv.GetPolicyRunResult).Methods("GET")
+	//pipelineResults
+	router.HandleFunc("/pipelineresults", srv.GetPipelineRunResult).Methods("GET")
 
 	//Default Policy related operations
 	router.HandleFunc("/defaultpolicy", srv.GetDefaultCustodianPolicies).Methods("GET")

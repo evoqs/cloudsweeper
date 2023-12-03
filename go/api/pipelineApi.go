@@ -74,20 +74,22 @@ func (srv *Server) AddPipeLine(writer http.ResponseWriter, request *http.Request
 func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
-	var pipeline model.PipeLine
-	err := json.NewDecoder(request.Body).Decode(&pipeline)
+	var requestPipeline model.PipeLine
+	err := json.NewDecoder(request.Body).Decode(&requestPipeline)
 
 	if err != nil {
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid json payload for POST request, %s", err.Error())))
 		return
 	}
 
-	if len(pipeline.ExecutionRegions) == 0 {
+	if len(requestPipeline.ExecutionRegions) == 0 {
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid request, Atleast once execution region is needed to create pipline.")))
 		return
 	}
 
-	pipelines, err := srv.opr.PipeLineOperator.GetPipeLineDetails(string(pipeline.PipeLineID.Hex()))
+	//Add schedule check if needed
+
+	pipelines, err := srv.opr.PipeLineOperator.GetPipeLineDetails(string(requestPipeline.PipeLineID.Hex()))
 	if err != nil {
 		srv.SendResponse500(writer, err)
 		return
@@ -97,29 +99,37 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 		srv.SendResponse404(writer, nil)
 		return
 	}
+
 	original := pipelines[0]
+	if requestPipeline.AccountID != original.AccountID {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Pipeline Account ID not matching with pipeline ID")))
+		return
+	}
+
 	if original.Default {
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Cannot update default pipeline")))
 		return
 	}
 
-	if pipeline.RunStatus == model.RUNNING {
+	fmt.Printf("Run status %d %d %s", requestPipeline.RunStatus, model.RUNNING, original.PipeLineID)
+	if original.RunStatus == model.RUNNING {
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Cannot update pipeline while it is running")))
 		return
 	}
 
-	pipeline.RunStatus = original.RunStatus
-	pipeline.LastRunTime = original.LastRunTime
+	requestPipeline.RunStatus = original.RunStatus
+	requestPipeline.LastRunTime = original.LastRunTime
+	requestPipeline.Default = original.Default
 
-	count, err := srv.opr.PipeLineOperator.UpdatePipeLine(pipeline)
+	count, err := srv.opr.PipeLineOperator.UpdatePipeLine(requestPipeline)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)
 		return
 	}
 
-	scheduler.GetDefaultPipelineScheduler().UpdatePipelineSchedule(pipeline)
-	srv.SendResponse200(writer, fmt.Sprintf("Updated %d Policy with ID %s", count, pipeline.PipeLineID))
+	scheduler.GetDefaultPipelineScheduler().UpdatePipelineSchedule(requestPipeline)
+	srv.SendResponse200(writer, fmt.Sprintf("Updated %d Policy with ID %s", count, requestPipeline.PipeLineID))
 }
 
 func (srv *Server) GetPipeLine(writer http.ResponseWriter, request *http.Request) {
@@ -250,4 +260,35 @@ func (srv *Server) DeletePipeLine(writer http.ResponseWriter, request *http.Requ
 		scheduler.GetDefaultPipelineScheduler().DeletePipelineSchedule(pipelineid)
 		srv.SendResponse200(writer, fmt.Sprintf("Successfully deleted pipeline, %s", pipelineid))
 	}
+}
+
+func (srv *Server) GetPipelineRunResult(writer http.ResponseWriter, request *http.Request) {
+	defer request.Body.Close()
+	writer.Header().Set("Content-Type", "application/json")
+	pipelineId := request.URL.Query().Get("pipelineid")
+
+	if !primitive.IsValidObjectID(pipelineId) {
+		srv.logwriter.Warnf(fmt.Sprintf("Invalid Pipeline ID: %s, received in get result query", pipelineId))
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Cloud AccountID: %s", pipelineId)))
+		return
+	}
+	query := fmt.Sprintf(`{"pipelineid":"%s"}`, pipelineId)
+	pipelineResults, err := srv.opr.PipeLineOperator.GetPipelineResultDetails(query)
+
+	if err != nil {
+		srv.SendResponse500(writer, err)
+		return
+	}
+
+	//TODO when length >1
+
+	if len(pipelineResults) == 0 {
+
+		srv.SendResponse404(writer, nil)
+		return
+	}
+
+	writer.WriteHeader(http.StatusOK)
+	//policieResult := pipelineResults[0]
+	json.NewEncoder(writer).Encode(pipelineResults)
 }

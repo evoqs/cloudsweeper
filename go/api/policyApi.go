@@ -140,8 +140,8 @@ func (srv *Server) GetPolicyRunResult(writer http.ResponseWriter, request *http.
 	}
 
 	if !primitive.IsValidObjectID(pipelineId) {
-		srv.logwriter.Warnf(fmt.Sprintf("Invalid Cloud AccountID: %s, received in get result query", policyid))
-		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Cloud AccountID: %s", pipelineId)))
+		srv.logwriter.Warnf(fmt.Sprintf("Invalid Pipeline ObjectID: %s, received in get result query", pipelineId))
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Pipeline ObjectID: %s", pipelineId)))
 		return
 	}
 	query := fmt.Sprintf(`{"policyid": "%s", "pipelineid":"%s"}`, policyid, pipelineId)

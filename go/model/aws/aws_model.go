@@ -126,6 +126,25 @@ type AwsBlockVolumeResult struct {
 	MetaData         model.ResultMetaData       `json:"resultMetaData" bson:"resultMetaData"`
 }
 
+type AwsElasticIPResult struct {
+	PublicIp           string               `json:"publicIp" bson:"publicIp"`
+	PublicIpv4Pool     string               `json:"publicIpv4pool" bson:"publicIpv4pool"`
+	Domain             string               `json:"domain" bson:"domain"`
+	NetworkBorderGroup string               `json:"networkBorderGroup" bson:"networkBorderGroup"`
+	MetaData           model.ResultMetaData `json:"resultMetaData" bson:"resultMetaData"`
+}
+
+type AwsSnapshotResult struct {
+	Description string               `json:"description" bson:"description"`
+	Encrypted   string               `json:"encrypted" bson:"encrypted"`
+	SnapshotId  string               `json:"snapshotId" bson:"snapshotId"`
+	State       string               `json:"state" bson:"state"`
+	VolumeId    string               `json:"volumeId" bson:"volumeId"`
+	VolumeSize  int                  `json:"volumeSize" bson:"volumeSize"`
+	StorageTier string               `json:"storageTier" bson:"storageTier"`
+	MetaData    model.ResultMetaData `json:"resultMetaData" bson:"resultMetaData"`
+}
+
 type AwsBlockVolumeAttachment struct {
 	InstanceId string `json:"instanceId" bson:"instanceId"`
 	State      string `json:"state" bson:"state"`
