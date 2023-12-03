@@ -261,3 +261,34 @@ func (srv *Server) DeletePipeLine(writer http.ResponseWriter, request *http.Requ
 		srv.SendResponse200(writer, fmt.Sprintf("Successfully deleted pipeline, %s", pipelineid))
 	}
 }
+
+func (srv *Server) GetPipelineRunResult(writer http.ResponseWriter, request *http.Request) {
+	defer request.Body.Close()
+	writer.Header().Set("Content-Type", "application/json")
+	pipelineId := request.URL.Query().Get("pipelineid")
+
+	if !primitive.IsValidObjectID(pipelineId) {
+		srv.logwriter.Warnf(fmt.Sprintf("Invalid Pipeline ID: %s, received in get result query", pipelineId))
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Cloud AccountID: %s", pipelineId)))
+		return
+	}
+	query := fmt.Sprintf(`{"pipelineid":"%s"}`, pipelineId)
+	pipelineResults, err := srv.opr.PipeLineOperator.GetPipelineResultDetails(query)
+
+	if err != nil {
+		srv.SendResponse500(writer, err)
+		return
+	}
+
+	//TODO when length >1
+
+	if len(pipelineResults) == 0 {
+
+		srv.SendResponse404(writer, nil)
+		return
+	}
+
+	writer.WriteHeader(http.StatusOK)
+	//policieResult := pipelineResults[0]
+	json.NewEncoder(writer).Encode(pipelineResults)
+}
