@@ -89,68 +89,6 @@ type ProductAttributesEBS struct {
 	VolumeApiName           string `json:"volumeApiName" bson:"volumeApiName"`
 }
 
-type AwsInstanceResult struct {
-	InstanceId      string `json:"instanceId" bson:"instanceId"`
-	InstanceType    string `json:"instanceType" bson:"instanceType"`
-	Region          string `json:"region" bson:"region"`
-	PlatformDetails string `json:"platformDetails" bson:"platformDetails"`
-
-	Placement struct {
-		AvailabilityZone string `json:"availabilityZone" bson:"availabilityZone"`
-		GroupName        string `json:"groupName" bson:"groupName"`
-		Tenancy          string `json:"tenancy" bson:"tenancy"`
-	} `json:"placement" bson:"placement"`
-
-	State struct {
-		Code string `json:"code" bson:"code"`
-		Name string `json:"name" bson:"name"`
-	} `json:"state" bson:"state"`
-
-	Tags []struct {
-		Key   string `json:"key" bson:"key"`
-		Value string `json:"value" bson:"value"`
-	} `json:"tags" bson:"tags"`
-
-	MetaData model.ResultMetaData `json:"resultMetaData" bson:"resultMetaData"`
-}
-
-type AwsBlockVolumeResult struct {
-	VolumeId         string                     `json:"volumeId" bson:"volumeId"`
-	VolumeType       string                     `json:"volumeType" bson:"volumeType"`
-	Encrypted        string                     `json:"encrypted" bson:"encrypted"`
-	SnapshotId       string                     `json:"snapshotId" bson:"snapshotId"`
-	Region           string                     `json:"region" bson:"region"`
-	State            string                     `json:"state" bson:"state"`
-	AvailabilityZone string                     `json:"availabilityZone" bson:"availabilityZone"`
-	Attachments      []AwsBlockVolumeAttachment `json:"attachments" bson:"attachments"`
-	MetaData         model.ResultMetaData       `json:"resultMetaData" bson:"resultMetaData"`
-}
-
-type AwsElasticIPResult struct {
-	PublicIp           string               `json:"publicIp" bson:"publicIp"`
-	PublicIpv4Pool     string               `json:"publicIpv4pool" bson:"publicIpv4pool"`
-	Domain             string               `json:"domain" bson:"domain"`
-	NetworkBorderGroup string               `json:"networkBorderGroup" bson:"networkBorderGroup"`
-	MetaData           model.ResultMetaData `json:"resultMetaData" bson:"resultMetaData"`
-}
-
-type AwsSnapshotResult struct {
-	Description string               `json:"description" bson:"description"`
-	Encrypted   string               `json:"encrypted" bson:"encrypted"`
-	SnapshotId  string               `json:"snapshotId" bson:"snapshotId"`
-	State       string               `json:"state" bson:"state"`
-	VolumeId    string               `json:"volumeId" bson:"volumeId"`
-	VolumeSize  int                  `json:"volumeSize" bson:"volumeSize"`
-	StorageTier string               `json:"storageTier" bson:"storageTier"`
-	MetaData    model.ResultMetaData `json:"resultMetaData" bson:"resultMetaData"`
-}
-
-type AwsBlockVolumeAttachment struct {
-	InstanceId string `json:"instanceId" bson:"instanceId"`
-	State      string `json:"state" bson:"state"`
-	Device     string `json:"device" bson:"device"`
-}
-
 type Recommendation[T InstanceDetails | EBSVolumeDetails] struct {
 	CurrentResourceDetails T                       `json:"currentResourceDetails" bson:"currentResourceDetails"`
 	CurrentCost            model.ResourceCost      `json:"cost" bson:"cost"`
@@ -184,4 +122,99 @@ type EBSVolumeDetails struct {
 	Region                   string `json:"region" bson:"region"`
 	VolumeArn                string `json:"instanceArn" bson:"instanceArn"`
 	//Cost                     model.ResourceCost `json:"cost" bson:"cost"`
+}
+
+// Policy Result Models
+type AwsInstanceResult struct {
+	ResultData AwsInstanceResultData `json:"resultData" bson:"resultData"`
+	MetaData   model.ResultMetaData  `json:"resultMetaData" bson:"resultMetaData"`
+}
+type AwsInstanceResultData struct {
+	InstanceId       string `json:"instanceId" bson:"instanceId"`
+	InstanceType     string `json:"instanceType" bson:"instanceType"`
+	Region           string `json:"region" bson:"region"`
+	PlatformDetails  string `json:"platformDetails" bson:"platformDetails"`
+	AvailabilityZone string `json:"availabilityZone" bson:"availabilityZone"`
+	GroupName        string `json:"groupName" bson:"groupName"`
+	Tenancy          string `json:"tenancy" bson:"tenancy"`
+	Code             string `json:"stateCode" bson:"stateCode"`
+	StateName        string `json:"stateName" bson:"stateName"`
+}
+type AwsInstancePolicyResultData struct {
+	InstanceId      string `json:"instanceId" bson:"instanceId"`
+	InstanceType    string `json:"instanceType" bson:"instanceType"`
+	Region          string `json:"region" bson:"region"`
+	PlatformDetails string `json:"platformDetails" bson:"platformDetails"`
+
+	Placement struct {
+		AvailabilityZone string `json:"availabilityZone" bson:"availabilityZone"`
+		GroupName        string `json:"groupName" bson:"groupName"`
+		Tenancy          string `json:"tenancy" bson:"tenancy"`
+	} `json:"placement" bson:"placement"`
+
+	State struct {
+		Code string `json:"code" bson:"code"`
+		Name string `json:"name" bson:"name"`
+	} `json:"state" bson:"state"`
+
+	Tags []struct {
+		Key   string `json:"key" bson:"key"`
+		Value string `json:"value" bson:"value"`
+	} `json:"tags" bson:"tags"`
+}
+
+type AwsBlockVolumeResult struct {
+	ResultData AwsBlockVolumeResultData `json:"resultData" bson:"resultData"`
+	MetaData   model.ResultMetaData     `json:"resultMetaData" bson:"resultMetaData"`
+}
+type AwsBlockVolumeResultData struct {
+	VolumeId         string `json:"volumeId" bson:"volumeId"`
+	VolumeType       string `json:"volumeType" bson:"volumeType"`
+	Encrypted        string `json:"encrypted" bson:"encrypted"`
+	SnapshotId       string `json:"snapshotId" bson:"snapshotId"`
+	Region           string `json:"region" bson:"region"`
+	State            string `json:"state" bson:"state"`
+	AvailabilityZone string `json:"availabilityZone" bson:"availabilityZone"`
+	Attachments      bool   `json:"attachments" bson:"attachments"`
+}
+type AwsBlockVolumePolicyResultData struct {
+	VolumeId         string                     `json:"volumeId" bson:"volumeId"`
+	VolumeType       string                     `json:"volumeType" bson:"volumeType"`
+	Encrypted        string                     `json:"encrypted" bson:"encrypted"`
+	SnapshotId       string                     `json:"snapshotId" bson:"snapshotId"`
+	Region           string                     `json:"region" bson:"region"`
+	State            string                     `json:"state" bson:"state"`
+	AvailabilityZone string                     `json:"availabilityZone" bson:"availabilityZone"`
+	Attachments      []AwsBlockVolumeAttachment `json:"attachments" bson:"attachments"`
+}
+
+type AwsBlockVolumeAttachment struct {
+	InstanceId string `json:"instanceId" bson:"instanceId"`
+	State      string `json:"state" bson:"state"`
+	Device     string `json:"device" bson:"device"`
+}
+
+type AwsElasticIPResult struct {
+	ResultData AwsElasticIPResultData `json:"resultData" bson:"resultData"`
+	MetaData   model.ResultMetaData   `json:"resultMetaData" bson:"resultMetaData"`
+}
+type AwsElasticIPResultData struct {
+	PublicIp           string `json:"publicIp" bson:"publicIp"`
+	PublicIpv4Pool     string `json:"publicIpv4pool" bson:"publicIpv4pool"`
+	Domain             string `json:"domain" bson:"domain"`
+	NetworkBorderGroup string `json:"networkBorderGroup" bson:"networkBorderGroup"`
+}
+
+type AwsSnapshotResult struct {
+	ResultData AwsSnapshotResultData `json:"resultData" bson:"resultData"`
+	MetaData   model.ResultMetaData  `json:"resultMetaData" bson:"resultMetaData"`
+}
+type AwsSnapshotResultData struct {
+	Description string `json:"description" bson:"description"`
+	Encrypted   string `json:"encrypted" bson:"encrypted"`
+	SnapshotId  string `json:"snapshotId" bson:"snapshotId"`
+	State       string `json:"state" bson:"state"`
+	VolumeId    string `json:"volumeId" bson:"volumeId"`
+	VolumeSize  int    `json:"volumeSize" bson:"volumeSize"`
+	StorageTier string `json:"storageTier" bson:"storageTier"`
 }

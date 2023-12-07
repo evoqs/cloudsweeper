@@ -316,54 +316,88 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 				var IList interface{}
 				if resourceName == "ec2" {
 					var rList []aws_model.AwsInstanceResult
-					json.Unmarshal([]byte(resourceList), &rList)
-					if policy.PolicyType == "Default" {
-						for elem, _ := range rList {
-							/*recomm,_ := cost_estimator.GetAWSRecommendationForEC2Instance(cloudAcc.AwsCredentials.AccessKeyID,
-							cloudAcc.AwsCredentials.SecretAccessKey, rList[elem].Region, cloudAcc.AwsCredentials.AccoutID,rList[elem].InstanceId)*/
-							rList[elem].MetaData.Recommendation = "recomm.RecommendationItems"
-							rList[elem].MetaData.Cost.MaxPrice = 0.1
-							rList[elem].MetaData.Cost.MinPrice = 0.1
-							rList[elem].MetaData.Cost.Unit = "USD"
+					var policyresultList []aws_model.AwsInstancePolicyResultData
+					json.Unmarshal([]byte(resourceList), &policyresultList)
+					for _, elem := range policyresultList {
+						var resultData aws_model.AwsInstanceResultData
+						resultData.AvailabilityZone = elem.Placement.AvailabilityZone
+						resultData.Code = elem.State.Code
+						resultData.GroupName = elem.Placement.GroupName
+						resultData.InstanceId = elem.InstanceId
+						resultData.InstanceType = elem.InstanceType
+						resultData.PlatformDetails = elem.PlatformDetails
+						resultData.Region = elem.Region
+						resultData.StateName = elem.State.Name
+						resultData.Tenancy = elem.Placement.Tenancy
+
+						var resultEntry aws_model.AwsInstanceResult
+						if policy.PolicyType == "Default" {
+							var metaData model.ResultMetaData
+							resultEntry.MetaData = metaData
+							//TODO get recommendations
+
 						}
+						resultEntry.ResultData = resultData
+						rList = append(rList, resultEntry)
 					}
+
 					IList = rList
 				} else if resourceName == "ebs" {
 					var rList []aws_model.AwsBlockVolumeResult
-					json.Unmarshal([]byte(resourceList), &rList)
-					if policy.PolicyType == "Default" {
-						for elem, _ := range rList {
-							rList[elem].MetaData.Recommendation = "Delete the eip, No associated resources found."
-							rList[elem].MetaData.Cost.MaxPrice = 0.1
-							rList[elem].MetaData.Cost.MinPrice = 0.1
-							rList[elem].MetaData.Cost.Unit = "USD"
+					var policyresultList []aws_model.AwsBlockVolumePolicyResultData
+					json.Unmarshal([]byte(resourceList), &policyresultList)
+					for _, elem := range policyresultList {
+						var resultData aws_model.AwsBlockVolumeResultData
+						resultData.AvailabilityZone = elem.AvailabilityZone
+						resultData.Encrypted = elem.Encrypted
+						resultData.Region = elem.Region
+						resultData.SnapshotId = elem.SnapshotId
+						resultData.State = elem.State
+						resultData.VolumeId = elem.VolumeId
+						resultData.VolumeType = elem.VolumeType
+
+						if len(elem.Attachments) == 0 {
+							resultData.Attachments = false
+						} else {
+							resultData.Attachments = true
 						}
+						var resultEntry aws_model.AwsBlockVolumeResult
+						if policy.PolicyType == "Default" {
+							var metaData model.ResultMetaData
+							resultEntry.MetaData = metaData
+							//TODO get recommendations
+						}
+						resultEntry.ResultData = resultData
+						rList = append(rList, resultEntry)
 					}
 					IList = rList
 				} else if resourceName == "elastic-ip" {
 					var rList []aws_model.AwsElasticIPResult
-					json.Unmarshal([]byte(resourceList), &rList)
-					if policy.PolicyType == "Default" {
-						for elem, _ := range rList {
-							rList[elem].MetaData.Recommendation = "Delete the eip, No associated resources found."
-							rList[elem].MetaData.Cost.MaxPrice = 0.1
-							rList[elem].MetaData.Cost.MinPrice = 0.1
-							rList[elem].MetaData.Cost.Unit = "USD"
+					var policyresultList []aws_model.AwsElasticIPResultData
+					json.Unmarshal([]byte(resourceList), &policyresultList)
+					for _, elem := range policyresultList {
+						var resultEntry aws_model.AwsElasticIPResult
+						if policy.PolicyType == "Default" {
+							var metaData model.ResultMetaData
+							resultEntry.MetaData = metaData
 						}
+						resultEntry.ResultData = elem
+						rList = append(rList, resultEntry)
 					}
-					//out, _ = json.Marshal(rList)
 					IList = rList
 				} else if resourceName == "ebs-snapshot" {
 					var rList []aws_model.AwsSnapshotResult
-					json.Unmarshal([]byte(resourceList), &rList)
-					if policy.PolicyType == "Default" {
-						for elem, _ := range rList {
-							rList[elem].MetaData.Recommendation = "Consider deleting the snapshot"
-							rList[elem].MetaData.Cost.MaxPrice = 0.5
-							rList[elem].MetaData.Cost.MinPrice = 0.3
-							rList[elem].MetaData.Cost.Unit = "USD"
-							fmt.Println("Adding recommendations")
+					var policyresultList []aws_model.AwsSnapshotResultData
+					json.Unmarshal([]byte(resourceList), &policyresultList)
+					for _, elem := range policyresultList {
+						var resultEntry aws_model.AwsSnapshotResult
+						if policy.PolicyType == "Default" {
+							var metaData model.ResultMetaData
+							resultEntry.MetaData = metaData
+							//TODO get recommendations
 						}
+						resultEntry.ResultData = elem
+						rList = append(rList, resultEntry)
 					}
 					//out, _ = json.Marshal(rList)
 					IList = rList
