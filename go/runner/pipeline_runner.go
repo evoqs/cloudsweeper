@@ -2,6 +2,7 @@ package runner
 
 import (
 	"cloudsweep/config"
+	//cost_estimator "cloudsweep/cost_estimator/aws"
 	logger "cloudsweep/logging"
 	"cloudsweep/model"
 	aws_model "cloudsweep/model/aws"
@@ -300,8 +301,8 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 				replacer := strings.NewReplacer("\r", "", "\n", "")
 				resourceList = replacer.Replace(string(resourceList))
 
-				var out []byte
-				out = []byte("")
+				//var out []byte
+				//out = []byte("")
 
 				if err != nil {
 					logwriter.Errorf("Failed to read policy result from result %s, Error %s", resourceFile, err.Error())
@@ -312,26 +313,46 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 				}
 
 				//Converting into shorter json
+				var IList interface{}
 				if resourceName == "ec2" {
 					var rList []aws_model.AwsInstanceResult
 					json.Unmarshal([]byte(resourceList), &rList)
-					out, _ = json.Marshal(rList)
+					if policy.PolicyType == "Default" {
+						for elem, _ := range rList {
+							/*recomm,_ := cost_estimator.GetAWSRecommendationForEC2Instance(cloudAcc.AwsCredentials.AccessKeyID,
+							cloudAcc.AwsCredentials.SecretAccessKey, rList[elem].Region, cloudAcc.AwsCredentials.AccoutID,rList[elem].InstanceId)*/
+							rList[elem].MetaData.Recommendation = "recomm.RecommendationItems"
+							rList[elem].MetaData.Cost.MaxPrice = 0.1
+							rList[elem].MetaData.Cost.MinPrice = 0.1
+							rList[elem].MetaData.Cost.Unit = "USD"
+						}
+					}
+					IList = rList
 				} else if resourceName == "ebs" {
 					var rList []aws_model.AwsBlockVolumeResult
 					json.Unmarshal([]byte(resourceList), &rList)
-					out, _ = json.Marshal(rList)
+					if policy.PolicyType == "Default" {
+						for elem, _ := range rList {
+							rList[elem].MetaData.Recommendation = "Delete the eip, No associated resources found."
+							rList[elem].MetaData.Cost.MaxPrice = 0.1
+							rList[elem].MetaData.Cost.MinPrice = 0.1
+							rList[elem].MetaData.Cost.Unit = "USD"
+						}
+					}
+					IList = rList
 				} else if resourceName == "elastic-ip" {
 					var rList []aws_model.AwsElasticIPResult
 					json.Unmarshal([]byte(resourceList), &rList)
 					if policy.PolicyType == "Default" {
-						for _, item := range rList {
-							item.MetaData.Recommendation = "Delete the eip, No associated resources found."
-							item.MetaData.Cost.MaxPrice = 0.1
-							item.MetaData.Cost.MinPrice = 0.1
-							item.MetaData.Cost.Unit = "USD"
+						for elem, _ := range rList {
+							rList[elem].MetaData.Recommendation = "Delete the eip, No associated resources found."
+							rList[elem].MetaData.Cost.MaxPrice = 0.1
+							rList[elem].MetaData.Cost.MinPrice = 0.1
+							rList[elem].MetaData.Cost.Unit = "USD"
 						}
 					}
-					out, _ = json.Marshal(rList)
+					//out, _ = json.Marshal(rList)
+					IList = rList
 				} else if resourceName == "ebs-snapshot" {
 					var rList []aws_model.AwsSnapshotResult
 					json.Unmarshal([]byte(resourceList), &rList)
@@ -344,13 +365,16 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 							fmt.Println("Adding recommendations")
 						}
 					}
-					out, _ = json.Marshal(rList)
+					//out, _ = json.Marshal(rList)
+					IList = rList
 
 				} else {
 					fmt.Println("Unknown resource type ", resourceName)
+					IList = nil
 				}
 
-				regionResult.Result = string(out)
+				//regionResult.Result = string(out)
+				regionResult.Result = IList
 				regionResult.Region = regionName
 				resultList = append(resultList, *regionResult)
 

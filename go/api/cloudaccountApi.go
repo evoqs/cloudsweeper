@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"cloudsweep/cloud_lib"
 	"cloudsweep/model"
 	"cloudsweep/runner"
 	"cloudsweep/scheduler"
@@ -108,13 +109,28 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 
 	//Validate Cloud credentials
 	if strings.TrimSpace(acc.AccountType) == "aws" {
+		awsClient, err := cloud_lib.GetAwsClient(acc.AwsCredentials.AccessKeyID, acc.AwsCredentials.SecretAccessKey, "")
+
+		if err != nil {
+			srv.SendResponse500(writer, err)
+			return
+		}
+		acc.AwsCredentials.AccoutID, err = awsClient.GetAwsAccountID()
+
+		if err != nil {
+			errString := fmt.Sprintf("Failed to fetch AWS Account Id with given credentials. %s", err.Error())
+			srv.SendResponse409(writer, errors.New(errString))
+			return
+		}
+
+		/* Old validation implementaion
 		if !utils.ValidateAwsCredentials(acc.AwsCredentials.AccessKeyID, acc.AwsCredentials.SecretAccessKey) {
 			errString := fmt.Sprintf("AWS Authentication Failed with given access key and secret")
 			err := errors.New(errString)
 			srv.logwriter.Warnf(errString)
 			srv.SendResponse409(writer, err)
 			return
-		}
+		}*/
 
 	} else {
 		errString := fmt.Sprintf("Unknown Account type %s , supported account types are aws,gcp,azure and oci.", acc.AccountType)

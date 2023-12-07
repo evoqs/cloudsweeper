@@ -294,10 +294,22 @@ func GetAwsClient(awsAccessKeyId string, awsSecretAccessKey string, region strin
 	awsClient.credentials = credentials.NewStaticCredentials(awsAccessKeyId, awsSecretAccessKey, "")
 	var err error
 	creds := credentials.NewStaticCredentials(awsAccessKeyId, awsSecretAccessKey, "")
-	awsClient.session, err = session.NewSession(&aws.Config{
-		Region:      aws.String(region),
-		Credentials: creds,
-	})
+
+	if region != "" {
+		awsClient.once.Do(func() {
+			awsClient.session, err = session.NewSession(&aws.Config{
+				Region:      aws.String(region),
+				Credentials: creds,
+			})
+		})
+	} else {
+		awsClient.once.Do(func() {
+			awsClient.session, err = session.NewSession(&aws.Config{
+				Credentials: creds,
+			})
+		})
+	}
+
 	if err != nil {
 		return awsClient, err
 	}
