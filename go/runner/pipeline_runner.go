@@ -331,13 +331,16 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 						resultData.Tenancy = elem.Placement.Tenancy
 
 						var resultEntry aws_model.AwsInstanceResult
+						resultEntry.ResultData = resultData
+						resultEntry.MetaData = nil
+
 						if policy.PolicyType == "Default" {
 							var metaData model.ResultMetaData
-							resultEntry.MetaData = metaData
+							resultEntry.MetaData = &metaData
 							//TODO get recommendations
 
 						}
-						resultEntry.ResultData = resultData
+
 						rList = append(rList, resultEntry)
 					}
 
@@ -362,12 +365,14 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 							resultData.Attachments = true
 						}
 						var resultEntry aws_model.AwsBlockVolumeResult
+						resultEntry.ResultData = resultData
+						resultEntry.MetaData = nil
 						if policy.PolicyType == "Default" {
 							var metaData model.ResultMetaData
-							resultEntry.MetaData = metaData
+							resultEntry.MetaData = &metaData
 							//TODO get recommendations
 						}
-						resultEntry.ResultData = resultData
+
 						rList = append(rList, resultEntry)
 					}
 					IList = rList
@@ -377,11 +382,13 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 					json.Unmarshal([]byte(resourceList), &policyresultList)
 					for _, elem := range policyresultList {
 						var resultEntry aws_model.AwsElasticIPResult
+						resultEntry.ResultData = elem
+						resultEntry.MetaData = nil
 						if policy.PolicyType == "Default" {
 							var metaData model.ResultMetaData
-							resultEntry.MetaData = metaData
+							resultEntry.MetaData = &metaData
 						}
-						resultEntry.ResultData = elem
+
 						rList = append(rList, resultEntry)
 					}
 					IList = rList
@@ -391,12 +398,14 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 					json.Unmarshal([]byte(resourceList), &policyresultList)
 					for _, elem := range policyresultList {
 						var resultEntry aws_model.AwsSnapshotResult
+						resultEntry.ResultData = elem
+						resultEntry.MetaData = nil
 						if policy.PolicyType == "Default" {
 							var metaData model.ResultMetaData
-							resultEntry.MetaData = metaData
+							resultEntry.MetaData = &metaData
 							//TODO get recommendations
 						}
-						resultEntry.ResultData = elem
+
 						rList = append(rList, resultEntry)
 					}
 					//out, _ = json.Marshal(rList)

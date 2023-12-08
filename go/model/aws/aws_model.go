@@ -127,7 +127,7 @@ type EBSVolumeDetails struct {
 // Policy Result Models
 type AwsInstanceResult struct {
 	ResultData AwsInstanceResultData `json:"resultData" bson:"resultData"`
-	MetaData   model.ResultMetaData  `json:"resultMetaData" bson:"resultMetaData"`
+	MetaData   *model.ResultMetaData `json:"resultMetaData" bson:"resultMetaData"`
 }
 type AwsInstanceResultData struct {
 	InstanceId       string `json:"instanceId" bson:"instanceId"`
@@ -165,7 +165,7 @@ type AwsInstancePolicyResultData struct {
 
 type AwsBlockVolumeResult struct {
 	ResultData AwsBlockVolumeResultData `json:"resultData" bson:"resultData"`
-	MetaData   model.ResultMetaData     `json:"resultMetaData" bson:"resultMetaData"`
+	MetaData   *model.ResultMetaData    `json:"resultMetaData" bson:"resultMetaData"`
 }
 type AwsBlockVolumeResultData struct {
 	VolumeId         string `json:"volumeId" bson:"volumeId"`
@@ -196,7 +196,7 @@ type AwsBlockVolumeAttachment struct {
 
 type AwsElasticIPResult struct {
 	ResultData AwsElasticIPResultData `json:"resultData" bson:"resultData"`
-	MetaData   model.ResultMetaData   `json:"resultMetaData" bson:"resultMetaData"`
+	MetaData   *model.ResultMetaData  `json:"resultMetaData" bson:"resultMetaData"`
 }
 type AwsElasticIPResultData struct {
 	PublicIp           string `json:"publicIp" bson:"publicIp"`
@@ -207,7 +207,7 @@ type AwsElasticIPResultData struct {
 
 type AwsSnapshotResult struct {
 	ResultData AwsSnapshotResultData `json:"resultData" bson:"resultData"`
-	MetaData   model.ResultMetaData  `json:"resultMetaData" bson:"resultMetaData"`
+	MetaData   *model.ResultMetaData `json:"resultMetaData" bson:"resultMetaData"`
 }
 type AwsSnapshotResultData struct {
 	Description string `json:"description" bson:"description"`
