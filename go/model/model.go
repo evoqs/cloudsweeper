@@ -17,6 +17,7 @@ type CloudAccountData struct {
 
 type AwsCredentials struct {
 	//Region          string `json:"aws_region" bson:"aws_region"`
+	AccoutID        string `json:"aws_account_id" bson:"aws_account_id"`
 	AccessKeyID     string `json:"aws_access_key_id" bson:"aws_access_key_id"`
 	SecretAccessKey string `json:"aws_secret_access_key" bson:"aws_secret_access_key"`
 }
@@ -46,8 +47,8 @@ type PolicyResult struct {
 }
 
 type RegionResult struct {
-	Result string `json:"result" bson:"result"`
-	Region string `json:"region" bson:"region"`
+	Result interface{} `json:"result" bson:"result"`
+	Region string      `json:"region" bson:"region"`
 }
 
 type ResultMetaData struct {
