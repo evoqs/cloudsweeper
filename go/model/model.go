@@ -37,13 +37,14 @@ type DefaultPolicy struct {
 }
 
 type PolicyResult struct {
-	PolicyResultID primitive.ObjectID `json:"policyresultid" bson:"_id,omitempty"`
-	PolicyID       string             `json:"policyid" bson:"policyid"`
-	PipelIneID     string             `json:"pipelineid" bson:"pipelineid"`
-	Resource       string             `json:"resource" bson:"resource"`
-	Resultlist     []RegionResult     `json:"resultlist" bson:"resultlist"`
-	LastRunStatus  string             `json:"lastrunstatus" bson:"lastrunstatus"`
-	LastRunTime    int64              `json:"lastruntime" bson:"lastruntime"`
+	PolicyResultID    primitive.ObjectID `json:"policyresultid" bson:"_id,omitempty"`
+	PolicyID          string             `json:"policyid" bson:"policyid"`
+	PipelIneID        string             `json:"pipelineid" bson:"pipelineid"`
+	Resource          string             `json:"resource" bson:"resource"`
+	Resultlist        []RegionResult     `json:"resultlist" bson:"resultlist"`
+	LastRunStatus     string             `json:"lastrunstatus" bson:"lastrunstatus"`
+	LastRunTime       int64              `json:"lastruntime" bson:"lastruntime"`
+	DisplayDefinition interface{}        `json:"displayDefinition" bson:"displayDefinition"`
 }
 
 type RegionResult struct {
@@ -138,4 +139,21 @@ type Response500 struct {
 
 type MongoIDQuery struct {
 	ObjectID primitive.ObjectID `bson:"_id"`
+}
+
+// Result Display Definitions
+func GetAWSInstanceDisplayDefinition() string {
+	return `{"displayOrder": ["instanceId","instanceType","platformDetails","region","availabilityZone","stateName"],"displayName": {"instanceId": "Instance Id", "instanceType": "Instance Type", "platformDetails":"Platform", "region":"Region","availabilityZone":"Availability Zone", "stateName":"Instance State"}}`
+}
+
+func GetAWSVolumeDisplayDefinition() string {
+	return `{"displayOrder": ["volumeId","volumeType","snapshotId","region","availabilityZone","state","attachments"],"displayName": {"volumeId": "Volume Id", "volumeType": "Volume Type", "snapshotId":"Snapshot Id", "region":"Region","availabilityZone":"Availability Zone", "state":"State","attachments":"Attached"}}`
+}
+
+func GetAWSEIPDisplayDefinition() string {
+	return `{"displayOrder": ["publicIp","publicIpv4pool","domain","networkBorderGroup"],"displayName": {"publicIp": "Public IP", "publicIpv4pool": "IPv4 Pool", "domain":"Domain", "region":"Region","networkBorderGroup":"Network Border Group"}}`
+}
+
+func GetAWSSnapshotDisplayDefinition() string {
+	return `{"displayOrder": ["snapshotId","volumeId","volumeSize","description","state","storageTier"],"displayName": {"snapshotId": "Snapshot Id", "volumeId": "Volume Id", "volumeSize":"Size", "description":"Description","state":"State","storageTier":"Storage Tier"}}`
 }

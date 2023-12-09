@@ -442,6 +442,7 @@ func updatePolicyRunResult(pipeLineID string, policyID string, resourceName stri
 		policyRunresult.LastRunStatus = runStatus
 		policyRunresult.Resultlist = regionWiseResult
 		policyRunresult.LastRunTime = runtime
+		json.Unmarshal([]byte(getDisplayDefinition(resourceName)), &policyRunresult.DisplayDefinition)
 		opr.PolicyOperator.AddPolicyResult(policyRunresult)
 
 	} else {
@@ -454,6 +455,20 @@ func updatePolicyRunResult(pipeLineID string, policyID string, resourceName stri
 		result.Resource = resourceName
 		result.PolicyID = policyID
 		result.PipelIneID = pipeLineID
+		json.Unmarshal([]byte(getDisplayDefinition(resourceName)), &result.DisplayDefinition)
 		opr.PolicyOperator.UpdatePolicyResult(result)
 	}
+}
+
+func getDisplayDefinition(resourceName string) string {
+	if resourceName == "ec2" {
+		return model.GetAWSInstanceDisplayDefinition()
+	} else if resourceName == "ebs" {
+		return model.GetAWSVolumeDisplayDefinition()
+	} else if resourceName == "elastic-ip" {
+		return model.GetAWSEIPDisplayDefinition()
+	} else if resourceName == "ebs-snapshot" {
+		return model.GetAWSSnapshotDisplayDefinition()
+	}
+	return ""
 }
