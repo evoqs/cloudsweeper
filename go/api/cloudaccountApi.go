@@ -115,7 +115,7 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 			srv.SendResponse500(writer, err)
 			return
 		}
-		acc.AwsCredentials.AccoutID, err = awsClient.GetAwsAccountID()
+		acc.AwsCredentials.AccountID, err = awsClient.GetAwsAccountID()
 
 		if err != nil {
 			errString := fmt.Sprintf("Failed to fetch AWS Account Id with given credentials. %s", err.Error())

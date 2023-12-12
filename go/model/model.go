@@ -17,7 +17,7 @@ type CloudAccountData struct {
 
 type AwsCredentials struct {
 	//Region          string `json:"aws_region" bson:"aws_region"`
-	AccoutID        string `json:"aws_account_id" bson:"aws_account_id"`
+	AccountID       string `json:"aws_account_id" bson:"aws_account_id"`
 	AccessKeyID     string `json:"aws_access_key_id" bson:"aws_access_key_id"`
 	SecretAccessKey string `json:"aws_secret_access_key" bson:"aws_secret_access_key"`
 }
@@ -53,8 +53,15 @@ type RegionResult struct {
 }
 
 type ResultMetaData struct {
-	Cost           ResourceCost `json:"cost" bson:"cost"`
-	Recommendation string       `json:"recommendation" bson:"recommendation"`
+	Cost            string                 `json:"currentcost" bson:"currentcost"`
+	Recommendations []ResultRecommendation `json:"recommendations" bson:"recommendations"`
+}
+
+type ResultRecommendation struct {
+	Recommendation          string `json:"recommendation" bson:"recommendation"`
+	Price                   string `json:"price" bson:"price"`
+	EstimatedCostSavings    string `json:"estimatedCostSaving" bson:"estimatedCostSaving"`
+	EstimatedMonthlySavings string `json:"estimatedMonthlySaving" bson:"estimatedMonthlySaving"`
 }
 
 type ResourceCost struct {
