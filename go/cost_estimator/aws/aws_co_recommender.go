@@ -368,8 +368,13 @@ func GetAWSRecommendationForAllEBSVolumes(awsAccessKeyId string, awsSecretAccess
 				CurrentResourceDetails: aws_model.EBSVolumeDetails{
 					VolumeType: *coItem.CurrentConfiguration.VolumeType,
 					//VolumeName:  *coItem.,
-					VolumeArn: *coItem.VolumeArn,
-					Region:    region,
+					VolumeSize:               *coItem.CurrentConfiguration.VolumeSize,
+					VolumeBaselineIOPS:       *coItem.CurrentConfiguration.VolumeBaselineIOPS,
+					VolumeBaselineThroughput: *coItem.CurrentConfiguration.VolumeBaselineThroughput,
+					VolumeBurstIOPS:          *coItem.CurrentConfiguration.VolumeBurstIOPS,
+					VolumeBurstThroughput:    *coItem.CurrentConfiguration.VolumeBurstThroughput,
+					VolumeArn:                *coItem.VolumeArn,
+					Region:                   region,
 				},
 				CurrentCost:         currentCost,
 				RecommendationItems: recommendationItems,
@@ -424,7 +429,12 @@ func GetAWSRecommendationForEBSVolume(awsAccessKeyId string, awsSecretAccessKey 
 
 			recommendationItems = append(recommendationItems, aws_model.RecommendationItem[aws_model.EBSVolumeDetails]{
 				Resource: aws_model.EBSVolumeDetails{
-					VolumeType: *recom.Configuration.VolumeType,
+					VolumeType:               *recom.Configuration.VolumeType,
+					VolumeSize:               *recom.Configuration.VolumeSize,
+					VolumeBaselineIOPS:       *recom.Configuration.VolumeBaselineIOPS,
+					VolumeBaselineThroughput: *recom.Configuration.VolumeBaselineThroughput,
+					VolumeBurstIOPS:          *recom.Configuration.VolumeBurstIOPS,
+					VolumeBurstThroughput:    *recom.Configuration.VolumeBurstThroughput,
 				},
 				Cost: newCost,
 				//EstimatedCostSavings: fmt.Sprintf("%.2f", (currentCost.MinPrice-newCost.MinPrice)*100/currentCost.MinPrice) + "%",
@@ -448,8 +458,14 @@ func GetAWSRecommendationForEBSVolume(awsAccessKeyId string, awsSecretAccessKey 
 		recommendation = &aws_model.Recommendation[aws_model.EBSVolumeDetails]{
 			CurrentResourceDetails: aws_model.EBSVolumeDetails{
 				VolumeType: *coItem.CurrentConfiguration.VolumeType,
-				VolumeArn:  *coItem.VolumeArn,
-				Region:     region,
+				//VolumeName: coItem.CurrentConfiguration.RootVolume,
+				VolumeSize:               *coItem.CurrentConfiguration.VolumeSize,
+				VolumeBaselineIOPS:       *coItem.CurrentConfiguration.VolumeBaselineIOPS,
+				VolumeBaselineThroughput: *coItem.CurrentConfiguration.VolumeBaselineThroughput,
+				VolumeBurstIOPS:          *coItem.CurrentConfiguration.VolumeBurstIOPS,
+				VolumeBurstThroughput:    *coItem.CurrentConfiguration.VolumeBurstThroughput,
+				VolumeArn:                *coItem.VolumeArn,
+				Region:                   region,
 			},
 			CurrentCost:         currentCost,
 			RecommendationItems: recommendationItems,

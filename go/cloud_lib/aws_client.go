@@ -296,24 +296,16 @@ func GetAwsClient(awsAccessKeyId string, awsSecretAccessKey string, region strin
 	creds := credentials.NewStaticCredentials(awsAccessKeyId, awsSecretAccessKey, "")
 
 	if region != "" {
-		awsClient.once.Do(func() {
-			awsClient.session, err = session.NewSession(&aws.Config{
-				Region:      aws.String(region),
-				Credentials: creds,
-			})
+		awsClient.session, err = session.NewSession(&aws.Config{
+			Region:      aws.String(region),
+			Credentials: creds,
 		})
 	} else {
-		awsClient.once.Do(func() {
-			awsClient.session, err = session.NewSession(&aws.Config{
-				Credentials: creds,
-			})
+		awsClient.session, err = session.NewSession(&aws.Config{
+			Credentials: creds,
 		})
 	}
-
-	if err != nil {
-		return awsClient, err
-	}
-	return awsClient, nil
+	return awsClient, err
 }
 
 func GetCSAdminAwsClient() (*AwsClient, error) {
