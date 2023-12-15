@@ -142,6 +142,7 @@ func GetCostFromAws[T any](serviceCode string, pInfo aws_model.ProductInfo[T]) (
 	filters := buildFilterInput(pInfo)
 
 	var resourceCosts []aws_model.AwsResourceCost[T]
+	fmt.Printf("\n\n\n -----------%+v-------------", filters)
 	err := CollectResourceCost(serviceCode, filters, &resourceCosts)
 	if err != nil {
 		return aws_model.AwsResourceCost[T]{},

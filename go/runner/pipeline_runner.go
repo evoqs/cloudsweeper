@@ -453,48 +453,79 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 
 func updateMetaDataEc2(resultWg *sync.WaitGroup, result *aws_model.AwsInstanceResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, regionName string) {
 	defer resultWg.Done()
-	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Region: " + regionName)
+
 	estimate, err := aws_cost_estimator.GetAWSRecommendationForEC2Instance(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey, regionName, cloudAcc.AwsCredentials.AccountID, result.InstanceId)
-	//fmt.Sprintf("%f %s/%s", estimate.CurrentCost.MinPrice, estimate.CurrentCost.Currency, estimate.CurrentCost.Unit)
-	//TODO
-	if err != nil {
-		fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!failed to get recommendation" + err.Error())
-		resultMetaData.Cost = "Failed to get recommendation"
+
+	if err != nil || estimate == nil {
+
+		fmt.Printf("Failed to get recommendation %+v", err)
+		product := aws_model.ProductAttributesInstance{
+			InstanceType:    result.InstanceType,
+			RegionCode:      regionName,
+			OperatingSystem: "Linux",
+		}
+		cost, err := aws_cost_estimator.GetComputeInstanceCost(aws_model.ProductInfo[aws_model.ProductAttributesInstance]{
+			Attributes: product})
+
+		if err != nil {
+			resultMetaData.Cost = "unknown"
+			resultMetaData.Recommendations = nil
+			return
+		}
+		resultMetaData.Cost = getMonthlyPrice(cost.MinPrice, cost.Currency, cost.Unit)
 		resultMetaData.Recommendations = nil
 		return
+	} else {
+		resultMetaData.Cost = getMonthlyPrice(estimate.CurrentCost.MinPrice, estimate.CurrentCost.Currency, estimate.CurrentCost.Unit)
+		var recommendationList []model.ResultRecommendation
+		for _, elem := range estimate.RecommendationItems {
+			var recommendation model.ResultRecommendation
+			recommendation.Price = getMonthlyPrice(elem.Cost.MinPrice, elem.Cost.Currency, elem.Cost.Unit)
+			recommendation.Recommendation = elem.Resource.InstanceType
+			recommendation.EstimatedCostSavings = elem.EstimatedCostSavings
+			recommendation.EstimatedMonthlySavings = elem.EstimatedMonthlySavings
+			recommendationList = append(recommendationList, recommendation)
+		}
+		resultMetaData.Recommendations = recommendationList
 	}
-	resultMetaData.Cost = getMonthlyPrice(estimate.CurrentCost.MinPrice, estimate.CurrentCost.Currency, estimate.CurrentCost.Unit)
-	var recommendationList []model.ResultRecommendation
-	for _, elem := range estimate.RecommendationItems {
-		var recommendation model.ResultRecommendation
-		recommendation.Price = getMonthlyPrice(elem.Cost.MinPrice, elem.Cost.Currency, elem.Cost.Unit)
-		recommendation.Recommendation = elem.Resource.InstanceType
-		recommendation.EstimatedCostSavings = elem.EstimatedCostSavings
-		recommendation.EstimatedMonthlySavings = elem.EstimatedMonthlySavings
-		recommendationList = append(recommendationList, recommendation)
-	}
-	resultMetaData.Recommendations = recommendationList
 }
 
 func updateMetaDataEbs(resultWg *sync.WaitGroup, result *aws_model.AwsBlockVolumeResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, regionName string) {
 	defer resultWg.Done()
 	estimate, err := aws_cost_estimator.GetAWSRecommendationForEBSVolume(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey, regionName, cloudAcc.AwsCredentials.AccountID, result.VolumeId)
 	//TODO
-	if err != nil {
-		resultMetaData.Cost = "Failed to get recommendation"
+	if err != nil || estimate == nil {
+
+		fmt.Printf("Failed to get recommendation %+v", err)
+		product := aws_model.ProductAttributesEBS{
+			VolumeType: result.VolumeType,
+			RegionCode: regionName,
+		}
+		cost, err := aws_cost_estimator.GetEbsCost(aws_model.ProductInfo[aws_model.ProductAttributesEBS]{
+			Attributes: product, ProductFamily: "Storage"})
+
+		if err != nil {
+			resultMetaData.Cost = "unknown"
+			resultMetaData.Recommendations = nil
+			return
+		}
+		resultMetaData.Cost = getMonthlyPrice(cost.MinPrice, cost.Currency, cost.Unit)
 		resultMetaData.Recommendations = nil
+		return
+
+	} else {
+		resultMetaData.Cost = getMonthlyPrice(estimate.CurrentCost.MinPrice, estimate.CurrentCost.Currency, estimate.CurrentCost.Unit)
+		var recommendationList []model.ResultRecommendation
+		for _, elem := range estimate.RecommendationItems {
+			var recommendation model.ResultRecommendation
+			recommendation.Price = getMonthlyPrice(elem.Cost.MinPrice, elem.Cost.Currency, elem.Cost.Unit)
+			recommendation.Recommendation = elem.Resource.VolumeType
+			recommendation.EstimatedCostSavings = elem.EstimatedCostSavings
+			recommendation.EstimatedMonthlySavings = elem.EstimatedMonthlySavings
+			recommendationList = append(recommendationList, recommendation)
+		}
+		resultMetaData.Recommendations = recommendationList
 	}
-	resultMetaData.Cost = getMonthlyPrice(estimate.CurrentCost.MinPrice, estimate.CurrentCost.Currency, estimate.CurrentCost.Unit)
-	var recommendationList []model.ResultRecommendation
-	for _, elem := range estimate.RecommendationItems {
-		var recommendation model.ResultRecommendation
-		recommendation.Price = getMonthlyPrice(elem.Cost.MinPrice, elem.Cost.Currency, elem.Cost.Unit)
-		recommendation.Recommendation = elem.Resource.VolumeType
-		recommendation.EstimatedCostSavings = elem.EstimatedCostSavings
-		recommendation.EstimatedMonthlySavings = elem.EstimatedMonthlySavings
-		recommendationList = append(recommendationList, recommendation)
-	}
-	resultMetaData.Recommendations = recommendationList
 }
 
 func getMonthlyPrice(price float64, currency string, unit string) string {

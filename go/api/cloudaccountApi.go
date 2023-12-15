@@ -238,6 +238,29 @@ func (srv *Server) UpdateCloudAccount(writer http.ResponseWriter, request *http.
 		return
 	}
 
+	if strings.TrimSpace(acc.AccountType) == "aws" {
+		awsClient, err := cloud_lib.GetAwsClient(acc.AwsCredentials.AccessKeyID, acc.AwsCredentials.SecretAccessKey, "")
+
+		if err != nil {
+			srv.SendResponse500(writer, err)
+			return
+		}
+		acc.AwsCredentials.AccountID, err = awsClient.GetAwsAccountID()
+
+		if err != nil {
+			errString := fmt.Sprintf("Failed to fetch AWS Account Id with given credentials. %s", err.Error())
+			srv.SendResponse409(writer, errors.New(errString))
+			return
+		}
+
+	} else {
+		errString := fmt.Sprintf("Unknown Account type %s , supported account types are aws,gcp,azure and oci.", acc.AccountType)
+		err := errors.New(errString)
+		srv.logwriter.Warnf(errString)
+		srv.SendResponse400(writer, err)
+		return
+	}
+
 	updateCount, err := srv.opr.AccountOperator.UpdateCloudAccount(acc)
 	if err != nil {
 		srv.SendResponse500(writer, err)
