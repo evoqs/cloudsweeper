@@ -28,12 +28,14 @@ type Policy struct {
 	AccountID        string             `json:"accountid" bson:"accountid"`
 	PolicyType       string             `json:"policytype" bson:"policytype"`
 	PolicyDefinition string             `json:"policydefinition" bson:"policydefinition"`
+	Recommendation   string             `json:"recommendation" bson:"recommendation"`
 }
 
 type DefaultPolicy struct {
 	PolicyName       string             `json:"policyname" bson:"policyname"`
 	PolicyID         primitive.ObjectID `json:"policyid" bson:"_id,omitempty"`
 	PolicyDefinition string             `json:"policydefinition" bson:"policydefinition"`
+	Recommendation   string             `json:"recommendation" bson:"recommendation"`
 }
 
 type PolicyResult struct {

@@ -161,6 +161,7 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 		var policy model.Policy
 		policy.PolicyName = defaultpolicy.PolicyName
 		policy.PolicyDefinition = defaultpolicy.PolicyDefinition
+		policy.Recommendation = defaultpolicy.Recommendation
 		policy.PolicyType = "Default"
 		policy.AccountID = acc.AccountID
 
