@@ -89,6 +89,21 @@ type ProductAttributesEBS struct {
 	VolumeApiName           string `json:"volumeApiName" bson:"volumeApiName"`
 }
 
+type ProductAttributesEBSSnapshot struct {
+	Location     string `json:"location" bson:"location"`
+	RegionCode   string `json:"regionCode" bson:"regionCode"`
+	ServiceCode  string `json:"servicecode" bson:"servicecode"`
+	ServiceName  string `json:"servicename" bson:"servicename"`
+	LocationType string `json:"locationtype" bson:"locationtype"`
+	UsageType    string `json:"usagetype" bson:"usagetype"`
+	// Values - Amazon S3 etc
+	StorageMedia string `json:"storageMedia" bson:"storageMedia"`
+}
+
+type ProductAttributesElasticIp struct {
+	RegionCode string `json:"regionCode" bson:"regionCode"`
+}
+
 type Recommendation[T InstanceDetails | EBSVolumeDetails] struct {
 	CurrentResourceDetails T                       `json:"currentResourceDetails" bson:"currentResourceDetails"`
 	CurrentCost            model.ResourceCost      `json:"cost" bson:"cost"`
