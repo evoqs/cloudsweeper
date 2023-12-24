@@ -2,6 +2,9 @@ package mail
 
 import (
 	"bytes"
+	"cloudsweep/config"
+	logger "cloudsweep/logging"
+	"fmt"
 	"log"
 	"mime/multipart"
 	"net/textproto"
@@ -20,7 +23,7 @@ func NewGomailSender(host string, port int, username, password string) *GomailSe
 }
 func (gs *GomailSender) SendWithAttachment(to []string, subject, bodyHTML string, attachmentName string, attachmentData []byte) error {
 	m := mail.NewMessage()
-	m.SetHeader("From", "noreply@cloudsweeper.com")
+	m.SetHeader("From", config.GetConfig().Notifications.Email.FromAddress)
 	m.SetHeader("To", to...)
 	m.SetHeader("Subject", subject)
 
@@ -48,17 +51,18 @@ func (gs *GomailSender) SendWithAttachment(to []string, subject, bodyHTML string
 
 	m.SetBody("multipart/mixed", body.String())
 
+	fmt.Printf("Sending mail.....")
 	err := gs.dialer.DialAndSend(m)
 	if err != nil {
-		log.Println("Error sending email:", err)
+		logger.NewDefaultLogger().Errorf("Error sending email..: %s", err)
 		return err
 	}
 	return nil
 }
 
-func (gs *GomailSender) Send(to []string, subject, body string, isHTML bool) error {
+func (gs *GomailSender) Send(from string, to []string, subject, body string, isHTML bool) error {
 	m := mail.NewMessage()
-	m.SetHeader("From", "noreply@cloudsweeper.com")
+	m.SetHeader("From", from)
 	m.SetHeader("To", to...)
 	m.SetHeader("Subject", subject)
 	if isHTML {
