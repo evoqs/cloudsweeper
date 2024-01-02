@@ -2,8 +2,7 @@ package mail
 
 import (
 	"bytes"
-	"cloudsweep/config"
-	logger "cloudsweep/logging"
+	logging "cloudsweep/logging"
 	"fmt"
 	"log"
 	"mime/multipart"
@@ -21,9 +20,9 @@ func NewGomailSender(host string, port int, username, password string) *GomailSe
 		dialer: mail.NewDialer(host, port, username, password),
 	}
 }
-func (gs *GomailSender) SendWithAttachment(to []string, subject, bodyHTML string, attachmentName string, attachmentData []byte) error {
+func (gs *GomailSender) SendWithAttachment(from string, to []string, subject, bodyHTML string, attachmentName string, attachmentData []byte) error {
 	m := mail.NewMessage()
-	m.SetHeader("From", config.GetConfig().Notifications.Email.FromAddress)
+	m.SetHeader("From", from)
 	m.SetHeader("To", to...)
 	m.SetHeader("Subject", subject)
 
@@ -54,13 +53,14 @@ func (gs *GomailSender) SendWithAttachment(to []string, subject, bodyHTML string
 	fmt.Printf("Sending mail.....")
 	err := gs.dialer.DialAndSend(m)
 	if err != nil {
-		logger.NewDefaultLogger().Errorf("Error sending email..: %s", err)
+		logging.NewDefaultLogger().Errorf("Error sending email..: %s", err)
 		return err
 	}
 	return nil
 }
 
 func (gs *GomailSender) Send(from string, to []string, subject, body string, isHTML bool) error {
+	logging.NewDefaultLogger().Debugf("Sending the mail to %v from %s subject %s body %s", to, from, subject, body)
 	m := mail.NewMessage()
 	m.SetHeader("From", from)
 	m.SetHeader("To", to...)
