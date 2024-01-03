@@ -89,6 +89,21 @@ type ProductAttributesEBS struct {
 	VolumeApiName           string `json:"volumeApiName" bson:"volumeApiName"`
 }
 
+type ProductAttributesEBSSnapshot struct {
+	Location     string `json:"location" bson:"location"`
+	RegionCode   string `json:"regionCode" bson:"regionCode"`
+	ServiceCode  string `json:"servicecode" bson:"servicecode"`
+	ServiceName  string `json:"servicename" bson:"servicename"`
+	LocationType string `json:"locationtype" bson:"locationtype"`
+	UsageType    string `json:"usagetype" bson:"usagetype"`
+	// Values - Amazon S3 etc
+	StorageMedia string `json:"storageMedia" bson:"storageMedia"`
+}
+
+type ProductAttributesElasticIp struct {
+	RegionCode string `json:"regionCode" bson:"regionCode"`
+}
+
 type Recommendation[T InstanceDetails | EBSVolumeDetails] struct {
 	CurrentResourceDetails T                       `json:"currentResourceDetails" bson:"currentResourceDetails"`
 	CurrentCost            model.ResourceCost      `json:"cost" bson:"cost"`
@@ -97,7 +112,7 @@ type Recommendation[T InstanceDetails | EBSVolumeDetails] struct {
 
 type RecommendationItem[T InstanceDetails | EBSVolumeDetails] struct {
 	Resource                T                  `json:"resource" bson:"resource"`
-	Cost                    model.ResourceCost `json:"instanceName" bson:"instanceName"`
+	Cost                    model.ResourceCost `json:"cost" bson:"cost"`
 	EstimatedCostSavings    string             `json:"estimatedCostSavings" bson:"estimatedCostSavings"`
 	EstimatedMonthlySavings string             `json:"estimatedMonthlySavings" bson:"estimatedMonthlySavings"`
 }
@@ -114,13 +129,13 @@ type InstanceDetails struct {
 type EBSVolumeDetails struct {
 	VolumeType               string `json:"volumeType" bson:"volumeType"`
 	VolumeName               string `json:"volumeName" bson:"volumeName"`
-	VolumeSize               string `json:"volumeSize" bson:"volumeSize"`
-	VolumeBaselineIOPS       string `json:"volumeBaselineIOPS" bson:"volumeBaselineIOPS"`
-	VolumeBaselineThroughput string `json:"volumeBaselineThroughput" bson:"volumeBaselineThroughput"`
-	VolumeBurstIOPS          string `json:"volumeBurstIOPS" bson:"volumeBurstIOPS"`
-	VolumeBurstThroughput    string `json:"volumeBurstThroughput" bson:"volumeBurstThroughput"`
+	VolumeSize               int64  `json:"volumeSize" bson:"volumeSize"`
+	VolumeBaselineIOPS       int64  `json:"volumeBaselineIOPS" bson:"volumeBaselineIOPS"`
+	VolumeBaselineThroughput int64  `json:"volumeBaselineThroughput" bson:"volumeBaselineThroughput"`
+	VolumeBurstIOPS          int64  `json:"volumeBurstIOPS" bson:"volumeBurstIOPS"`
+	VolumeBurstThroughput    int64  `json:"volumeBurstThroughput" bson:"volumeBurstThroughput"`
 	Region                   string `json:"region" bson:"region"`
-	VolumeArn                string `json:"instanceArn" bson:"instanceArn"`
+	VolumeArn                string `json:"volumeArn" bson:"volumeArn"`
 	//Cost                     model.ResourceCost `json:"cost" bson:"cost"`
 }
 

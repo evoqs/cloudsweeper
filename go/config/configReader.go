@@ -47,6 +47,15 @@ type Config struct {
 		ApiKey string `yaml:"palm_key" envconfig:"PALM_KEY"`
 		Url    string `yaml:"palm_url" envconfig:"PALM_URL"`
 	} `yaml:"makersuite"`
+	Notifications struct {
+		Email struct {
+			Host        string `yaml:"host" envconfig:"NOTIFY_EMAIL_HOST"`
+			Port        int    `yaml:"port" envconfig:"NOTIFY_EMAIL_PORT"`
+			Username    string `yaml:"username" envconfig:"NOTIFY_EMAIL_USERNAME"`
+			Password    string `yaml:"password" envconfig:"NOTIFY_EMAIL_PASSWORD"`
+			FromAddress string `yaml:"from_address" envconfig:"NOTIFY_EMAIL_FROM_ADDRESS"`
+		} `yaml:"email"`
+	} `yaml:"notifications"`
 }
 
 // Loading the cfg

@@ -30,9 +30,46 @@ func GetEbsCost(pInfo aws_model.ProductInfo[aws_model.ProductAttributesEBS]) (mo
 	return getCost("AmazonEC2", pInfo)
 }
 
-// ==================================== Generic Functions ==================================================
+func GetEbsSnapshotCost(pInfo aws_model.ProductInfo[aws_model.ProductAttributesEBSSnapshot]) (model.ResourceCost, error) {
+	if pInfo.Attributes.RegionCode == "" || (pInfo.Attributes.StorageMedia == "") {
+		return model.ResourceCost{MinPrice: -1}, fmt.Errorf("Unable to get the Cost for EBS. RegionCode and/or StorageMedia/VolumeApiName values are empty.")
+	}
+	return getCost("AmazonEC2", pInfo)
+}
 
-func getCost[T any](serviceCode string, pInfo aws_model.ProductInfo[T]) (model.ResourceCost, error) {
+func GetElasticIpCost(pInfo aws_model.ProductInfo[aws_model.ProductAttributesElasticIp]) (model.ResourceCost, error) {
+	if pInfo.Attributes.RegionCode == "" {
+		return model.ResourceCost{MinPrice: -1}, fmt.Errorf("Unable to get the Cost for ElasticIP. RegionCode value is empty.")
+	}
+	if pInfo.ProductFamily == "" {
+		pInfo.ProductFamily = "ElasticIP"
+	}
+	cost, err := getResourceCostFromDB(pInfo)
+	if err == nil {
+		return cost, nil
+	}
+
+	// TODO: This section needs to be removed. The DB should be updatd manually
+	opr := storage.GetDefaultDBOperators()
+	resourceCost := aws_model.AwsResourceCost[aws_model.ProductAttributesElasticIp]{
+		ProductFamily: pInfo.ProductFamily,
+		CloudProvider: "AWS",
+		PricePerUnit: map[string]float64{
+			"USD": 0.005,
+		},
+		Unit:              "Hrs",
+		ProductAttributes: pInfo.Attributes}
+	opr.CostOperator.AddResourceCost(resourceCost)
+
+	cost, err = getResourceCostFromDB(pInfo)
+	if err == nil {
+		return cost, nil
+	}
+	return model.ResourceCost{MinPrice: -1, MaxPrice: -1}, err
+}
+
+// ==================================== Generic Functions ==================================================
+func getResourceCostFromDB[T any](pInfo aws_model.ProductInfo[T]) (model.ResourceCost, error) {
 	min, max, err := GetCostFromDB(pInfo)
 	if err == nil {
 		return model.ResourceCost{
@@ -42,8 +79,16 @@ func getCost[T any](serviceCode string, pInfo aws_model.ProductInfo[T]) (model.R
 			Currency: "USD",
 		}, nil
 	}
+	return model.ResourceCost{MinPrice: -1}, fmt.Errorf("Unable to get the cost for the Instance. %v", err)
+}
 
-	min, max, err = GetCostFromAws(serviceCode, pInfo)
+func getCost[T any](serviceCode string, pInfo aws_model.ProductInfo[T]) (model.ResourceCost, error) {
+	cost, err := getResourceCostFromDB(pInfo)
+	if err == nil {
+		return cost, nil
+	}
+
+	min, max, err := GetCostFromAws(serviceCode, pInfo)
 	if err != nil {
 		return model.ResourceCost{MinPrice: -1}, fmt.Errorf("Unable to get the cost for the Instance. %v", err)
 	}
@@ -180,9 +225,14 @@ func GetCostFromDB[T any](pInfo aws_model.ProductInfo[T]) (aws_model.AwsResource
 		}
 		return resourceCosts[1], resourceCosts[0], nil
 	}
+
+	if len(resourceCosts) == 1 {
+		return resourceCosts[0], resourceCosts[0], nil
+	}
+
 	return aws_model.AwsResourceCost[T]{},
 		aws_model.AwsResourceCost[T]{},
-		fmt.Errorf("No cost details present in the DB for the given input")
+		fmt.Errorf("NOT_FOUND: No cost details present in the DB for the given input")
 }
 
 // ============================================================================================
