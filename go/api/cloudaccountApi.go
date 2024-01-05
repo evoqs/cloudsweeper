@@ -108,6 +108,7 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 	}
 
 	//Validate Cloud credentials
+	var regionList []string
 	if strings.TrimSpace(acc.AccountType) == "aws" {
 		awsClient, err := cloud_lib.GetAwsClient(acc.AwsCredentials.AccessKeyID, acc.AwsCredentials.SecretAccessKey, "")
 
@@ -123,6 +124,12 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 			return
 		}
 
+		regionList, err = awsClient.GetSubscribedRegionCodes()
+		if err != nil {
+			errString := fmt.Sprintf("Failed to fetch AWS Subscribed region with given credentials. %s", err.Error())
+			srv.SendResponse409(writer, errors.New(errString))
+			return
+		}
 		/* Old validation implementaion
 		if !utils.ValidateAwsCredentials(acc.AwsCredentials.AccessKeyID, acc.AwsCredentials.SecretAccessKey) {
 			errString := fmt.Sprintf("AWS Authentication Failed with given access key and secret")
@@ -193,7 +200,11 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 		pipeline.Schedule = schedule
 		pipeline.Policies = policyIDList
 		pipeline.Default = true
-		pipeline.ExecutionRegions = []string{"ap-southeast-2"} //TODO make regions to all
+
+		//create aws client and get subscription regions
+
+		//pipeline.ExecutionRegions = []string{"ap-southeast-2"} //TODO make regions to all
+		pipeline.ExecutionRegions = regionList
 		//Add pipeline
 		pipelineid, err := srv.opr.PipeLineOperator.AddPipeLine(pipeline)
 		if err != nil {

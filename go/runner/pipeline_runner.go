@@ -406,7 +406,7 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 						if policy.PolicyType == "Default" {
 							var metaData model.ResultMetaData
 							resultEntry.MetaData = &metaData
-							go updateMetaDataEip(&resultWg, &elem, &metaData, cloudAcc, policy.Recommendation)
+							go updateMetaDataEip(&resultWg, &elem, &metaData, cloudAcc, policy.Recommendation, regionName)
 							resultWg.Add(1)
 						}
 
@@ -420,11 +420,12 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 					for _, elem := range policyresultList {
 						var resultEntry aws_model.AwsSnapshotResult
 						resultEntry.ResultData = elem
+
 						resultEntry.MetaData = nil
 						if policy.PolicyType == "Default" {
 							var metaData model.ResultMetaData
 							resultEntry.MetaData = &metaData
-							go updateMetaDataAwsSnapshot(&resultWg, &elem, &metaData, cloudAcc, policy.Recommendation)
+							go updateMetaDataAwsSnapshot(&resultWg, &elem, &metaData, cloudAcc, policy.Recommendation, regionName, elem.VolumeSize)
 							resultWg.Add(1)
 						}
 
@@ -531,18 +532,29 @@ func updateMetaDataEbs(resultWg *sync.WaitGroup, result *aws_model.AwsBlockVolum
 	}
 }
 
-func updateMetaDataEip(resultWg *sync.WaitGroup, result *aws_model.AwsElasticIPResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, defaultRecommendation string) {
+func updateMetaDataEip(resultWg *sync.WaitGroup, result *aws_model.AwsElasticIPResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, defaultRecommendation string, regionName string) {
 	defer resultWg.Done()
 	//estimate, err := aws_cost_estimator.GetAWSRecommendationForEBSVolume(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey, regionName, cloudAcc.AwsCredentials.AccountID, result.VolumeId)
 	//TODO
-	montlyCost := getMonthlyPrice(0.1, "USD", "Monthly")
-	resultMetaData.Cost = montlyCost
+	product := aws_model.ProductInfo[aws_model.ProductAttributesElasticIp]{
+		Attributes: aws_model.ProductAttributesElasticIp{
+			RegionCode: regionName,
+		},
+		ProductFamily: "ElasticIP",
+	}
+	cost, err := aws_cost_estimator.GetElasticIpCost(product)
+	if err != nil {
+		resultMetaData.Cost = "unknown"
+	} else {
+		resultMetaData.Cost = getMonthlyPrice(cost.MinPrice, cost.Currency, cost.Unit)
+	}
+
 	var recommendationList []model.ResultRecommendation
 
 	var recommendation model.ResultRecommendation
-	recommendation.Price = montlyCost
+	recommendation.Price = resultMetaData.Cost
 	recommendation.Recommendation = defaultRecommendation
-	recommendation.EstimatedCostSavings = montlyCost
+	recommendation.EstimatedCostSavings = resultMetaData.Cost
 	recommendation.EstimatedMonthlySavings = "100%"
 
 	recommendationList = append(recommendationList, recommendation)
@@ -550,18 +562,31 @@ func updateMetaDataEip(resultWg *sync.WaitGroup, result *aws_model.AwsElasticIPR
 
 }
 
-func updateMetaDataAwsSnapshot(resultWg *sync.WaitGroup, result *aws_model.AwsSnapshotResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, defaultRecommendation string) {
+func updateMetaDataAwsSnapshot(resultWg *sync.WaitGroup, result *aws_model.AwsSnapshotResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, defaultRecommendation string, regionName string, volSize int) {
 	defer resultWg.Done()
 	//estimate, err := aws_cost_estimator.GetAWSRecommendationForEBSVolume(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey, regionName, cloudAcc.AwsCredentials.AccountID, result.VolumeId)
 	//TODO
-	montlyCost := getMonthlyPrice(0.1, "USD", "Monthly")
-	resultMetaData.Cost = montlyCost
+	product := aws_model.ProductInfo[aws_model.ProductAttributesEBSSnapshot]{
+		Attributes: aws_model.ProductAttributesEBSSnapshot{
+			//StorageMedia: "Amazon S3",
+			RegionCode: regionName,
+		},
+		ProductFamily: "Storage Snapshot",
+	}
+
+	cost, err := aws_cost_estimator.GetEbsSnapshotCost(product)
+	if err != nil {
+		resultMetaData.Cost = "unknown"
+	} else {
+		resultMetaData.Cost = getMonthlyPrice(cost.MinPrice*float64(volSize), cost.Currency, cost.Unit)
+	}
+
 	var recommendationList []model.ResultRecommendation
 
 	var recommendation model.ResultRecommendation
-	recommendation.Price = montlyCost
+	recommendation.Price = resultMetaData.Cost
 	recommendation.Recommendation = defaultRecommendation
-	recommendation.EstimatedCostSavings = montlyCost
+	recommendation.EstimatedCostSavings = resultMetaData.Cost
 	recommendation.EstimatedMonthlySavings = "100%"
 
 	recommendationList = append(recommendationList, recommendation)
@@ -569,6 +594,7 @@ func updateMetaDataAwsSnapshot(resultWg *sync.WaitGroup, result *aws_model.AwsSn
 
 }
 
+// Convert hourly price to Monthly price
 func getMonthlyPrice(price float64, currency string, unit string) string {
 	if strings.Contains(strings.ToLower(unit), "hrs") {
 		return fmt.Sprintf("%f %s/Month", price*30, currency)
