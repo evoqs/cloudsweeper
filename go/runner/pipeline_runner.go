@@ -1,7 +1,10 @@
 package runner
 
 import (
+	"cloudsweep/cloud_lib"
 	"cloudsweep/config"
+	aws_cost_estimator "cloudsweep/cost_estimator/aws"
+
 	//cost_estimator "cloudsweep/cost_estimator/aws"
 	logger "cloudsweep/logging"
 	"cloudsweep/model"
@@ -207,7 +210,7 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 	if err != nil {
 		logwriter.Errorf("Failed to convert json policy to yaml, for policy id %s, %s", policy.PolicyID, err.Error())
 		updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Invalid policy definition", time.Now().Unix(), nil, false)
-		rchan <- isPolicyRunFailed
+		rchan <- true
 		return
 	}
 
@@ -216,17 +219,26 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 	if err != nil || len(cloudAccList) < 1 {
 		logwriter.Errorf("Failed to get cloundaccount details for policy id %s %s , %s", policy.PolicyID, pipeLine.CloudAccountID, err.Error())
 		updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Missing Cloud Account definition for policy", time.Now().Unix(), nil, false)
-		isPolicyRunFailed = true
+		rchan <- true
+		return
 	}
 
 	cloudAcc := cloudAccList[0]
 	//validating cloud authentication
 
 	if cloudAcc.AccountType == model.AWS {
-		if !utils.ValidateAwsCredentials(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey) {
-			logwriter.Errorf("AWS Authentication failed for cloud account %s, %s", cloudAcc.CloudAccountID.Hex(), err.Error())
+		awsClient, err := cloud_lib.GetAwsClient(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey, "")
+		if err != nil {
+			logwriter.Errorf("Failed to connect to AWS Client")
+			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Failed to connect to AWS Client", time.Now().Unix(), nil, false)
+			rchan <- true
+			return
+		}
+
+		if !awsClient.ValidateCredentials() {
+			logwriter.Errorf("AWS Authentication failed for cloud account %s", cloudAcc.CloudAccountID.Hex())
 			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "AWS Authentication Failed, invalid accesskey/secret", time.Now().Unix(), nil, false)
-			rchan <- isPolicyRunFailed
+			rchan <- true
 			return
 
 		}
@@ -258,7 +270,7 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 		if !ok {
 			logwriter.Errorf("Failed to read from channel for policy execution %s", policyid)
 			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Internal Error", policyRunTime, nil, false)
-			rchan <- isPolicyRunFailed
+			rchan <- true
 			return
 
 		}
@@ -266,13 +278,16 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 		if strings.Contains(strings.ToUpper(runres), "ERROR") {
 			fmt.Println("policy run failed with result", runres)
 			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Internal Error", policyRunTime, nil, false)
-			isPolicyRunFailed = true
+			rchan <- true
+			return
 		} else {
 			logger.NewDefaultLogger().Infof("policy run successful with result %s", runres)
 			folderList := utils.GetFolderList(RunFolder)
 			var resultList = make([]model.RegionResult, 0)
 			resourceName := utils.GetResourceName(policyFile)
 
+			//create Wait group for each results
+			var resultWg sync.WaitGroup
 			for _, element := range folderList {
 				var regionName, resourceFile, policyName string
 				if isSingleRegionExecution {
@@ -337,6 +352,8 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 						if policy.PolicyType == "Default" {
 							var metaData model.ResultMetaData
 							resultEntry.MetaData = &metaData
+							go updateMetaDataEc2(&resultWg, &resultData, &metaData, cloudAcc, regionName)
+							resultWg.Add(1)
 							//TODO get recommendations
 
 						}
@@ -370,6 +387,8 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 						if policy.PolicyType == "Default" {
 							var metaData model.ResultMetaData
 							resultEntry.MetaData = &metaData
+							go updateMetaDataEbs(&resultWg, &resultData, &metaData, cloudAcc, regionName)
+							resultWg.Add(1)
 							//TODO get recommendations
 						}
 
@@ -387,6 +406,8 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 						if policy.PolicyType == "Default" {
 							var metaData model.ResultMetaData
 							resultEntry.MetaData = &metaData
+							go updateMetaDataEip(&resultWg, &elem, &metaData, cloudAcc, policy.Recommendation, regionName)
+							resultWg.Add(1)
 						}
 
 						rList = append(rList, resultEntry)
@@ -399,11 +420,13 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 					for _, elem := range policyresultList {
 						var resultEntry aws_model.AwsSnapshotResult
 						resultEntry.ResultData = elem
+
 						resultEntry.MetaData = nil
 						if policy.PolicyType == "Default" {
 							var metaData model.ResultMetaData
 							resultEntry.MetaData = &metaData
-							//TODO get recommendations
+							go updateMetaDataAwsSnapshot(&resultWg, &elem, &metaData, cloudAcc, policy.Recommendation, regionName, elem.VolumeSize)
+							resultWg.Add(1)
 						}
 
 						rList = append(rList, resultEntry)
@@ -422,12 +445,161 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 				resultList = append(resultList, *regionResult)
 
 			}
+			//wait for threads
+			resultWg.Wait()
 			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, resourceName, "SUCCESS", policyRunTime, resultList, true)
 		}
 		rchan <- isPolicyRunFailed
 		return
 	}
 	rchan <- false
+}
+
+func updateMetaDataEc2(resultWg *sync.WaitGroup, result *aws_model.AwsInstanceResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, regionName string) {
+	defer resultWg.Done()
+
+	estimate, err := aws_cost_estimator.GetAWSRecommendationForEC2Instance(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey, regionName, cloudAcc.AwsCredentials.AccountID, result.InstanceId)
+
+	if err != nil || estimate == nil {
+
+		fmt.Printf("Failed to get recommendation %+v", err)
+		product := aws_model.ProductAttributesInstance{
+			InstanceType:    result.InstanceType,
+			RegionCode:      regionName,
+			OperatingSystem: "Linux",
+		}
+		cost, err := aws_cost_estimator.GetComputeInstanceCost(aws_model.ProductInfo[aws_model.ProductAttributesInstance]{
+			Attributes: product})
+
+		if err != nil {
+			resultMetaData.Cost = "unknown"
+			resultMetaData.Recommendations = nil
+			return
+		}
+		resultMetaData.Cost = getMonthlyPrice(cost.MinPrice, cost.Currency, cost.Unit)
+		resultMetaData.Recommendations = nil
+		return
+	} else {
+		resultMetaData.Cost = getMonthlyPrice(estimate.CurrentCost.MinPrice, estimate.CurrentCost.Currency, estimate.CurrentCost.Unit)
+		var recommendationList []model.ResultRecommendation
+		for _, elem := range estimate.RecommendationItems {
+			var recommendation model.ResultRecommendation
+			recommendation.Price = getMonthlyPrice(elem.Cost.MinPrice, elem.Cost.Currency, elem.Cost.Unit)
+			recommendation.Recommendation = elem.Resource.InstanceType
+			recommendation.EstimatedCostSavings = elem.EstimatedCostSavings
+			recommendation.EstimatedMonthlySavings = elem.EstimatedMonthlySavings
+			recommendationList = append(recommendationList, recommendation)
+		}
+		resultMetaData.Recommendations = recommendationList
+	}
+}
+
+func updateMetaDataEbs(resultWg *sync.WaitGroup, result *aws_model.AwsBlockVolumeResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, regionName string) {
+	defer resultWg.Done()
+	estimate, err := aws_cost_estimator.GetAWSRecommendationForEBSVolume(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey, regionName, cloudAcc.AwsCredentials.AccountID, result.VolumeId)
+	//TODO
+	if err != nil || estimate == nil {
+
+		fmt.Printf("Failed to get recommendation %+v", err)
+		product := aws_model.ProductAttributesEBS{
+			VolumeType: result.VolumeType,
+			RegionCode: regionName,
+		}
+		cost, err := aws_cost_estimator.GetEbsCost(aws_model.ProductInfo[aws_model.ProductAttributesEBS]{
+			Attributes: product, ProductFamily: "Storage"})
+
+		if err != nil {
+			resultMetaData.Cost = "unknown"
+			resultMetaData.Recommendations = nil
+			return
+		}
+		resultMetaData.Cost = getMonthlyPrice(cost.MinPrice, cost.Currency, cost.Unit)
+		resultMetaData.Recommendations = nil
+		return
+
+	} else {
+		resultMetaData.Cost = getMonthlyPrice(estimate.CurrentCost.MinPrice, estimate.CurrentCost.Currency, estimate.CurrentCost.Unit)
+		var recommendationList []model.ResultRecommendation
+		for _, elem := range estimate.RecommendationItems {
+			var recommendation model.ResultRecommendation
+			recommendation.Price = getMonthlyPrice(elem.Cost.MinPrice, elem.Cost.Currency, elem.Cost.Unit)
+			recommendation.Recommendation = elem.Resource.VolumeType
+			recommendation.EstimatedCostSavings = elem.EstimatedCostSavings
+			recommendation.EstimatedMonthlySavings = elem.EstimatedMonthlySavings
+			recommendationList = append(recommendationList, recommendation)
+		}
+		resultMetaData.Recommendations = recommendationList
+	}
+}
+
+func updateMetaDataEip(resultWg *sync.WaitGroup, result *aws_model.AwsElasticIPResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, defaultRecommendation string, regionName string) {
+	defer resultWg.Done()
+	//estimate, err := aws_cost_estimator.GetAWSRecommendationForEBSVolume(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey, regionName, cloudAcc.AwsCredentials.AccountID, result.VolumeId)
+	//TODO
+	product := aws_model.ProductInfo[aws_model.ProductAttributesElasticIp]{
+		Attributes: aws_model.ProductAttributesElasticIp{
+			RegionCode: regionName,
+		},
+		ProductFamily: "ElasticIP",
+	}
+	cost, err := aws_cost_estimator.GetElasticIpCost(product)
+	if err != nil {
+		resultMetaData.Cost = "unknown"
+	} else {
+		resultMetaData.Cost = getMonthlyPrice(cost.MinPrice, cost.Currency, cost.Unit)
+	}
+
+	var recommendationList []model.ResultRecommendation
+
+	var recommendation model.ResultRecommendation
+	recommendation.Price = resultMetaData.Cost
+	recommendation.Recommendation = defaultRecommendation
+	recommendation.EstimatedCostSavings = resultMetaData.Cost
+	recommendation.EstimatedMonthlySavings = "100%"
+
+	recommendationList = append(recommendationList, recommendation)
+	resultMetaData.Recommendations = recommendationList
+
+}
+
+func updateMetaDataAwsSnapshot(resultWg *sync.WaitGroup, result *aws_model.AwsSnapshotResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, defaultRecommendation string, regionName string, volSize int) {
+	defer resultWg.Done()
+	//estimate, err := aws_cost_estimator.GetAWSRecommendationForEBSVolume(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey, regionName, cloudAcc.AwsCredentials.AccountID, result.VolumeId)
+	//TODO
+	product := aws_model.ProductInfo[aws_model.ProductAttributesEBSSnapshot]{
+		Attributes: aws_model.ProductAttributesEBSSnapshot{
+			//StorageMedia: "Amazon S3",
+			RegionCode: regionName,
+		},
+		ProductFamily: "Storage Snapshot",
+	}
+
+	cost, err := aws_cost_estimator.GetEbsSnapshotCost(product)
+	if err != nil {
+		resultMetaData.Cost = "unknown"
+	} else {
+		resultMetaData.Cost = getMonthlyPrice(cost.MinPrice*float64(volSize), cost.Currency, cost.Unit)
+	}
+
+	var recommendationList []model.ResultRecommendation
+
+	var recommendation model.ResultRecommendation
+	recommendation.Price = resultMetaData.Cost
+	recommendation.Recommendation = defaultRecommendation
+	recommendation.EstimatedCostSavings = resultMetaData.Cost
+	recommendation.EstimatedMonthlySavings = "100%"
+
+	recommendationList = append(recommendationList, recommendation)
+	resultMetaData.Recommendations = recommendationList
+
+}
+
+// Convert hourly price to Monthly price
+func getMonthlyPrice(price float64, currency string, unit string) string {
+	if strings.Contains(strings.ToLower(unit), "hrs") {
+		return fmt.Sprintf("%f %s/Month", price*30, currency)
+	}
+	return fmt.Sprintf("%f %s/Month", price, currency)
 }
 
 func updatePolicyRunResult(pipeLineID string, policyID string, resourceName string, runStatus string, runtime int64, regionWiseResult []model.RegionResult, isSuccess bool) {
