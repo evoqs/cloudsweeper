@@ -5,11 +5,13 @@ import (
 	"cloudsweep/config"
 	logging "cloudsweep/logging"
 	notify_model "cloudsweep/notifications/model"
+	"fmt"
 	"html/template"
 )
 
 type Sender interface {
-	Send(from string, to []string, subject, body string, isHTML bool) error
+	//Send(from string, to []string, subject, body string, isHTML bool) error
+	Send(emailDetails EmailDetails) error
 }
 
 type EmailManager struct {
@@ -25,18 +27,33 @@ func NewDefaultEmailManager() *EmailManager {
 		config.GetConfig().Notifications.Email.Username, config.GetConfig().Notifications.Email.Password)}
 }
 
-func (em *EmailManager) SendEmail(from string, to []string, subject, body string, isHTML bool) error {
-	return em.sender.Send(from, to, subject, body, isHTML)
+func (em *EmailManager) SendEmail(emailDetails EmailDetails) error {
+	return em.sender.Send(emailDetails)
 }
 
 func (em *EmailManager) SendNotification(details notify_model.NotfifyDetails) error {
 	logging.NewDefaultLogger().Debugf("Processing the Notification from the channel")
-	// TODO: Build the body dynamically from the resource
+	// Build the body dynamically from the resource
 	body, err := buildEmailBody(details)
 	if err != nil {
 		logging.NewDefaultLogger().Errorf("Problem in building the email body %v", err)
 	}
-	err = em.SendEmail(config.GetConfig().Notifications.Email.FromAddress, details.EmailDetails.ToAddresses, "Cloud Sweeper Resource Usage Notification", body, true)
+	// Create a CSV file with header and details
+	csvData, err := createAttachmentDataInCsvFormat(details.ResourceDetails)
+	if err != nil {
+		logging.NewDefaultLogger().Errorf("Error creating CSV file: %v", err)
+		return err
+	}
+	err = em.SendEmail(EmailDetails{
+		To:       details.EmailDetails.ToAddresses,
+		From:     config.GetConfig().Notifications.Email.FromAddress,
+		Subject:  "Cloud Sweeper Resource Usage Notification",
+		BodyHTML: body,
+		// TODO: Get this from config
+		ImageLocations: []string{"/home/pavan/Documents/cs.jpg"},
+		AttachmentName: "resource_details.csv",
+		AttachmentData: []byte(csvData),
+	})
 	if err != nil {
 		logging.NewDefaultLogger().Errorf("Error: %v", err)
 	}
@@ -45,7 +62,7 @@ func (em *EmailManager) SendNotification(details notify_model.NotfifyDetails) er
 
 func buildEmailBody(details notify_model.NotfifyDetails) (string, error) {
 	// Load your company logo
-	logoURL := "/home/pavan/Documents/cs.jpg"
+	//logoURL := "/home/pavan/Documents/cs.jpg"
 	// Calculate the sum of Monthly Prices
 	var totalMonthlyPrice float64
 	var totalMonthlySavings float64
@@ -119,7 +136,7 @@ func buildEmailBody(details notify_model.NotfifyDetails) (string, error) {
 		<body>
 			<tr>
 					<td colspan="2" style="text-align: center;">
-						<img src="{{.LogoURL}}" alt="Company Logo" class="logo">
+						<img src="cid:cs.jpg" alt="Company Logo" class="logo">
 					</td>
 				</tr>
 			<table class="external-table">
@@ -183,14 +200,14 @@ func buildEmailBody(details notify_model.NotfifyDetails) (string, error) {
 
 	// Prepare data for the template
 	data := struct {
-		LogoURL             string
+		//LogoURL             string
 		CompanyURL          string
 		ResourceDetails     []notify_model.NotifyResourceDetails
 		PipeLineName        string
 		TotalMonthlyPrice   float64
 		TotalMonthlySavings float64
 	}{
-		LogoURL:             logoURL,
+		//LogoURL:             logoURL,
 		CompanyURL:          "https://cloudsweeper.in/",
 		ResourceDetails:     details.ResourceDetails,
 		PipeLineName:        details.PipeLineName,
@@ -213,4 +230,28 @@ func buildEmailBody(details notify_model.NotfifyDetails) (string, error) {
 	}
 
 	return emailBodyBuffer.String(), nil
+}
+
+// Function to create a CSV file from NotifyResourceDetails
+func createAttachmentDataInCsvFormat(resources []notify_model.NotifyResourceDetails) (string, error) {
+	var csvDataBuffer bytes.Buffer
+
+	// Write header to CSV
+	csvDataBuffer.WriteString("Account ID,Resource Type,Resource ID,Resource Name,Region Code,Monthly Price,Recommendation,Monthly Savings\n")
+
+	// Write details to CSV
+	for _, resource := range resources {
+		csvDataBuffer.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%.2f,%s,%.2f\n",
+			resource.AccountID,
+			resource.ResourceType,
+			resource.ResourceId,
+			resource.ResourceName,
+			resource.RegionCode,
+			resource.MonthlyPrice,
+			resource.Recommendation,
+			resource.MonthlySavings,
+		))
+	}
+
+	return csvDataBuffer.String(), nil
 }

@@ -43,8 +43,15 @@ func TestNotificationEmail(t *testing.T) {
 	emailManager := NewEmailManager(gomailSender)
 
 	to := []string{"pavan.vitla@gmail.com", "bipinkmg@gmail.com"}
+	imageLocations := []string{"/home/pavan/Documents/cs.jpg"}
 	subject := "Cloud Sweeper Sample Test Mail"
 	bodyHTML := "<html><body><p>Cloud Sweeper Sample Test Mail. You should see the resource details here in future.</p></body></html>"
-	err = emailManager.SendEmail(config.GetConfig().Notifications.Email.FromAddress, to, subject, bodyHTML, true)
+	err = emailManager.SendEmail(EmailDetails{
+		To:             to,
+		From:           config.GetConfig().Notifications.Email.FromAddress,
+		Subject:        subject,
+		BodyHTML:       bodyHTML,
+		ImageLocations: imageLocations,
+	})
 	t.Logf("Email Sent %v", err)
 }

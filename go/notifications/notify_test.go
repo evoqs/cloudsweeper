@@ -74,7 +74,7 @@ func TestNotifications(t *testing.T) {
 		},
 		EmailDetails: notify_model.NotifyEmailDetails{
 			Enabled:     true,
-			ToAddresses: []string{"pavan.vitla@gmail.com", "bipinkmg@gmail.com"}, //, "jnagendran78@gmail.com", "web.jlingasur@gmail.com"},
+			ToAddresses: []string{"pavan.vitla@gmail.com", "bipinkmg@gmail.com", "jnagendran78@gmail.com", "web.jlingasur@gmail.com"},
 		},
 		/*SlackDetails: notify_model.NotifySlackDetails{
 			Enabled: true,
