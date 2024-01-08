@@ -2,12 +2,15 @@ package model
 
 // Structure of the Resource detail for Notification
 type NotifyResourceDetails struct {
-	AccountID    string            `json:"accountId"`
-	ResourceType string            `json:"resourceType"`
-	ResourceId   string            `json:"resourceId"`
-	ResourceName string            `json:"resourceName"`
-	RegionCode   string            `json:"regionCode"`
-	ResourceTags map[string]string `json:"resourceTags"`
+	AccountID      string            `json:"accountId"`
+	ResourceType   string            `json:"resourceType"`
+	ResourceId     string            `json:"resourceId"`
+	ResourceName   string            `json:"resourceName"`
+	RegionCode     string            `json:"regionCode"`
+	MonthlyPrice   float64           `json:"monthlyPrice"`
+	ResourceTags   map[string]string `json:"resourceTags"`
+	Recommendation string            `json:"recommendation"`
+	MonthlySavings float64           `json:"monthlySavings"`
 }
 
 type NotifyRequest struct {
@@ -16,6 +19,7 @@ type NotifyRequest struct {
 }
 
 type NotfifyDetails struct {
+	PipeLineName    string                  `json:"pipeLineName"`
 	ResourceDetails []NotifyResourceDetails `json:"resourceDetails"`
 	EmailDetails    NotifyEmailDetails      `json:"emailDetails"`
 	SlackDetails    NotifySlackDetails      `json:"slackDetails"`

@@ -41,6 +41,7 @@ func TestNotifications(t *testing.T) {
 
 	details := notify_model.NotfifyDetails{
 		// Populate the details as needed
+		PipeLineName: "Cut Cost",
 		ResourceDetails: []notify_model.NotifyResourceDetails{
 			{
 				AccountID:    "123456789",
@@ -52,6 +53,9 @@ func TestNotifications(t *testing.T) {
 					"Environment": "Production",
 					"Owner":       "John Doe",
 				},
+				MonthlyPrice:   10,
+				Recommendation: "t2.micro",
+				MonthlySavings: 0.34,
 			},
 			{
 				AccountID:    "1234567890",
@@ -61,13 +65,16 @@ func TestNotifications(t *testing.T) {
 				RegionCode:   "us-east-1",
 				ResourceTags: map[string]string{
 					"Environment": "Production",
-					"Owner":       "JPavan K",
+					"Owner":       "Pavan K",
 				},
+				MonthlyPrice:   100,
+				Recommendation: "mx4.large",
+				MonthlySavings: 2.87,
 			},
 		},
 		EmailDetails: notify_model.NotifyEmailDetails{
 			Enabled:     true,
-			ToAddresses: []string{"pavan.vitla@gmail.com", "bipinkmg@gmail.com"},
+			ToAddresses: []string{"pavan.vitla@gmail.com", "bipinkmg@gmail.com", "jnagendran78@gmail.com", "web.jlingasur@gmail.com"},
 		},
 		/*SlackDetails: notify_model.NotifySlackDetails{
 			Enabled: true,
@@ -79,6 +86,9 @@ func TestNotifications(t *testing.T) {
 		},*/
 	}
 	t.Logf("Sending Notification..")
-	SendNotification(details)
+	for i := 0; i < 1; i++ {
+		fmt.Printf("Sending notification #%d\n", i+1)
+		SendNotification(details)
+	}
 	time.Sleep(10 * time.Second)
 }
