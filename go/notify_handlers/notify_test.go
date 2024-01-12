@@ -163,10 +163,23 @@ func TestNotifications(t *testing.T) {
 				RecommendedResourceType: "mx4.large",
 				MonthlySavings:          0.00,
 			},
+			{
+				AccountID:     "1234567890",
+				ResourceClass: "ComputeInstance",
+				ResourceId:    "i-dsada12345678901",
+				ResourceName:  "MyInstance89",
+				RegionCode:    "us-east-1",
+				ResourceTags: map[string]string{
+					"Environment": "Production",
+					"Owner":       "Pavan K",
+				},
+				MonthlyPrice:        45.77,
+				CurrentResourceType: "mx7.large",
+			},
 		},
 		EmailDetails: notify_model.NotifyEmailDetails{
 			Enabled:     true,
-			ToAddresses: []string{"pavan.vitla@gmail.com", "bipinkmg@gmail.com"}, //, "jnagendran78@gmail.com", "web.jlingasur@gmail.com"},
+			ToAddresses: []string{"pavan.vitla@gmail.com", "bipinkmg@gmail.com", "jnagendran78@gmail.com", "web.jlingasur@gmail.com"},
 		},
 		/*SlackDetails: notify_model.NotifySlackDetails{
 			Enabled: true,

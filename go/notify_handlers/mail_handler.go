@@ -37,7 +37,6 @@ func (em *EmailManager) SendEmail(emailDetails mail.EmailDetails) error {
 
 func (em *EmailManager) SendNotification(details model.NotfifyDetails) error {
 	logging.NewDefaultLogger().Debugf("Processing the Notification from the channel")
-	// Build the body dynamically from the resource
 	body, err := buildEmailBody(details)
 	if err != nil {
 		logging.NewDefaultLogger().Errorf("Problem in building the email body %v", err)
@@ -49,12 +48,11 @@ func (em *EmailManager) SendNotification(details model.NotfifyDetails) error {
 		return err
 	}
 	err = em.SendEmail(mail.EmailDetails{
-		To:       details.EmailDetails.ToAddresses,
-		From:     config.GetConfig().Notifications.Email.FromAddress,
-		Subject:  "Cloud Sweeper Resource Usage Notification",
-		BodyHTML: body,
-		// TODO: Get this from config
-		ImageLocations: []string{"/home/pavan/Documents/cs.jpg"},
+		To:             details.EmailDetails.ToAddresses,
+		From:           config.GetConfig().Notifications.Email.FromAddress,
+		Subject:        "CloudSweeper Resource Usage Notification",
+		BodyHTML:       body,
+		ImageLocations: []string{config.GetConfig().CouldSweeper.Logo},
 		AttachmentName: "resource_details.csv",
 		AttachmentData: []byte(csvData),
 	})
@@ -65,8 +63,6 @@ func (em *EmailManager) SendNotification(details model.NotfifyDetails) error {
 }
 
 func buildEmailBody(details model.NotfifyDetails) (string, error) {
-	// Load your company logo
-	//logoURL := "/home/pavan/Documents/cs.jpg"
 	// Calculate the sum of Monthly Prices
 	var totalMonthlyPrice float64
 	var totalMonthlySavings float64
@@ -80,7 +76,7 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 		<head>
 			<style>
 				.logo {
-					max-width: 200px;
+					max-width: 300px;
 					height: auto;
 					display: block;
 					margin: 20px auto;
@@ -175,7 +171,7 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 				{{range $resourceClass, $resources := .GroupedResources}}
 				<tr>
 					<td colspan="2" style="vertical-align: bottom;">
-						<strong>{{ $resourceClass }}</strong>
+						Resource Class: <strong style="margin-bottom: 0;">{{ $resourceClass }}</strong>
 						<table class="internal-table">
 							<tr>
 								<th>Account ID</th>
@@ -222,7 +218,7 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 		GroupedResources    map[string][]model.NotifyResourceDetails
 	}{
 		//LogoURL:             logoURL,
-		CompanyURL:          "https://cloudsweeper.in/",
+		CompanyURL:          config.GetConfig().CouldSweeper.URL,
 		ResourceDetails:     details.ResourceDetails,
 		PipeLineName:        details.PipeLineName,
 		TotalMonthlyPrice:   totalMonthlyPrice,
@@ -270,7 +266,7 @@ func createAttachmentDataInCsvFormat(resources []model.NotifyResourceDetails) (s
 	var csvDataBuffer bytes.Buffer
 
 	// Write header to CSV
-	csvDataBuffer.WriteString("Account ID,Resource Type,Resource ID,Resource Name,Region Code,Monthly Price,Recommendation,Monthly Savings\n")
+	csvDataBuffer.WriteString("Account ID,Resource Type,Resource ID,Resource Name,Region Code,Monthly Price,Current Resource Type,Recommended Resource Type, Monthly Savings\n")
 
 	// Write details to CSV
 	for _, resource := range resources {
