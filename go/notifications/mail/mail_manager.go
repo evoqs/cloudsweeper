@@ -1,12 +1,8 @@
 package mail
 
 import (
-	"bytes"
 	"cloudsweep/config"
 	logging "cloudsweep/logging"
-	notify_model "cloudsweep/notifications/model"
-	"fmt"
-	"html/template"
 )
 
 type Sender interface {
@@ -31,10 +27,10 @@ func (em *EmailManager) SendEmail(emailDetails EmailDetails) error {
 	return em.sender.Send(emailDetails)
 }
 
-func (em *EmailManager) SendNotification(details notify_model.NotfifyDetails) error {
+func (em *EmailManager) SendNotification(details EmailDetails) error {
 	logging.NewDefaultLogger().Debugf("Processing the Notification from the channel")
 	// Build the body dynamically from the resource
-	body, err := buildEmailBody(details)
+	/*body, err := buildEmailBody(details)
 	if err != nil {
 		logging.NewDefaultLogger().Errorf("Problem in building the email body %v", err)
 	}
@@ -44,214 +40,21 @@ func (em *EmailManager) SendNotification(details notify_model.NotfifyDetails) er
 		logging.NewDefaultLogger().Errorf("Error creating CSV file: %v", err)
 		return err
 	}
-	err = em.SendEmail(EmailDetails{
-		To:       details.EmailDetails.ToAddresses,
-		From:     config.GetConfig().Notifications.Email.FromAddress,
-		Subject:  "Cloud Sweeper Resource Usage Notification",
-		BodyHTML: body,
+	EmailDetails{
+		To:        details.To,
+		From:      config.GetConfig().Notifications.Email.FromAddress,
+		Subject:   "Cloud Sweeper Resource Usage Notification",
+		BodyHTML:  details.BodyHTML,
+		BodyPlain: details.BodyPlain,
 		// TODO: Get this from config
 		ImageLocations: []string{"/home/pavan/Documents/cs.jpg"},
 		AttachmentName: "resource_details.csv",
 		AttachmentData: []byte(csvData),
-	})
+	}
+	*/
+	err := em.SendEmail(details)
 	if err != nil {
 		logging.NewDefaultLogger().Errorf("Error: %v", err)
 	}
 	return err
-}
-
-func buildEmailBody(details notify_model.NotfifyDetails) (string, error) {
-	// Load your company logo
-	//logoURL := "/home/pavan/Documents/cs.jpg"
-	// Calculate the sum of Monthly Prices
-	var totalMonthlyPrice float64
-	var totalMonthlySavings float64
-	for _, resource := range details.ResourceDetails {
-		totalMonthlyPrice += resource.MonthlyPrice
-		totalMonthlySavings += resource.MonthlySavings
-	}
-	// Template for the email body
-	emailTemplate := `
-	<html>
-		<head>
-			<style>
-				.logo {
-					max-width: 200px;
-					height: auto;
-					display: block;
-					margin: 20px auto;
-				}
-
-				.button {
-					display: inline-block;
-					font-size: 16px;
-					padding: 10px 20px;
-					text-align: center;
-					text-decoration: none;
-					background-color: #3b6696;
-					color: white;
-					border-radius: 5px;
-				}
-
-				/* External table styling */
-				.external-table {
-					border-collapse: collapse;
-					width: 100%;
-					border: 0.5px solid #d3d3d3; /* External border color */
-					border-radius: 20px; /* Rounded corners */
-				}
-
-				.external-table td, .external-table th {
-					padding: 10px;
-					background-color: #f8f8f8; /* Internal color */
-				}
-
-				/* External table heading */
-					.external-table-heading {
-					text-align: center;
-					color: #2f2f2f;
-				}
-
-				/* Internal tables styling */
-				.internal-table {
-					border-collapse: collapse;
-					width: 100%;
-					margin-top: 20px;
-					border: 0.5px solid #dddddd;
-				}
-
-				.internal-table th, .internal-table td {
-					text-align: left;
-					padding: 8px;
-					background-color: #f8f8f8; /* Internal color */
-					border: none;
-				}
-
-				.internal-table th {
-					background-color: #e8e8e8;
-				}
-			</style>
-		</head>
-
-		<body>
-			<tr>
-					<td colspan="2" style="text-align: center;">
-						<img src="cid:cs.jpg" alt="Company Logo" class="logo">
-					</td>
-				</tr>
-			<table class="external-table">
-				<tr class="external-table-heading">
-					<td colspan="2" style="text-align: center;">
-						<h1>Resources Summary</h1>
-					</td>
-				</tr>
-				<tr>
-					<td style="text-align: left;">
-						<span>Pipeline Name:</span>
-						<h3 style="margin: 0;">{{.PipeLineName}}</h3>
-					</td>
-					<td style="text-align: right;">
-						<span>Monthly Price:</span>
-						<h3 style="margin: 0;">{{printf "$%.2f" .TotalMonthlyPrice}}</h3>
-					</td>
-				</tr>
-				<tr>
-					<td style="text-align: right;"> </td>
-					<td style="text-align: right;">
-						<span>Monthly Savings:</span>
-						<h3 style="margin: 0;">{{printf "$%.2f" .TotalMonthlySavings}}</h3>
-					</td>
-				</tr>
-				<tr>
-					<td colspan="2">
-						<table class="internal-table">
-							<tr>
-								<th>Account ID</th>
-								<th>Resource Type</th>
-								<th>Resource ID</th>
-								<th>Resource Name</th>
-								<th>Region Code</th>
-								<th>Monthly Price</th>
-								<th>Recommendation</th>
-								<th>Monthly Savings</th>
-							</tr>
-							{{range .ResourceDetails}}
-							<tr>
-								<td>{{.AccountID}}</td>
-								<td>{{.ResourceType}}</td>
-								<td>{{.ResourceId}}</td>
-								<td>{{.ResourceName}}</td>
-								<td>{{.RegionCode}}</td>
-								<td>{{.MonthlyPrice}}</td>
-								<td>{{.Recommendation}}</td>
-								<td>{{.MonthlySavings}}</td>
-							</tr>
-							{{end}}
-						</table>
-					</td>
-				</tr>
-			</table>
-
-			<div style="text-align: center; margin-top: 20px;">
-				<a href="{{.CompanyURL}}" class="button" style="background-color: #3b6696; color: white;" target="_blank">Visit CloudSweeper</a>
-			</div>
-		</body>
-	</html>`
-
-	// Prepare data for the template
-	data := struct {
-		//LogoURL             string
-		CompanyURL          string
-		ResourceDetails     []notify_model.NotifyResourceDetails
-		PipeLineName        string
-		TotalMonthlyPrice   float64
-		TotalMonthlySavings float64
-	}{
-		//LogoURL:             logoURL,
-		CompanyURL:          "https://cloudsweeper.in/",
-		ResourceDetails:     details.ResourceDetails,
-		PipeLineName:        details.PipeLineName,
-		TotalMonthlyPrice:   totalMonthlyPrice,
-		TotalMonthlySavings: totalMonthlySavings,
-	}
-
-	// Execute the template
-	tmpl, err := template.New("emailTemplate").Parse(emailTemplate)
-	if err != nil {
-		logging.NewDefaultLogger().Errorf("Error parsing email template: %v", err)
-		return "", err
-	}
-
-	var emailBodyBuffer bytes.Buffer
-	err = tmpl.Execute(&emailBodyBuffer, data)
-	if err != nil {
-		logging.NewDefaultLogger().Errorf("Error executing email template: %v", err)
-		return "", err
-	}
-
-	return emailBodyBuffer.String(), nil
-}
-
-// Function to create a CSV file from NotifyResourceDetails
-func createAttachmentDataInCsvFormat(resources []notify_model.NotifyResourceDetails) (string, error) {
-	var csvDataBuffer bytes.Buffer
-
-	// Write header to CSV
-	csvDataBuffer.WriteString("Account ID,Resource Type,Resource ID,Resource Name,Region Code,Monthly Price,Recommendation,Monthly Savings\n")
-
-	// Write details to CSV
-	for _, resource := range resources {
-		csvDataBuffer.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%.2f,%s,%.2f\n",
-			resource.AccountID,
-			resource.ResourceType,
-			resource.ResourceId,
-			resource.ResourceName,
-			resource.RegionCode,
-			resource.MonthlyPrice,
-			resource.Recommendation,
-			resource.MonthlySavings,
-		))
-	}
-
-	return csvDataBuffer.String(), nil
 }
