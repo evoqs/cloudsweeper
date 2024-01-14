@@ -140,7 +140,7 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 		<body>
 			<tr>
 				<td colspan="2" style="text-align: center;">
-					<img src="cid:cs.jpg" alt="Company Logo" class="logo">
+					<img src="cid:logo.jpeg" alt="Company Logo" class="logo">
 				</td>
 			</tr>
 			<table class="external-table">

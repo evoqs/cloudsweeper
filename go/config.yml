@@ -46,5 +46,5 @@ notifications:
     from_address: "no-reply@cloudsweeper.in"
 
 cloudsweeper:
-  logo: "/home/pavan/Documents/cs.jpg"
+  logo: "/home/pavan/Documents/logo.jpeg"
   url: "https://cloudsweeper.in/"

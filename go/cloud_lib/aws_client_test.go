@@ -95,7 +95,7 @@ func TestAwsClient(t *testing.T) {
 	storage.MakeDBOperators(dbM)
 
 	//awsClient, err := NewAwsClient(config.GetConfig().Aws.Creds.Aws_access_key_id, config.GetConfig().Aws.Creds.Aws_secret_access_key, config.GetConfig().Aws.Creds.Aws_default_region)
-	awsClient, err := GetAwsClient(config.GetConfig().Aws.Creds.Aws_access_key_id, config.GetConfig().Aws.Creds.Aws_secret_access_key, config.GetConfig().Aws.Creds.Aws_default_region)
+	awsClient, err := GetAwsClient(config.GetConfig().Aws.Creds.Aws_access_key_id, config.GetConfig().Aws.Creds.Aws_secret_access_key, "")
 	if !awsClient.ValidateCredentials() {
 		t.Errorf("Invalid Credentials..")
 	}
