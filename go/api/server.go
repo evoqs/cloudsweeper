@@ -85,7 +85,7 @@ func (srv *Server) SendResponse400(writer http.ResponseWriter, err error) {
 func (srv *Server) SendResponse409(writer http.ResponseWriter, err error) {
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusConflict)
-	resp := getResponse400()
+	resp := getResponse409()
 	resp.Error = err.Error()
 
 	json.NewEncoder(writer).Encode(resp)

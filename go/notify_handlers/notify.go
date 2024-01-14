@@ -2,7 +2,11 @@ package notifications
 
 import (
 	logging "cloudsweep/logging"
+	"cloudsweep/model"
+	aws_model "cloudsweep/model/aws"
 	notify_model "cloudsweep/notify_handlers/model"
+	"cloudsweep/storage"
+	"fmt"
 	"sync"
 )
 
@@ -111,8 +115,52 @@ func StopNotificationService() {
 
 func SendNotification(details notify_model.NotfifyDetails) {
 	if notifyManager != nil {
+
 		notifyManager.SendNotification(details)
 	} else {
 		logging.NewDefaultLogger().Error("Notification service is not started. Call StartNotificationService() first.")
+	}
+}
+
+func PipeLineNotify(pipeLine model.PipeLine) {
+
+	opr := storage.GetDefaultDBOperators()
+	query := fmt.Sprintf(`{"pipelineid": "%s"}`, pipeLine.PipeLineID)
+	results, _ := opr.PolicyOperator.GetPolicyResultDetails(query)
+
+	cloudAccList, err := opr.AccountOperator.GetCloudAccount(pipeLine.CloudAccountID)
+	if err != nil || len(cloudAccList) < 1 {
+		fmt.Errorf("Failed to get cloundaccount details for pipeline %s, %s", pipeLine.PipeLineName, err.Error())
+	}
+
+	awsAccountID := cloudAccList[0].AwsCredentials.AccountID
+
+	var details notify_model.NotfifyDetails
+
+	details.EmailDetails.ToAddresses = pipeLine.Notification.EmailAddresses
+	//append(details.ResourceDetails, notify_model.NotifyResourceDetails{""})
+
+	for _, object := range results {
+		if object.Resource == "ec2" {
+			for _, result := range object.Resultlist {
+				ec2Result := result.Result.(*[]aws_model.AwsInstanceResult)
+				for _, entry := range *ec2Result {
+					var resource notify_model.NotifyResourceDetails
+					resource.AccountID = awsAccountID
+					resource.CurrentResourceType = entry.ResultData.InstanceType
+					resource.MonthlyPrice = entry.MetaData.Cost
+					resource.MonthlySavings = entry.MetaData.Recommendations[0].EstimatedCostSavings
+					resource.RecommendedResourceType = entry.MetaData.Recommendations[0].Recommendation
+					resource.RegionCode = result.Region
+					resource.ResourceClass = "Compute Instance"
+					resource.ResourceId = entry.ResultData.InstanceId
+					resource.ResourceName = ""
+					//resource.ResourceTags = ""
+					details.ResourceDetails = append(details.ResourceDetails, resource)
+
+				}
+
+			}
+		}
 	}
 }

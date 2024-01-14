@@ -3,6 +3,7 @@ package main
 import (
 	"cloudsweep/api"
 	"cloudsweep/config"
+	notifications "cloudsweep/notify_handlers"
 	"cloudsweep/scheduler"
 	"cloudsweep/storage"
 	"cloudsweep/utils"
@@ -36,23 +37,6 @@ func main() {
 	}
 	dbo := storage.MakeDBOperators(dbM)
 
-	//InsertRandomRecord(*dbM, cfg.Database.Name)
-	//InsertRandomRecord(*dbM, cfg.Database.Name)
-	/*
-		accId := 64300
-		query := `{"accountId": ` + strconv.Itoa(accId) + `}`
-		QueryRandomRecord(*dbM, cfg.Database.Name, query)
-
-		UpdateRandomRecord(*dbM, cfg.Database.Name, query)
-		fmt.Println("Query All")
-
-
-		query = `{"accountId": ` + strconv.Itoa(98407) + `}`
-		DeleteRandomRecord(*dbM, cfg.Database.Name, query)
-	*/
-	//query := `64e97c7a6ca9765964be555e`
-	//QueryRandomRecordWithId(*dbM, cfg.Database.Name, query)
-
 	// Start Scheduler
 	pipelineScheduler := scheduler.StartDefaultPipelineScheduler()
 	pipelineScheduler.ScheduleAllPipelines()
@@ -61,6 +45,8 @@ func main() {
 	// Start Server
 	startServer(dbo, config.GetConfig().Server.Host, config.GetConfig().Server.Port)
 
+	//notify_handlers.StartNotificationService()
+	notifications.StartNotificationService()
 	//cpumodel := utils.GetCPUmodel()
 	//fmt.Println(cpumodel)
 }

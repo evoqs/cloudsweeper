@@ -4,6 +4,7 @@ import (
 	"cloudsweep/cloud_lib"
 	"cloudsweep/config"
 	aws_cost_estimator "cloudsweep/cost_estimator/aws"
+	notifications "cloudsweep/notify_handlers"
 
 	//cost_estimator "cloudsweep/cost_estimator/aws"
 	logger "cloudsweep/logging"
@@ -448,11 +449,15 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 			//wait for threads
 			resultWg.Wait()
 			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, resourceName, "SUCCESS", policyRunTime, resultList, true)
+			//
 		}
 		rchan <- isPolicyRunFailed
 		return
 	}
 	rchan <- false
+
+	//Notify based on pipelineid
+	notifications.PipeLineNotify(pipeLine)
 }
 
 func updateMetaDataEc2(resultWg *sync.WaitGroup, result *aws_model.AwsInstanceResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, regionName string) {
@@ -606,6 +611,7 @@ func updatePolicyRunResult(pipeLineID string, policyID string, resourceName stri
 	opr := storage.GetDefaultDBOperators()
 	query := fmt.Sprintf(`{"policyid": "%s","pipelineid": "%s"}`, policyID, pipeLineID)
 	results, _ := opr.PolicyOperator.GetPolicyResultDetails(query)
+
 	if len(results) == 0 {
 		var policyRunresult model.PolicyResult
 		policyRunresult.PipelIneID = pipeLineID
@@ -629,7 +635,9 @@ func updatePolicyRunResult(pipeLineID string, policyID string, resourceName stri
 		result.PipelIneID = pipeLineID
 		json.Unmarshal([]byte(getDisplayDefinition(resourceName)), &result.DisplayDefinition)
 		opr.PolicyOperator.UpdatePolicyResult(result)
+		result.PolicyResultID.Hex()
 	}
+
 }
 
 func getDisplayDefinition(resourceName string) string {
