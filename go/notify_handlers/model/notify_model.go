@@ -1,16 +1,17 @@
-package model
+package notifications
 
 // Structure of the Resource detail for Notification
 type NotifyResourceDetails struct {
-	AccountID      string            `json:"accountId"`
-	ResourceType   string            `json:"resourceType"`
-	ResourceId     string            `json:"resourceId"`
-	ResourceName   string            `json:"resourceName"`
-	RegionCode     string            `json:"regionCode"`
-	MonthlyPrice   float64           `json:"monthlyPrice"`
-	ResourceTags   map[string]string `json:"resourceTags"`
-	Recommendation string            `json:"recommendation"`
-	MonthlySavings float64           `json:"monthlySavings"`
+	AccountID               string            `json:"accountId"`
+	ResourceClass           string            `json:"resourceClass"`
+	ResourceId              string            `json:"resourceId"`
+	ResourceName            string            `json:"resourceName"`
+	CurrentResourceType     string            `json:"currentResourceType"`
+	RecommendedResourceType string            `json:"recommendedResourceType"`
+	RegionCode              string            `json:"regionCode"`
+	MonthlyPrice            float64           `json:"monthlyPrice"`
+	ResourceTags            map[string]string `json:"resourceTags"`
+	MonthlySavings          float64           `json:"monthlySavings"`
 }
 
 type NotifyRequest struct {

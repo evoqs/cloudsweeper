@@ -302,6 +302,12 @@ func GetAwsClient(awsAccessKeyId string, awsSecretAccessKey string, region strin
 		})
 	} else {
 		awsClient.session, err = session.NewSession(&aws.Config{
+			// We need to provide default regions for many region specific operations.
+			// aws-cli uses aws-global as the region, which then maps to "us-east-1".
+			// This works fine with account client, but fails with ec2 client. so we will use "us-east-1" directly
+			// https://docs.aws.amazon.com/accounts/latest/reference/manage-acct-regions.html
+			// We understand that the regions created before specific yeat (2019) are all enabled by default for all accounts
+			Region:      aws.String("us-east-1"),
 			Credentials: creds,
 		})
 	}

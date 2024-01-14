@@ -192,7 +192,7 @@ func isUsageTypeReservation[T any](productAttributes T) bool {
 
 func GetCostFromDB[T any](pInfo aws_model.ProductInfo[T]) (aws_model.AwsResourceCost[T],
 	aws_model.AwsResourceCost[T], error) {
-	logger.NewDefaultLogger().Debugf("Query DB for Cost for EBS: %v", pInfo)
+	logger.NewDefaultLogger().Debugf("Query DB for Cost for Resource: %v", pInfo)
 	/*if err := validateMinimumFilterFieldsEbs(pAttr); err != nil {
 		return aws_model.AwsResourceCost[T]{}, aws_model.AwsResourceCost[T]{}, err
 	}*/

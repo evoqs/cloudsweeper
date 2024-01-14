@@ -2,8 +2,7 @@ package notifications
 
 import (
 	logging "cloudsweep/logging"
-	mail "cloudsweep/notifications/mail"
-	notify_model "cloudsweep/notifications/model"
+	notify_model "cloudsweep/notify_handlers/model"
 	"sync"
 )
 
@@ -99,7 +98,7 @@ func StartNotificationService() {
 	once.Do(func() {
 		logging.NewDefaultLogger().Infof("Starting the Notification Service")
 		notifyManager = newNotifyManager()
-		notifyManager.RegisterNotifier(EmailChannel, mail.NewDefaultEmailManager())
+		notifyManager.RegisterNotifier(EmailChannel, NewDefaultEmailManager())
 		go notifyManager.StartProcessing()
 	})
 }

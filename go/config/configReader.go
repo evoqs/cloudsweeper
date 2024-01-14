@@ -56,6 +56,10 @@ type Config struct {
 			FromAddress string `yaml:"from_address" envconfig:"NOTIFY_EMAIL_FROM_ADDRESS"`
 		} `yaml:"email"`
 	} `yaml:"notifications"`
+	CouldSweeper struct {
+		Logo string `yaml:"logo" envconfig:"CLOUDSWEEPER_LOGO"`
+		URL  string `yaml:"url" envconfig:"CLOUDSWEEPER_URL"`
+	} `yaml:"cloudsweeper"`
 }
 
 // Loading the cfg

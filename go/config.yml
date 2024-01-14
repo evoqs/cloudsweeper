@@ -44,3 +44,7 @@ notifications:
     username: "no-reply@cloudsweeper.in"
     password: "CloudSw33p3r@1"
     from_address: "no-reply@cloudsweeper.in"
+
+cloudsweeper:
+  logo: "/home/pavan/Documents/logo.jpeg"
+  url: "https://cloudsweeper.in/"

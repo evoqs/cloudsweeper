@@ -1,17 +1,21 @@
-package mail
+package notifications
 
 import (
 	"bytes"
 	"cloudsweep/config"
 	logging "cloudsweep/logging"
-	notify_model "cloudsweep/notifications/model"
+	model "cloudsweep/notify_handlers/model"
+	mail "cloudsweep/notify_services/mail"
 	"fmt"
 	"html/template"
+	"sort"
 )
+
+const MAX_RESOURCES_PER_RESOURCE_CLASS = 5
 
 type Sender interface {
 	//Send(from string, to []string, subject, body string, isHTML bool) error
-	Send(emailDetails EmailDetails) error
+	Send(emailDetails mail.EmailDetails) error
 }
 
 type EmailManager struct {
@@ -23,17 +27,16 @@ func NewEmailManager(sender Sender) *EmailManager {
 }
 
 func NewDefaultEmailManager() *EmailManager {
-	return &EmailManager{sender: NewGomailSender(config.GetConfig().Notifications.Email.Host, config.GetConfig().Notifications.Email.Port,
+	return &EmailManager{sender: mail.NewGomailSender(config.GetConfig().Notifications.Email.Host, config.GetConfig().Notifications.Email.Port,
 		config.GetConfig().Notifications.Email.Username, config.GetConfig().Notifications.Email.Password)}
 }
 
-func (em *EmailManager) SendEmail(emailDetails EmailDetails) error {
+func (em *EmailManager) SendEmail(emailDetails mail.EmailDetails) error {
 	return em.sender.Send(emailDetails)
 }
 
-func (em *EmailManager) SendNotification(details notify_model.NotfifyDetails) error {
+func (em *EmailManager) SendNotification(details model.NotfifyDetails) error {
 	logging.NewDefaultLogger().Debugf("Processing the Notification from the channel")
-	// Build the body dynamically from the resource
 	body, err := buildEmailBody(details)
 	if err != nil {
 		logging.NewDefaultLogger().Errorf("Problem in building the email body %v", err)
@@ -44,13 +47,12 @@ func (em *EmailManager) SendNotification(details notify_model.NotfifyDetails) er
 		logging.NewDefaultLogger().Errorf("Error creating CSV file: %v", err)
 		return err
 	}
-	err = em.SendEmail(EmailDetails{
-		To:       details.EmailDetails.ToAddresses,
-		From:     config.GetConfig().Notifications.Email.FromAddress,
-		Subject:  "Cloud Sweeper Resource Usage Notification",
-		BodyHTML: body,
-		// TODO: Get this from config
-		ImageLocations: []string{"/home/pavan/Documents/cs.jpg"},
+	err = em.SendEmail(mail.EmailDetails{
+		To:             details.EmailDetails.ToAddresses,
+		From:           config.GetConfig().Notifications.Email.FromAddress,
+		Subject:        "CloudSweeper Resource Usage Notification",
+		BodyHTML:       body,
+		ImageLocations: []string{config.GetConfig().CouldSweeper.Logo},
 		AttachmentName: "resource_details.csv",
 		AttachmentData: []byte(csvData),
 	})
@@ -60,9 +62,7 @@ func (em *EmailManager) SendNotification(details notify_model.NotfifyDetails) er
 	return err
 }
 
-func buildEmailBody(details notify_model.NotfifyDetails) (string, error) {
-	// Load your company logo
-	//logoURL := "/home/pavan/Documents/cs.jpg"
+func buildEmailBody(details model.NotfifyDetails) (string, error) {
 	// Calculate the sum of Monthly Prices
 	var totalMonthlyPrice float64
 	var totalMonthlySavings float64
@@ -76,7 +76,7 @@ func buildEmailBody(details notify_model.NotfifyDetails) (string, error) {
 		<head>
 			<style>
 				.logo {
-					max-width: 200px;
+					max-width: 300px;
 					height: auto;
 					display: block;
 					margin: 20px auto;
@@ -130,15 +130,19 @@ func buildEmailBody(details notify_model.NotfifyDetails) (string, error) {
 				.internal-table th {
 					background-color: #e8e8e8;
 				}
+
+				.internal-table tr {
+					border-bottom: 0.5px solid #dddddd; /* Border for rows */
+				}
 			</style>
 		</head>
 
 		<body>
 			<tr>
-					<td colspan="2" style="text-align: center;">
-						<img src="cid:cs.jpg" alt="Company Logo" class="logo">
-					</td>
-				</tr>
+				<td colspan="2" style="text-align: center;">
+					<img src="cid:logo.jpeg" alt="Company Logo" class="logo">
+				</td>
+			</tr>
 			<table class="external-table">
 				<tr class="external-table-heading">
 					<td colspan="2" style="text-align: center;">
@@ -162,34 +166,39 @@ func buildEmailBody(details notify_model.NotfifyDetails) (string, error) {
 						<h3 style="margin: 0;">{{printf "$%.2f" .TotalMonthlySavings}}</h3>
 					</td>
 				</tr>
+
+				<!-- Iterate over each ResourceClass group -->
+				{{range $resourceClass, $resources := .GroupedResources}}
 				<tr>
-					<td colspan="2">
+					<td colspan="2" style="vertical-align: bottom;">
+						Resource Class: <strong style="margin-bottom: 0;">{{ $resourceClass }}</strong>
 						<table class="internal-table">
 							<tr>
 								<th>Account ID</th>
-								<th>Resource Type</th>
 								<th>Resource ID</th>
 								<th>Resource Name</th>
 								<th>Region Code</th>
 								<th>Monthly Price</th>
-								<th>Recommendation</th>
-								<th>Monthly Savings</th>
+								<th>Current Resource Type</th>
+								<th>Recommended Resource Type</th>
+								<th>Estimated Monthly Savings</th>
 							</tr>
-							{{range .ResourceDetails}}
+							{{range $index, $resource := $resources}}
 							<tr>
 								<td>{{.AccountID}}</td>
-								<td>{{.ResourceType}}</td>
 								<td>{{.ResourceId}}</td>
 								<td>{{.ResourceName}}</td>
 								<td>{{.RegionCode}}</td>
-								<td>{{.MonthlyPrice}}</td>
-								<td>{{.Recommendation}}</td>
-								<td>{{.MonthlySavings}}</td>
+								<td>{{printf "$%.2f" .MonthlyPrice}}</td>
+								<td>{{.CurrentResourceType}}</td>
+								<td>{{.RecommendedResourceType}}</td>
+								<td>{{printf "$%.2f" .MonthlySavings}}</td>
 							</tr>
 							{{end}}
 						</table>
 					</td>
 				</tr>
+				{{end}}
 			</table>
 
 			<div style="text-align: center; margin-top: 20px;">
@@ -202,17 +211,19 @@ func buildEmailBody(details notify_model.NotfifyDetails) (string, error) {
 	data := struct {
 		//LogoURL             string
 		CompanyURL          string
-		ResourceDetails     []notify_model.NotifyResourceDetails
+		ResourceDetails     []model.NotifyResourceDetails
 		PipeLineName        string
 		TotalMonthlyPrice   float64
 		TotalMonthlySavings float64
+		GroupedResources    map[string][]model.NotifyResourceDetails
 	}{
 		//LogoURL:             logoURL,
-		CompanyURL:          "https://cloudsweeper.in/",
+		CompanyURL:          config.GetConfig().CouldSweeper.URL,
 		ResourceDetails:     details.ResourceDetails,
 		PipeLineName:        details.PipeLineName,
 		TotalMonthlyPrice:   totalMonthlyPrice,
 		TotalMonthlySavings: totalMonthlySavings,
+		GroupedResources:    groupByResourceClass(details.ResourceDetails),
 	}
 
 	// Execute the template
@@ -232,23 +243,42 @@ func buildEmailBody(details notify_model.NotfifyDetails) (string, error) {
 	return emailBodyBuffer.String(), nil
 }
 
+func groupByResourceClass(resources []model.NotifyResourceDetails) map[string][]model.NotifyResourceDetails {
+	groups := make(map[string][]model.NotifyResourceDetails)
+
+	for _, resource := range resources {
+		group := groups[resource.ResourceClass]
+
+		// Sort the group based on MonthlySavings in descending order
+		sort.Slice(group, func(i, j int) bool {
+			return group[i].MonthlySavings > group[j].MonthlySavings
+		})
+
+		if len(group) < MAX_RESOURCES_PER_RESOURCE_CLASS {
+			groups[resource.ResourceClass] = append(group, resource)
+		}
+	}
+	return groups
+}
+
 // Function to create a CSV file from NotifyResourceDetails
-func createAttachmentDataInCsvFormat(resources []notify_model.NotifyResourceDetails) (string, error) {
+func createAttachmentDataInCsvFormat(resources []model.NotifyResourceDetails) (string, error) {
 	var csvDataBuffer bytes.Buffer
 
 	// Write header to CSV
-	csvDataBuffer.WriteString("Account ID,Resource Type,Resource ID,Resource Name,Region Code,Monthly Price,Recommendation,Monthly Savings\n")
+	csvDataBuffer.WriteString("Account ID,Resource Type,Resource ID,Resource Name,Region Code,Monthly Price,Current Resource Type,Recommended Resource Type, Monthly Savings\n")
 
 	// Write details to CSV
 	for _, resource := range resources {
-		csvDataBuffer.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%.2f,%s,%.2f\n",
+		csvDataBuffer.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%.2f,%s,%s,%.2f\n",
 			resource.AccountID,
-			resource.ResourceType,
+			resource.ResourceClass,
 			resource.ResourceId,
 			resource.ResourceName,
 			resource.RegionCode,
 			resource.MonthlyPrice,
-			resource.Recommendation,
+			resource.CurrentResourceType,
+			resource.RecommendedResourceType,
 			resource.MonthlySavings,
 		))
 	}
