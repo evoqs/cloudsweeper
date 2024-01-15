@@ -457,7 +457,7 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 	rchan <- false
 
 	//Notify based on pipelineid
-	notifications.PipeLineNotify(pipeLine)
+	notifications.SendNotification(pipeLine.PipeLineID.Hex())
 }
 
 func updateMetaDataEc2(resultWg *sync.WaitGroup, result *aws_model.AwsInstanceResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, regionName string) {

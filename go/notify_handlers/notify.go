@@ -2,11 +2,12 @@ package notifications
 
 import (
 	logging "cloudsweep/logging"
-	"cloudsweep/model"
 	aws_model "cloudsweep/model/aws"
 	notify_model "cloudsweep/notify_handlers/model"
 	"cloudsweep/storage"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -29,15 +30,15 @@ type Notifier interface {
 }
 
 type NotifyManager struct {
-	notifiers map[string]Notifier
-	details   chan notify_model.NotfifyDetails
+	notifiers         map[string]Notifier
+	pipeLineIdChannel chan string
 }
 
 // NewNotifyManager initializes a new NotifyManager.
 func newNotifyManager() *NotifyManager {
 	return &NotifyManager{
-		notifiers: make(map[string]Notifier),
-		details:   make(chan notify_model.NotfifyDetails),
+		notifiers:         make(map[string]Notifier),
+		pipeLineIdChannel: make(chan string),
 	}
 }
 
@@ -47,9 +48,9 @@ func (nm *NotifyManager) RegisterNotifier(channel NotificationChannel, notifier 
 }
 
 // SendNotification sends a notification using the specified channels.
-func (nm *NotifyManager) SendNotification(details notify_model.NotfifyDetails) {
-	logging.NewDefaultLogger().Debugf("Adding Notification Details to teh channel")
-	nm.details <- details
+func (nm *NotifyManager) SendNotification(pipelineId string) {
+	logging.NewDefaultLogger().Debugf("Adding Pipeline Id to teh channel")
+	nm.pipeLineIdChannel <- pipelineId
 }
 
 // StartProcessing starts the processing loop for notifications.
@@ -57,15 +58,20 @@ func (nm *NotifyManager) StartProcessing() {
 	go func() {
 		for {
 			select {
-			case request := <-nm.details:
+			case request := <-nm.pipeLineIdChannel:
 				go nm.processNotification(request)
 			}
 		}
 	}()
 }
 
-func (nm *NotifyManager) processNotification(request notify_model.NotfifyDetails) {
-	logging.NewDefaultLogger().Debugf("Processing the Notification from the channel")
+func (nm *NotifyManager) processNotification(pipelineId string) {
+	logging.NewDefaultLogger().Debugf("Processing the pipelineId from the channel")
+	request, err := processPipelineResult(pipelineId)
+	if err != nil {
+		logging.NewDefaultLogger().Errorf("Skipping the Notification for pipeline: %s Reason: %v", pipelineId, err)
+		return
+	}
 	var channels []NotificationChannel
 
 	// Check if email details are enabled
@@ -110,57 +116,89 @@ func StartNotificationService() {
 // StopNotificationService stops the processing of notifications.
 func StopNotificationService() {
 	logging.NewDefaultLogger().Infof("Stopping the Notification Service")
-	close(notifyManager.details)
+	close(notifyManager.pipeLineIdChannel)
 }
 
-func SendNotification(details notify_model.NotfifyDetails) {
+func SendNotification(pipelineId string) {
 	if notifyManager != nil {
-
-		notifyManager.SendNotification(details)
+		notifyManager.SendNotification(pipelineId)
 	} else {
 		logging.NewDefaultLogger().Error("Notification service is not started. Call StartNotificationService() first.")
 	}
 }
 
-func PipeLineNotify(pipeLine model.PipeLine) {
-
+func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, error) {
 	opr := storage.GetDefaultDBOperators()
-	query := fmt.Sprintf(`{"pipelineid": "%s"}`, pipeLine.PipeLineID)
+	query := fmt.Sprintf(`{"pipelineid": "%s"}`, pipeLineId)
+	pipeline, err := opr.PipeLineOperator.GetPipeLineDetails(pipeLineId)
+	if err != nil {
+		logging.NewDefaultLogger().Errorf("Failed to get the pipeline details from DB: %v", err)
+	}
 	results, _ := opr.PolicyOperator.GetPolicyResultDetails(query)
 
-	cloudAccList, err := opr.AccountOperator.GetCloudAccount(pipeLine.CloudAccountID)
+	cloudAccList, err := opr.AccountOperator.GetCloudAccount(pipeline[0].CloudAccountID)
 	if err != nil || len(cloudAccList) < 1 {
-		fmt.Errorf("Failed to get cloundaccount details for pipeline %s, %s", pipeLine.PipeLineName, err.Error())
+		logging.NewDefaultLogger().Errorf("Failed to get cloundaccount details for CloudAccountId %s, %s", pipeline[0].CloudAccountID, err.Error())
 	}
 
 	awsAccountID := cloudAccList[0].AwsCredentials.AccountID
-
 	var details notify_model.NotfifyDetails
 
-	details.EmailDetails.ToAddresses = pipeLine.Notification.EmailAddresses
-	//append(details.ResourceDetails, notify_model.NotifyResourceDetails{""})
+	details.EmailDetails.ToAddresses = pipeline[0].Notification.EmailAddresses
+	// TODO: Bibin - This info should be fetched from UI, set in Pipeline and propogated here
+	details.EmailDetails.Enabled = true
+	var error error
 
 	for _, object := range results {
+		var resource notify_model.NotifyResourceDetails
+		resource.AccountID = awsAccountID
+
 		if object.Resource == "ec2" {
 			for _, result := range object.Resultlist {
 				ec2Result := result.Result.(*[]aws_model.AwsInstanceResult)
 				for _, entry := range *ec2Result {
-					var resource notify_model.NotifyResourceDetails
-					resource.AccountID = awsAccountID
 					resource.CurrentResourceType = entry.ResultData.InstanceType
-					resource.MonthlyPrice = entry.MetaData.Cost
-					resource.MonthlySavings = entry.MetaData.Recommendations[0].EstimatedCostSavings
+					// TODO: Bibin - Monthly Price and Monthly savings should be provided with float value with separate currency and metric
+					resource.MonthlyPrice, error = strconv.ParseFloat(strings.Split(entry.MetaData.Cost, " ")[0], 64)
+					if error != nil {
+						logging.NewDefaultLogger().Errorf("Error While converting Monthly Price: %v", error)
+					}
+					resource.MonthlySavings, err = strconv.ParseFloat(strings.Split(entry.MetaData.Recommendations[0].EstimatedCostSavings, " ")[0], 64)
+					if error != nil {
+						logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
+					}
 					resource.RecommendedResourceType = entry.MetaData.Recommendations[0].Recommendation
 					resource.RegionCode = result.Region
 					resource.ResourceClass = "Compute Instance"
 					resource.ResourceId = entry.ResultData.InstanceId
-					resource.ResourceName = ""
+					//resource.ResourceName = ""
 					//resource.ResourceTags = ""
-					details.ResourceDetails = append(details.ResourceDetails, resource)
-
 				}
-
+			}
+		} else if object.Resource == "ebs" {
+			for _, result := range object.Resultlist {
+				ec2Result := result.Result.(*[]aws_model.AwsBlockVolumeResult)
+				for _, entry := range *ec2Result {
+					resource.CurrentResourceType = entry.ResultData.VolumeType
+					// TODO: Bibin - Monthly Price and Monthly savings should be provided with float value with separate currency and metric
+					resource.MonthlyPrice, error = strconv.ParseFloat(strings.Split(entry.MetaData.Cost, " ")[0], 64)
+					if error != nil {
+						logging.NewDefaultLogger().Errorf("Error While converting Monthly Price: %v", error)
+					}
+					resource.MonthlySavings, err = strconv.ParseFloat(strings.Split(entry.MetaData.Recommendations[0].EstimatedCostSavings, " ")[0], 64)
+					if error != nil {
+						logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
+					}
+					resource.RecommendedResourceType = entry.MetaData.Recommendations[0].Recommendation
+					resource.RegionCode = result.Region
+					resource.ResourceClass = "EBS"
+					resource.ResourceId = entry.ResultData.VolumeId
+					//resource.ResourceName = ""
+					//resource.ResourceTags = ""
+				}
 			}
 		}
+		details.ResourceDetails = append(details.ResourceDetails, resource)
 	}
+	return details, error
 }
