@@ -177,6 +177,9 @@ func runPipeline(pipeLine model.PipeLine) {
 		}
 	}
 	// TODO: How do you inform back to the UI the reason for failure. pipeline model should be updated to have the reason for last failure and number of previous failures
+
+	//Notify based on pipelineid
+	notifications.SendNotification(pipeLine.PipeLineID.Hex())
 }
 
 func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine, rchan chan bool) {
@@ -455,9 +458,6 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 		return
 	}
 	rchan <- false
-
-	//Notify based on pipelineid
-	notifications.SendNotification(pipeLine.PipeLineID.Hex())
 }
 
 func updateMetaDataEc2(resultWg *sync.WaitGroup, result *aws_model.AwsInstanceResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, regionName string) {
