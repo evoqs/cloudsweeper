@@ -3,7 +3,6 @@ package mail
 import (
 	"bytes"
 	logging "cloudsweep/logging"
-	"fmt"
 	"io"
 	"mime/multipart"
 	"net/textproto"
@@ -62,7 +61,7 @@ func (gs *MailSender) SendWithAttachment(from string, to []string, subject, body
 
 	m.SetBody("multipart/mixed", body.String())
 
-	fmt.Printf("Sending mail.....")
+	//fmt.Printf("Sending mail.....")
 	err = gs.dialer.DialAndSend(m)
 	if err != nil {
 		logging.NewDefaultLogger().Errorf("Error sending email..: %s", err)

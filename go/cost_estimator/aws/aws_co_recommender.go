@@ -59,8 +59,6 @@ func GetAWSCOResultForAllEC2Instances(awsAccessKeyId string, awsSecretAccessKey 
 
 func GetAWSCOResultForEC2Instance(awsAccessKeyId string, awsSecretAccessKey string, region string, accountId string, instanceId string) ([]*computeoptimizer.InstanceRecommendation, error) {
 	// Describe recommendations for a specific EC2 instance
-
-	fmt.Printf(" -------------------------------> arn:aws:ec2:%s:%s:instance/%s", region, accountId, instanceId)
 	input := &computeoptimizer.GetEC2InstanceRecommendationsInput{
 		InstanceArns: []*string{
 			aws.String(fmt.Sprintf("arn:aws:ec2:%s:%s:instance/%s", region, accountId, instanceId)),

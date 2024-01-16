@@ -4,7 +4,6 @@ import (
 	logger "cloudsweep/logging"
 	aws_model "cloudsweep/model/aws"
 	"context"
-	"fmt"
 	"reflect"
 	"strconv"
 	"time"
@@ -53,7 +52,7 @@ func (opr *CostOperator) GetResourceCostDetails(resourceId string, targetType in
 		panic(err)
 	}
 	if results != nil {
-		fmt.Println("Length " + strconv.Itoa(len(results)))
+		logger.NewDefaultLogger().Debugf("Length of ResourceCostDetails" + strconv.Itoa(len(results)))
 	}
 	return results, err
 }
@@ -61,12 +60,11 @@ func (opr *CostOperator) GetResourceCostDetails(resourceId string, targetType in
 func (opr *CostOperator) RunQuery(query string) ([]interface{}, error) {
 	var results []interface{}
 	cursor, err := opr.dbM.QueryRecord(opr.tableName, query)
-	fmt.Println(err)
 	if err = cursor.All(context.TODO(), &results); err != nil {
-		fmt.Println(err)
+		logger.NewDefaultLogger().Errorf("Error: %v", err)
 	}
 	if results != nil {
-		fmt.Println("Length " + strconv.Itoa(len(results)))
+		logger.NewDefaultLogger().Debugf("Length of Records" + strconv.Itoa(len(results)))
 	}
 	return results, err
 }

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	logger "cloudsweep/logging"
 	"cloudsweep/model"
 	"context"
 	"errors"
@@ -95,7 +96,7 @@ func (dbm DBManger) QueryAllRecords(collection string) (*mongo.Cursor, error) {
 	query := `{}`
 	err := bson.UnmarshalExtJSON([]byte(query), true, &bquery)
 	if err != nil {
-		fmt.Println("Error unmarshelling", err.Error())
+		logger.NewDefaultLogger().Errorf("Error unmarshelling %s", err.Error())
 	}
 	cursor, err := dbm.mongoClinet.Database(dbm.dbName).Collection(collection).Find(ctx, &bquery)
 	return cursor, err
@@ -120,7 +121,7 @@ func (dbm DBManger) QueryRecordWithObjectID(collection string, mongoObjectid str
 
 	objectId, err := primitive.ObjectIDFromHex(mongoObjectid)
 	if err != nil {
-		fmt.Println("Invalid id")
+		logger.NewDefaultLogger().Errorf("Invalid id: %s Error: %v", mongoObjectid, err)
 	}
 
 	bquery := bson.M{"_id": objectId}

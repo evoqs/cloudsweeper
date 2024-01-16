@@ -24,7 +24,7 @@ func GetComputeInstanceCost(pInfo aws_model.ProductInfo[aws_model.ProductAttribu
 // =============================================== EBS ================================================================
 
 func GetEbsCost(pInfo aws_model.ProductInfo[aws_model.ProductAttributesEBS]) (model.ResourceCost, error) {
-	if pInfo.Attributes.RegionCode == "" || (pInfo.Attributes.StorageMedia == "" && pInfo.Attributes.VolumeApiName == "") {
+	if pInfo.Attributes.RegionCode == "" || pInfo.Attributes.VolumeApiName == "" {
 		return model.ResourceCost{MinPrice: -1}, fmt.Errorf("Unable to get the Cost for EBS. RegionCode and/or StorageMedia/VolumeApiName values are empty.")
 	}
 	return getCost("AmazonEC2", pInfo)
@@ -142,7 +142,6 @@ func GetCostFromAws[T any](serviceCode string, pInfo aws_model.ProductInfo[T]) (
 	filters := buildFilterInput(pInfo)
 
 	var resourceCosts []aws_model.AwsResourceCost[T]
-	fmt.Printf("\n\n\n -----------%+v-------------", filters)
 	err := CollectResourceCost(serviceCode, filters, &resourceCosts)
 	if err != nil {
 		return aws_model.AwsResourceCost[T]{},
@@ -208,8 +207,9 @@ func GetCostFromDB[T any](pInfo aws_model.ProductInfo[T]) (aws_model.AwsResource
 			queryParts = append(queryParts, "\"productAttributes."+jsonTagName+"\": \""+fieldValue+"\"")
 		}
 	}
-	// TODO: Need to enable it
-	queryParts = append(queryParts, "\"productFamily\": \""+pInfo.ProductFamily+"\"")
+	if pInfo.ProductFamily != "" {
+		queryParts = append(queryParts, "\"productFamily\": \""+pInfo.ProductFamily+"\"")
+	}
 
 	query := "{" + strings.Join(queryParts, ", ") + "}"
 	logger.NewDefaultLogger().Debugf("DB Query: %s", query)
