@@ -131,6 +131,7 @@ func SendNotification(pipelineId string) {
 	}
 }
 
+// Owner: Bibin
 func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, error) {
 	opr := storage.GetDefaultDBOperators()
 	query := fmt.Sprintf(`{"pipelineid": "%s"}`, pipeLineId)
@@ -140,6 +141,7 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 	}
 	results, _ := opr.PolicyOperator.GetPolicyResultDetails(query)
 
+	// TODO: check if pipeline is not empty
 	cloudAccList, err := opr.AccountOperator.GetCloudAccount(pipeline[0].CloudAccountID)
 	if err != nil || len(cloudAccList) < 1 {
 		logging.NewDefaultLogger().Errorf("Failed to get cloundaccount details for CloudAccountId %s, %s", pipeline[0].CloudAccountID, err.Error())
@@ -195,7 +197,7 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 					}
 
 					resource.RegionCode = result.Region
-					resource.ResourceClass = "Compute Instance"
+					resource.ResourceClass = "Compute Instances"
 					resource.ResourceId = data.ResultData.InstanceId
 					//resource.ResourceName = ""
 					//resource.ResourceTags = ""
@@ -240,7 +242,7 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 					}
 
 					resource.RegionCode = result.Region
-					resource.ResourceClass = "EBS"
+					resource.ResourceClass = "EBS Volumes"
 					resource.ResourceId = data.ResultData.VolumeId
 					//resource.ResourceName = ""
 					//resource.ResourceTags = ""
@@ -249,10 +251,10 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 			}
 
 		}
-
+		// TODO: Add the section for elastic IP and EBSSnapshot
 	}
 
-	fmt.Printf("%s\n%+v\n%s", line, details, line)
+	logging.NewDefaultLogger().Debugf("%s\n%+v\n%s", line, details, line)
 	details.PipeLineName = pipeline[0].PipeLineName
 	return details, error
 }
