@@ -180,20 +180,22 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 					fmt.Printf("%s\n ----->  %v\n%s", line, data, line)
 					resource.CurrentResourceType = data.ResultData.InstanceType
 					// TODO: Bibin - Monthly Price and Monthly savings should be provided with float value with separate currency and metric
-					resource.MonthlyPrice, error = strconv.ParseFloat(strings.Split(data.MetaData.Cost, " ")[0], 64)
-					if error != nil {
-						logging.NewDefaultLogger().Errorf("Error While converting Monthly Price: %v", error)
-					}
-
-					if data.MetaData.Recommendations != nil {
-						resource.MonthlySavings, err = strconv.ParseFloat(strings.Split(data.MetaData.Recommendations[0].EstimatedCostSavings, " ")[0], 64)
+					if data.MetaData != nil {
+						resource.MonthlyPrice, error = strconv.ParseFloat(strings.Split(data.MetaData.Cost, " ")[0], 64)
 						if error != nil {
-							logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
+							logging.NewDefaultLogger().Errorf("Error While converting Monthly Price: %v", error)
 						}
-						resource.RecommendedResourceType = data.MetaData.Recommendations[0].Recommendation
-					} else {
-						resource.MonthlySavings = 0.0
-						resource.RecommendedResourceType = ""
+
+						if data.MetaData.Recommendations != nil {
+							resource.MonthlySavings, err = strconv.ParseFloat(strings.Split(data.MetaData.Recommendations[0].EstimatedCostSavings, " ")[0], 64)
+							if error != nil {
+								logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
+							}
+							resource.RecommendedResourceType = data.MetaData.Recommendations[0].Recommendation
+						} else {
+							resource.MonthlySavings = 0.0
+							resource.RecommendedResourceType = ""
+						}
 					}
 
 					resource.RegionCode = result.Region
@@ -224,26 +226,128 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 					fmt.Printf("%s\n ----->  %v\n%s", line, data, line)
 					resource.CurrentResourceType = data.ResultData.VolumeType
 					// TODO: Bibin - Monthly Price and Monthly savings should be provided with float value with separate currency and metric
-					resource.MonthlyPrice, error = strconv.ParseFloat(strings.Split(data.MetaData.Cost, " ")[0], 64)
-					if error != nil {
-						logging.NewDefaultLogger().Errorf("Error While converting Monthly Price: %v", error)
-					}
-
-					if data.MetaData.Recommendations != nil {
-						resource.MonthlySavings, err = strconv.ParseFloat(strings.Split(data.MetaData.Recommendations[0].EstimatedCostSavings, " ")[0], 64)
+					if data.MetaData != nil {
+						resource.MonthlyPrice, error = strconv.ParseFloat(strings.Split(data.MetaData.Cost, " ")[0], 64)
 						if error != nil {
-							logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
+							logging.NewDefaultLogger().Errorf("Error While converting Monthly Price: %v", error)
 						}
 
-						resource.RecommendedResourceType = data.MetaData.Recommendations[0].Recommendation
-					} else {
-						resource.MonthlySavings = 0.0
-						resource.RecommendedResourceType = ""
+						if data.MetaData.Recommendations != nil {
+							resource.MonthlySavings, err = strconv.ParseFloat(strings.Split(data.MetaData.Recommendations[0].EstimatedCostSavings, " ")[0], 64)
+							if error != nil {
+								logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
+							}
+
+							resource.RecommendedResourceType = data.MetaData.Recommendations[0].Recommendation
+						} else {
+							resource.MonthlySavings = 0.0
+							resource.RecommendedResourceType = ""
+						}
 					}
 
 					resource.RegionCode = result.Region
 					resource.ResourceClass = "EBS Volumes"
 					resource.ResourceId = data.ResultData.VolumeId
+					//resource.ResourceName = ""
+					//resource.ResourceTags = ""
+					details.ResourceDetails = append(details.ResourceDetails, resource)
+				}
+			}
+
+		} else if object.Resource == "elastic-ip" {
+			for _, result := range object.Resultlist {
+				if result.Result == nil {
+					continue
+				}
+				resultList, ok := result.Result.(primitive.A)
+				if !ok {
+					fmt.Println("Invalid result set")
+					continue
+				}
+
+				var data aws_model.AwsElasticIPResult
+				for _, entry := range resultList {
+
+					primativeData := entry.(primitive.D)
+					tempByteHolder, _ := bson.MarshalExtJSON(primativeData, true, true)
+					bson.UnmarshalExtJSON(tempByteHolder, true, &data)
+					fmt.Printf("%s\n ----->  %v\n%s", line, data, line)
+					if data.ResultData.Domain == "vpc" {
+						resource.CurrentResourceType = "EC2-VPC"
+					} else {
+						resource.CurrentResourceType = "EC2-Classic"
+					}
+
+					// TODO: Bibin - Monthly Price and Monthly savings should be provided with float value with separate currency and metric
+					if data.MetaData != nil {
+						resource.MonthlyPrice, error = strconv.ParseFloat(strings.Split(data.MetaData.Cost, " ")[0], 64)
+						if error != nil {
+							logging.NewDefaultLogger().Errorf("Error While converting Monthly Price: %v", error)
+						}
+						if data.MetaData.Recommendations != nil {
+							resource.MonthlySavings, err = strconv.ParseFloat(strings.Split(data.MetaData.Recommendations[0].EstimatedCostSavings, " ")[0], 64)
+							if error != nil {
+								logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
+							}
+
+							resource.RecommendedResourceType = data.MetaData.Recommendations[0].Recommendation
+						} else {
+							resource.MonthlySavings = 0.0
+							resource.RecommendedResourceType = ""
+						}
+					}
+
+					resource.RegionCode = result.Region
+					resource.ResourceClass = "Elastic IP"
+					resource.ResourceId = "TODO"
+					//resource.ResourceName = ""
+					//resource.ResourceTags = ""
+					details.ResourceDetails = append(details.ResourceDetails, resource)
+				}
+			}
+
+		} else if object.Resource == "ebs-snapshot" {
+			for _, result := range object.Resultlist {
+				if result.Result == nil {
+					continue
+				}
+				resultList, ok := result.Result.(primitive.A)
+				if !ok {
+					fmt.Println("Invalid result set")
+					continue
+				}
+
+				var data aws_model.AwsSnapshotResult
+				for _, entry := range resultList {
+
+					primativeData := entry.(primitive.D)
+					tempByteHolder, _ := bson.MarshalExtJSON(primativeData, true, true)
+					bson.UnmarshalExtJSON(tempByteHolder, true, &data)
+					fmt.Printf("%s\n ----->  %v\n%s", line, data, line)
+					resource.CurrentResourceType = data.ResultData.StorageTier
+
+					// TODO: Bibin - Monthly Price and Monthly savings should be provided with float value with separate currency and metric
+					if data.MetaData != nil {
+						resource.MonthlyPrice, error = strconv.ParseFloat(strings.Split(data.MetaData.Cost, " ")[0], 64)
+						if error != nil {
+							logging.NewDefaultLogger().Errorf("Error While converting Monthly Price: %v", error)
+						}
+						if data.MetaData.Recommendations != nil {
+							resource.MonthlySavings, err = strconv.ParseFloat(strings.Split(data.MetaData.Recommendations[0].EstimatedCostSavings, " ")[0], 64)
+							if error != nil {
+								logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
+							}
+
+							resource.RecommendedResourceType = data.MetaData.Recommendations[0].Recommendation
+						} else {
+							resource.MonthlySavings = 0.0
+							resource.RecommendedResourceType = ""
+						}
+					}
+
+					resource.RegionCode = result.Region
+					resource.ResourceClass = "EBS Snapshot"
+					resource.ResourceId = data.ResultData.SnapshotId
 					//resource.ResourceName = ""
 					//resource.ResourceTags = ""
 					details.ResourceDetails = append(details.ResourceDetails, resource)
