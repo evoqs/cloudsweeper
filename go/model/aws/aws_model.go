@@ -185,22 +185,24 @@ type AwsBlockVolumeResult struct {
 type AwsBlockVolumeResultData struct {
 	VolumeId         string `json:"volumeId" bson:"volumeId"`
 	VolumeType       string `json:"volumeType" bson:"volumeType"`
-	Encrypted        string `json:"encrypted" bson:"encrypted"`
+	Encrypted        bool   `json:"encrypted" bson:"encrypted"`
 	SnapshotId       string `json:"snapshotId" bson:"snapshotId"`
 	Region           string `json:"region" bson:"region"`
 	State            string `json:"state" bson:"state"`
 	AvailabilityZone string `json:"availabilityZone" bson:"availabilityZone"`
 	Attachments      bool   `json:"attachments" bson:"attachments"`
+	Size             int    `json:"size" bson:"size"`
 }
 type AwsBlockVolumePolicyResultData struct {
 	VolumeId         string                     `json:"volumeId" bson:"volumeId"`
 	VolumeType       string                     `json:"volumeType" bson:"volumeType"`
-	Encrypted        string                     `json:"encrypted" bson:"encrypted"`
+	Encrypted        bool                       `json:"encrypted" bson:"encrypted"`
 	SnapshotId       string                     `json:"snapshotId" bson:"snapshotId"`
 	Region           string                     `json:"region" bson:"region"`
 	State            string                     `json:"state" bson:"state"`
 	AvailabilityZone string                     `json:"availabilityZone" bson:"availabilityZone"`
 	Attachments      []AwsBlockVolumeAttachment `json:"attachments" bson:"attachments"`
+	Size             int                        `json:"size" bson:"size"`
 }
 
 type AwsBlockVolumeAttachment struct {

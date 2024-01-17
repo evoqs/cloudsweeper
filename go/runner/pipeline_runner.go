@@ -379,6 +379,7 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 						resultData.State = elem.State
 						resultData.VolumeId = elem.VolumeId
 						resultData.VolumeType = elem.VolumeType
+						resultData.Size = elem.Size
 
 						if len(elem.Attachments) == 0 {
 							resultData.Attachments = false
@@ -391,7 +392,7 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 						if policy.PolicyType == "Default" {
 							var metaData model.ResultMetaData
 							resultEntry.MetaData = &metaData
-							go updateMetaDataEbs(&resultWg, &resultData, &metaData, cloudAcc, regionName)
+							go updateMetaDataEbs(&resultWg, &resultData, &metaData, cloudAcc, regionName, resultData.Size)
 							resultWg.Add(1)
 							//TODO get recommendations
 						}
@@ -499,7 +500,7 @@ func updateMetaDataEc2(resultWg *sync.WaitGroup, result *aws_model.AwsInstanceRe
 	}
 }
 
-func updateMetaDataEbs(resultWg *sync.WaitGroup, result *aws_model.AwsBlockVolumeResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, regionName string) {
+func updateMetaDataEbs(resultWg *sync.WaitGroup, result *aws_model.AwsBlockVolumeResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, regionName string, volSize int) {
 	defer resultWg.Done()
 	estimate, err := aws_cost_estimator.GetAWSRecommendationForEBSVolume(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey, regionName, cloudAcc.AwsCredentials.AccountID, result.VolumeId)
 	//TODO
@@ -507,8 +508,8 @@ func updateMetaDataEbs(resultWg *sync.WaitGroup, result *aws_model.AwsBlockVolum
 
 		fmt.Printf("Failed to get recommendation %+v", err)
 		product := aws_model.ProductAttributesEBS{
-			VolumeType: result.VolumeType,
-			RegionCode: regionName,
+			VolumeApiName: result.VolumeType,
+			RegionCode:    regionName,
 		}
 		cost, err := aws_cost_estimator.GetEbsCost(aws_model.ProductInfo[aws_model.ProductAttributesEBS]{
 			Attributes: product, ProductFamily: "Storage"})
@@ -518,7 +519,7 @@ func updateMetaDataEbs(resultWg *sync.WaitGroup, result *aws_model.AwsBlockVolum
 			resultMetaData.Recommendations = nil
 			return
 		}
-		resultMetaData.Cost = getMonthlyPrice(cost.MinPrice, cost.Currency, cost.Unit)
+		resultMetaData.Cost = getMonthlyPrice(cost.MinPrice*float64(volSize), cost.Currency, cost.Unit)
 		resultMetaData.Recommendations = nil
 		return
 

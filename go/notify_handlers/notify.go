@@ -9,6 +9,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type NotificationChannel string
@@ -59,6 +62,7 @@ func (nm *NotifyManager) StartProcessing() {
 		for {
 			select {
 			case request := <-nm.pipeLineIdChannel:
+				fmt.Println("\n---------> PAVAN \n", request)
 				go nm.processNotification(request)
 			}
 		}
@@ -148,57 +152,107 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 	// TODO: Bibin - This info should be fetched from UI, set in Pipeline and propogated here
 	details.EmailDetails.Enabled = true
 	var error error
-
+	line := "----------------------------------------------"
 	for _, object := range results {
 		var resource notify_model.NotifyResourceDetails
 		resource.AccountID = awsAccountID
 
 		if object.Resource == "ec2" {
 			for _, result := range object.Resultlist {
-				ec2Result := result.Result.(*[]aws_model.AwsInstanceResult)
-				for _, entry := range *ec2Result {
-					resource.CurrentResourceType = entry.ResultData.InstanceType
+				if result.Result == nil {
+					continue
+				}
+				resultList, ok := result.Result.(primitive.A)
+				if !ok {
+					fmt.Println("Invalid result set")
+					continue
+				}
+
+				var data aws_model.AwsInstanceResult
+				//ec2Result := result.Result.(*[]aws_model.AwsInstanceResult)
+				for _, entry := range resultList {
+
+					primativeData := entry.(primitive.D)
+					tempByteHolder, _ := bson.MarshalExtJSON(primativeData, true, true)
+					bson.UnmarshalExtJSON(tempByteHolder, true, &data)
+					fmt.Printf("%s\n ----->  %v\n%s", line, data, line)
+					resource.CurrentResourceType = data.ResultData.InstanceType
 					// TODO: Bibin - Monthly Price and Monthly savings should be provided with float value with separate currency and metric
-					resource.MonthlyPrice, error = strconv.ParseFloat(strings.Split(entry.MetaData.Cost, " ")[0], 64)
+					resource.MonthlyPrice, error = strconv.ParseFloat(strings.Split(data.MetaData.Cost, " ")[0], 64)
 					if error != nil {
 						logging.NewDefaultLogger().Errorf("Error While converting Monthly Price: %v", error)
 					}
-					resource.MonthlySavings, err = strconv.ParseFloat(strings.Split(entry.MetaData.Recommendations[0].EstimatedCostSavings, " ")[0], 64)
-					if error != nil {
-						logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
+
+					if data.MetaData.Recommendations != nil {
+						resource.MonthlySavings, err = strconv.ParseFloat(strings.Split(data.MetaData.Recommendations[0].EstimatedCostSavings, " ")[0], 64)
+						if error != nil {
+							logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
+						}
+						resource.RecommendedResourceType = data.MetaData.Recommendations[0].Recommendation
+					} else {
+						resource.MonthlySavings = 0.0
+						resource.RecommendedResourceType = ""
 					}
-					resource.RecommendedResourceType = entry.MetaData.Recommendations[0].Recommendation
+
 					resource.RegionCode = result.Region
 					resource.ResourceClass = "Compute Instance"
-					resource.ResourceId = entry.ResultData.InstanceId
+					resource.ResourceId = data.ResultData.InstanceId
 					//resource.ResourceName = ""
 					//resource.ResourceTags = ""
+					details.ResourceDetails = append(details.ResourceDetails, resource)
 				}
 			}
 		} else if object.Resource == "ebs" {
 			for _, result := range object.Resultlist {
-				ec2Result := result.Result.(*[]aws_model.AwsBlockVolumeResult)
-				for _, entry := range *ec2Result {
-					resource.CurrentResourceType = entry.ResultData.VolumeType
+				if result.Result == nil {
+					continue
+				}
+				resultList, ok := result.Result.(primitive.A)
+				if !ok {
+					fmt.Println("Invalid result set")
+					continue
+				}
+
+				var data aws_model.AwsBlockVolumeResult
+				for _, entry := range resultList {
+
+					primativeData := entry.(primitive.D)
+					tempByteHolder, _ := bson.MarshalExtJSON(primativeData, true, true)
+					bson.UnmarshalExtJSON(tempByteHolder, true, &data)
+					fmt.Printf("%s\n ----->  %v\n%s", line, data, line)
+					resource.CurrentResourceType = data.ResultData.VolumeType
 					// TODO: Bibin - Monthly Price and Monthly savings should be provided with float value with separate currency and metric
-					resource.MonthlyPrice, error = strconv.ParseFloat(strings.Split(entry.MetaData.Cost, " ")[0], 64)
+					resource.MonthlyPrice, error = strconv.ParseFloat(strings.Split(data.MetaData.Cost, " ")[0], 64)
 					if error != nil {
 						logging.NewDefaultLogger().Errorf("Error While converting Monthly Price: %v", error)
 					}
-					resource.MonthlySavings, err = strconv.ParseFloat(strings.Split(entry.MetaData.Recommendations[0].EstimatedCostSavings, " ")[0], 64)
-					if error != nil {
-						logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
+
+					if data.MetaData.Recommendations != nil {
+						resource.MonthlySavings, err = strconv.ParseFloat(strings.Split(data.MetaData.Recommendations[0].EstimatedCostSavings, " ")[0], 64)
+						if error != nil {
+							logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
+						}
+
+						resource.RecommendedResourceType = data.MetaData.Recommendations[0].Recommendation
+					} else {
+						resource.MonthlySavings = 0.0
+						resource.RecommendedResourceType = ""
 					}
-					resource.RecommendedResourceType = entry.MetaData.Recommendations[0].Recommendation
+
 					resource.RegionCode = result.Region
 					resource.ResourceClass = "EBS"
-					resource.ResourceId = entry.ResultData.VolumeId
+					resource.ResourceId = data.ResultData.VolumeId
 					//resource.ResourceName = ""
 					//resource.ResourceTags = ""
+					details.ResourceDetails = append(details.ResourceDetails, resource)
 				}
 			}
+
 		}
-		details.ResourceDetails = append(details.ResourceDetails, resource)
+
 	}
+
+	fmt.Printf("%s\n%+v\n%s", line, details, line)
+	details.PipeLineName = pipeline[0].PipeLineName
 	return details, error
 }

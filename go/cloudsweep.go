@@ -40,13 +40,14 @@ func main() {
 	// Start Scheduler
 	pipelineScheduler := scheduler.StartDefaultPipelineScheduler()
 	pipelineScheduler.ScheduleAllPipelines()
-
+	notifications.StartNotificationService()
 	//utils.ValidateAwsCredentials("AKIA4T2VWH7A67Z", "Yaf6n5d2xQBzmo")
 	// Start Server
+	notifications.SendNotification("65a0b6f154222ca8f93a651f")
 	startServer(dbo, config.GetConfig().Server.Host, config.GetConfig().Server.Port)
 
 	//notify_handlers.StartNotificationService()
-	notifications.StartNotificationService()
+
 	//cpumodel := utils.GetCPUmodel()
 	//fmt.Println(cpumodel)
 }
