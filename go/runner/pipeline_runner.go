@@ -574,8 +574,8 @@ func updateMetaDataAwsSnapshot(resultWg *sync.WaitGroup, result *aws_model.AwsSn
 	//TODO
 	product := aws_model.ProductInfo[aws_model.ProductAttributesEBSSnapshot]{
 		Attributes: aws_model.ProductAttributesEBSSnapshot{
-			//StorageMedia: "Amazon S3",
-			RegionCode: regionName,
+			StorageMedia: "Amazon S3",
+			RegionCode:   regionName,
 		},
 		ProductFamily: "Storage Snapshot",
 	}

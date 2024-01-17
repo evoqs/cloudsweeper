@@ -163,11 +163,11 @@ func GetAWSInstanceDisplayDefinition() string {
 }
 
 func GetAWSVolumeDisplayDefinition() string {
-	return `{"displayOrder": ["volumeId","volumeType","snapshotId","region","availabilityZone","state","attachments"],"displayName": {"volumeId": "Volume Id", "volumeType": "Volume Type", "snapshotId":"Snapshot Id", "region":"Region","availabilityZone":"Availability Zone", "state":"State","attachments":"Attached"}}`
+	return `{"displayOrder": ["volumeId","volumeType","size","snapshotId","region","availabilityZone","state","attachments"],"displayName": {"volumeId": "Volume Id", "volumeType": "Volume Type", "size":"Size","snapshotId":"Snapshot Id", "region":"Region","availabilityZone":"Availability Zone", "state":"State","attachments":"Attached"}}`
 }
 
 func GetAWSEIPDisplayDefinition() string {
-	return `{"displayOrder": ["publicIp","publicIpv4pool","domain","networkBorderGroup"],"displayName": {"publicIp": "Public IP", "publicIpv4pool": "IPv4 Pool", "domain":"Domain", "region":"Region","networkBorderGroup":"Network Border Group"}}`
+	return `{"displayOrder": ["allocationId","publicIp","publicIpv4pool","domain","networkBorderGroup"],"displayName": {"allocationId": "Allocation ID","publicIp": "Public IP", "publicIpv4pool": "IPv4 Pool", "domain":"Domain", "region":"Region","networkBorderGroup":"Network Border Group"}}`
 }
 
 func GetAWSSnapshotDisplayDefinition() string {

@@ -220,6 +220,7 @@ type AwsElasticIPResultData struct {
 	PublicIpv4Pool     string `json:"publicIpv4pool" bson:"publicIpv4pool"`
 	Domain             string `json:"domain" bson:"domain"`
 	NetworkBorderGroup string `json:"networkBorderGroup" bson:"networkBorderGroup"`
+	AllocationId       string `json:"allocationId" bson:"allocationId"`
 }
 
 type AwsSnapshotResult struct {

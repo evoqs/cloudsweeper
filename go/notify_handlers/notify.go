@@ -299,7 +299,7 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 
 					resource.RegionCode = result.Region
 					resource.ResourceClass = "Elastic IP"
-					resource.ResourceId = "TODO"
+					resource.ResourceId = data.ResultData.AllocationId
 					//resource.ResourceName = ""
 					//resource.ResourceTags = ""
 					details.ResourceDetails = append(details.ResourceDetails, resource)
