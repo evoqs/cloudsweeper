@@ -110,7 +110,7 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 	//Validate Cloud credentials
 	var regionList []string
 	if strings.TrimSpace(acc.AccountType) == "aws" {
-		awsClient, err := cloud_lib.GetAwsClient(acc.AwsCredentials.AccessKeyID, acc.AwsCredentials.SecretAccessKey, "")
+		awsClient, err := cloud_lib.GetAwsClient(acc.AwsCredentials.AccessKeyID, acc.AwsCredentials.SecretAccessKey, "af-south-1")
 
 		if err != nil {
 			srv.SendResponse500(writer, err)

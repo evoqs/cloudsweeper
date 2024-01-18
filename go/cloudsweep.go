@@ -3,6 +3,7 @@ package main
 import (
 	"cloudsweep/api"
 	"cloudsweep/config"
+	notifications "cloudsweep/notify_handlers"
 	"cloudsweep/scheduler"
 	"cloudsweep/storage"
 	"cloudsweep/utils"
@@ -36,30 +37,16 @@ func main() {
 	}
 	dbo := storage.MakeDBOperators(dbM)
 
-	//InsertRandomRecord(*dbM, cfg.Database.Name)
-	//InsertRandomRecord(*dbM, cfg.Database.Name)
-	/*
-		accId := 64300
-		query := `{"accountId": ` + strconv.Itoa(accId) + `}`
-		QueryRandomRecord(*dbM, cfg.Database.Name, query)
-
-		UpdateRandomRecord(*dbM, cfg.Database.Name, query)
-		fmt.Println("Query All")
-
-
-		query = `{"accountId": ` + strconv.Itoa(98407) + `}`
-		DeleteRandomRecord(*dbM, cfg.Database.Name, query)
-	*/
-	//query := `64e97c7a6ca9765964be555e`
-	//QueryRandomRecordWithId(*dbM, cfg.Database.Name, query)
-
 	// Start Scheduler
 	pipelineScheduler := scheduler.StartDefaultPipelineScheduler()
 	pipelineScheduler.ScheduleAllPipelines()
-
+	notifications.StartNotificationService()
 	//utils.ValidateAwsCredentials("AKIA4T2VWH7A67Z", "Yaf6n5d2xQBzmo")
 	// Start Server
+	//notifications.SendNotification("65a0b6f154222ca8f93a651f")
 	startServer(dbo, config.GetConfig().Server.Host, config.GetConfig().Server.Port)
+
+	//notify_handlers.StartNotificationService()
 
 	//cpumodel := utils.GetCPUmodel()
 	//fmt.Println(cpumodel)

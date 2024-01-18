@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"cloudsweep/config"
-	notify_model "cloudsweep/notify_handlers/model"
 	"cloudsweep/storage"
 	"cloudsweep/utils"
 )
@@ -39,7 +38,7 @@ func TestNotifications(t *testing.T) {
 	storage.MakeDBOperators(dbM)
 	StartNotificationService()
 
-	details := notify_model.NotfifyDetails{
+	/*details := notify_model.NotfifyDetails{
 		// Populate the details as needed
 		PipeLineName: "Cut Cost",
 		ResourceDetails: []notify_model.NotifyResourceDetails{
@@ -181,19 +180,21 @@ func TestNotifications(t *testing.T) {
 			Enabled:     true,
 			ToAddresses: []string{"pavan.vitla@gmail.com", "bipinkmg@gmail.com", "jnagendran78@gmail.com", "web.jlingasur@gmail.com"},
 		},
-		/*SlackDetails: notify_model.NotifySlackDetails{
+		SlackDetails: notify_model.NotifySlackDetails{
 			Enabled: true,
 			Url:     []string{"https://slack-webhook-url"},
 		},
 		WebhookDetails: notify_model.NotifyWebhookDetails{
 			Enabled: true,
 			Url:     []string{"https://webhook-url"},
-		},*/
-	}
+		},
+	}*/
+	// TODO: Get the pipeline ID and send the notification.
 	t.Logf("Sending Notification..")
+	pipelineId := "65a0b6f154222ca8f93a651f"
 	for i := 0; i < 1; i++ {
 		fmt.Printf("Sending notification #%d\n", i+1)
-		SendNotification(details)
+		SendNotification(pipelineId)
 	}
 	time.Sleep(10 * time.Second)
 }

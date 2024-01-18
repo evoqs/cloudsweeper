@@ -4,6 +4,7 @@ import (
 	"cloudsweep/cloud_lib"
 	"cloudsweep/config"
 	aws_cost_estimator "cloudsweep/cost_estimator/aws"
+	notifications "cloudsweep/notify_handlers"
 
 	//cost_estimator "cloudsweep/cost_estimator/aws"
 	logger "cloudsweep/logging"
@@ -176,6 +177,9 @@ func runPipeline(pipeLine model.PipeLine) {
 		}
 	}
 	// TODO: How do you inform back to the UI the reason for failure. pipeline model should be updated to have the reason for last failure and number of previous failures
+
+	//Notify based on pipelineid
+	notifications.SendNotification(pipeLine.PipeLineID.Hex())
 }
 
 func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine, rchan chan bool) {
@@ -375,6 +379,7 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 						resultData.State = elem.State
 						resultData.VolumeId = elem.VolumeId
 						resultData.VolumeType = elem.VolumeType
+						resultData.Size = elem.Size
 
 						if len(elem.Attachments) == 0 {
 							resultData.Attachments = false
@@ -387,7 +392,7 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 						if policy.PolicyType == "Default" {
 							var metaData model.ResultMetaData
 							resultEntry.MetaData = &metaData
-							go updateMetaDataEbs(&resultWg, &resultData, &metaData, cloudAcc, regionName)
+							go updateMetaDataEbs(&resultWg, &resultData, &metaData, cloudAcc, regionName, resultData.Size)
 							resultWg.Add(1)
 							//TODO get recommendations
 						}
@@ -448,6 +453,7 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 			//wait for threads
 			resultWg.Wait()
 			updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, resourceName, "SUCCESS", policyRunTime, resultList, true)
+			//
 		}
 		rchan <- isPolicyRunFailed
 		return
@@ -494,7 +500,7 @@ func updateMetaDataEc2(resultWg *sync.WaitGroup, result *aws_model.AwsInstanceRe
 	}
 }
 
-func updateMetaDataEbs(resultWg *sync.WaitGroup, result *aws_model.AwsBlockVolumeResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, regionName string) {
+func updateMetaDataEbs(resultWg *sync.WaitGroup, result *aws_model.AwsBlockVolumeResultData, resultMetaData *model.ResultMetaData, cloudAcc model.CloudAccountData, regionName string, volSize int) {
 	defer resultWg.Done()
 	estimate, err := aws_cost_estimator.GetAWSRecommendationForEBSVolume(cloudAcc.AwsCredentials.AccessKeyID, cloudAcc.AwsCredentials.SecretAccessKey, regionName, cloudAcc.AwsCredentials.AccountID, result.VolumeId)
 	//TODO
@@ -502,8 +508,8 @@ func updateMetaDataEbs(resultWg *sync.WaitGroup, result *aws_model.AwsBlockVolum
 
 		fmt.Printf("Failed to get recommendation %+v", err)
 		product := aws_model.ProductAttributesEBS{
-			VolumeType: result.VolumeType,
-			RegionCode: regionName,
+			VolumeApiName: result.VolumeType,
+			RegionCode:    regionName,
 		}
 		cost, err := aws_cost_estimator.GetEbsCost(aws_model.ProductInfo[aws_model.ProductAttributesEBS]{
 			Attributes: product, ProductFamily: "Storage"})
@@ -513,7 +519,7 @@ func updateMetaDataEbs(resultWg *sync.WaitGroup, result *aws_model.AwsBlockVolum
 			resultMetaData.Recommendations = nil
 			return
 		}
-		resultMetaData.Cost = getMonthlyPrice(cost.MinPrice, cost.Currency, cost.Unit)
+		resultMetaData.Cost = getMonthlyPrice(cost.MinPrice*float64(volSize), cost.Currency, cost.Unit)
 		resultMetaData.Recommendations = nil
 		return
 
@@ -568,8 +574,8 @@ func updateMetaDataAwsSnapshot(resultWg *sync.WaitGroup, result *aws_model.AwsSn
 	//TODO
 	product := aws_model.ProductInfo[aws_model.ProductAttributesEBSSnapshot]{
 		Attributes: aws_model.ProductAttributesEBSSnapshot{
-			//StorageMedia: "Amazon S3",
-			RegionCode: regionName,
+			StorageMedia: "Amazon S3",
+			RegionCode:   regionName,
 		},
 		ProductFamily: "Storage Snapshot",
 	}
@@ -606,6 +612,7 @@ func updatePolicyRunResult(pipeLineID string, policyID string, resourceName stri
 	opr := storage.GetDefaultDBOperators()
 	query := fmt.Sprintf(`{"policyid": "%s","pipelineid": "%s"}`, policyID, pipeLineID)
 	results, _ := opr.PolicyOperator.GetPolicyResultDetails(query)
+
 	if len(results) == 0 {
 		var policyRunresult model.PolicyResult
 		policyRunresult.PipelIneID = pipeLineID
@@ -629,7 +636,9 @@ func updatePolicyRunResult(pipeLineID string, policyID string, resourceName stri
 		result.PipelIneID = pipeLineID
 		json.Unmarshal([]byte(getDisplayDefinition(resourceName)), &result.DisplayDefinition)
 		opr.PolicyOperator.UpdatePolicyResult(result)
+		result.PolicyResultID.Hex()
 	}
+
 }
 
 func getDisplayDefinition(resourceName string) string {

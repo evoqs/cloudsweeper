@@ -85,18 +85,25 @@ type CSPolicy struct {
 
 //******************* TO BE used in case needed to parse the policy json
 
+type PipeLineNotification struct {
+	EmailAddresses []string `json:"emailAddresses"`
+	SlackUrls      []string `json:"slackUrls"`
+	WebhookUrls    []string `json:"webhookUrls"`
+}
+
 type PipeLine struct {
-	AccountID        string             `json:"accountid" bson:"accountid"`
-	CloudAccountID   string             `json:"cloudaccountid" bson:"cloudaccountid"`
-	PipeLineID       primitive.ObjectID `json:"piplineid" bson:"_id,omitempty"`
-	PipeLineName     string             `json:"piplinename" bson:"piplinename"`
-	Policies         []string           `json:"policies" bson:"policyid"`
-	Schedule         Schedule           `json:"schedule" bson:"schedule"`
-	Enabled          bool               `json:"enabled" bson:"enabled"`
-	Default          bool               `json:"default" bson:"default"`
-	RunStatus        RunStatus          `json:"status" bson:"status"`
-	LastRunTime      int64              `json:"lastruntime" bson:"lastruntime"`
-	ExecutionRegions []string           `json:"execregions" bson:"execregions"`
+	AccountID        string               `json:"accountid" bson:"accountid"`
+	CloudAccountID   string               `json:"cloudaccountid" bson:"cloudaccountid"`
+	PipeLineID       primitive.ObjectID   `json:"piplineid" bson:"_id,omitempty"`
+	PipeLineName     string               `json:"piplinename" bson:"piplinename"`
+	Policies         []string             `json:"policies" bson:"policyid"`
+	Schedule         Schedule             `json:"schedule" bson:"schedule"`
+	Enabled          bool                 `json:"enabled" bson:"enabled"`
+	Default          bool                 `json:"default" bson:"default"`
+	RunStatus        RunStatus            `json:"status" bson:"status"`
+	LastRunTime      int64                `json:"lastruntime" bson:"lastruntime"`
+	ExecutionRegions []string             `json:"execregions" bson:"execregions"`
+	Notification     PipeLineNotification `json:"notifications" bson:"notifications"`
 }
 
 type RunStatus int
@@ -156,11 +163,11 @@ func GetAWSInstanceDisplayDefinition() string {
 }
 
 func GetAWSVolumeDisplayDefinition() string {
-	return `{"displayOrder": ["volumeId","volumeType","snapshotId","region","availabilityZone","state","attachments"],"displayName": {"volumeId": "Volume Id", "volumeType": "Volume Type", "snapshotId":"Snapshot Id", "region":"Region","availabilityZone":"Availability Zone", "state":"State","attachments":"Attached"}}`
+	return `{"displayOrder": ["volumeId","volumeType","size","snapshotId","region","availabilityZone","state","attachments"],"displayName": {"volumeId": "Volume Id", "volumeType": "Volume Type", "size":"Size","snapshotId":"Snapshot Id", "region":"Region","availabilityZone":"Availability Zone", "state":"State","attachments":"Attached"}}`
 }
 
 func GetAWSEIPDisplayDefinition() string {
-	return `{"displayOrder": ["publicIp","publicIpv4pool","domain","networkBorderGroup"],"displayName": {"publicIp": "Public IP", "publicIpv4pool": "IPv4 Pool", "domain":"Domain", "region":"Region","networkBorderGroup":"Network Border Group"}}`
+	return `{"displayOrder": ["allocationId","publicIp","publicIpv4pool","domain","networkBorderGroup"],"displayName": {"allocationId": "Allocation ID","publicIp": "Public IP", "publicIpv4pool": "IPv4 Pool", "domain":"Domain", "region":"Region","networkBorderGroup":"Network Border Group"}}`
 }
 
 func GetAWSSnapshotDisplayDefinition() string {
