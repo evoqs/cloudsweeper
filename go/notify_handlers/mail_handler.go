@@ -8,7 +8,9 @@ import (
 	mail "cloudsweep/notify_services/mail"
 	"fmt"
 	"html/template"
+	"os"
 	"sort"
+	"time"
 )
 
 const MAX_RESOURCES_PER_RESOURCE_CLASS = 5
@@ -47,12 +49,19 @@ func (em *EmailManager) SendNotification(details model.NotfifyDetails) error {
 		logging.NewDefaultLogger().Errorf("Error creating CSV file: %v", err)
 		return err
 	}
+	// Check if the logo file exists
+	var logoPaths []string
+	if _, err := os.Stat(config.GetConfig().CouldSweeper.Logo); os.IsNotExist(err) {
+		logging.NewDefaultLogger().Errorf("Logo file does not exist: %v", err)
+	} else {
+		logoPaths = []string{config.GetConfig().CouldSweeper.Logo}
+	}
 	err = em.SendEmail(mail.EmailDetails{
 		To:             details.EmailDetails.ToAddresses,
 		From:           config.GetConfig().Notifications.Email.FromAddress,
-		Subject:        "CloudSweeper Resource Usage Notification",
+		Subject:        "CloudSweeper: Resource Usage Notification for Account " + details.AccountId,
 		BodyHTML:       body,
-		ImageLocations: []string{config.GetConfig().CouldSweeper.Logo},
+		ImageLocations: logoPaths,
 		AttachmentName: "resource_details.csv",
 		AttachmentData: []byte(csvData),
 	})
@@ -76,8 +85,8 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 		<head>
 			<style>
 				.logo {
-					max-width: 300px;
-					height: auto;
+					max-width: 200px;
+					max-height: 100px;
 					display: block;
 					margin: 20px auto;
 				}
@@ -99,6 +108,7 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 					width: 100%;
 					border: 0.5px solid #d3d3d3; /* External border color */
 					border-radius: 20px; /* Rounded corners */
+					margin-top: 50px; /* Add margin-top to move the table down */
 				}
 
 				.external-table td, .external-table th {
@@ -125,6 +135,7 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 					padding: 8px;
 					background-color: #f8f8f8; /* Internal color */
 					border: none;
+					padding-top: 0px
 				}
 
 				.internal-table th {
@@ -134,20 +145,39 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 				.internal-table tr {
 					border-bottom: 0.5px solid #dddddd; /* Border for rows */
 				}
+				/* Note styling */
+				.note-section {
+					text-align: right;
+					margin-top: 0px;
+					font-size: 10px;
+					color: #888888;
+				}
+
+				.note-icon {
+					font-weight: bold;
+					margin-right: 5px;
+				}
+
+				/* Additional styling for the CSV message */
+				.csv-message {
+					text-align: center;
+					margin-top: 20px;
+					font-size: 14px;
+					color: #888888;
+				}
 			</style>
 		</head>
 
 		<body>
-			<tr>
-				<td colspan="2" style="text-align: center;">
-					<img src="cid:logo.jpeg" alt="Company Logo" class="logo">
-				</td>
-			</tr>
+			<tr></tr>
 			<table class="external-table">
 				<tr class="external-table-heading">
-					<td colspan="2" style="text-align: center;">
+					<td style="text-align: center;">
 						<h1>Resources Summary</h1>
 					</td>
+					<td style="text-align: center;">
+					<img src="cid:logo.jpeg" alt="Company Logo" class="logo">
+				</td>
 				</tr>
 				<tr>
 					<td style="text-align: left;">
@@ -160,38 +190,56 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 					</td>
 				</tr>
 				<tr>
-					<td style="text-align: right;"> </td>
+					<td style="text-align: left;"> 
+						<span>Account ID:</span>
+						<h3 style="margin: 0;">{{.AccountId}}</h3>
+					</td>
 					<td style="text-align: right;">
 						<span>Monthly Savings:</span>
 						<h3 style="margin: 0;">{{printf "$%.2f" .TotalMonthlySavings}}</h3>
 					</td>
 				</tr>
+				<tr>
+					<td colspan="2">{{formatTime .Time}} </td>
+				</tr>
 
 				<!-- Iterate over each ResourceClass group -->
 				{{range $resourceClass, $resources := .GroupedResources}}
-				<tr>
-					<td colspan="2" style="vertical-align: bottom;">
-						Resource Class: <strong style="margin-bottom: 0;">{{ $resourceClass }}</strong>
+				<tr style="height: 55px; vertical-align: bottom;">
+					<!-- Resource Class cell -->
+					<td style="vertical-align: bottom; padding-bottom: 0px">
+						Resource Class: <strong>{{ $resourceClass }}</strong>
+					</td>
+					<!-- Note cell -->
+					<td style="vertical-align: bottom; padding-bottom: 0px">
+						<div class="note-section">
+							<span class="note-icon">*</span>
+							Note: Table contains top 5 resources based on Monthly Savings
+						</div>
+					</td>
+				</tr>
+				<tr style="height: 0px; vertical-align: top; padding-top: 0px;">
+					<td colspan="2" style="vertical-align: top; padding-top: 0px">
 						<table class="internal-table">
 							<tr>
-								<th>Account ID</th>
+								<!-- <th>Account ID</th> -->
 								<th>Resource ID</th>
 								<th>Resource Name</th>
 								<th>Region Code</th>
 								<th>Monthly Price</th>
-								<th>Current Resource Type</th>
-								<th>Recommended Resource Type</th>
+								<th>Resource Type</th>
+								<th>Recommendation</th>
 								<th>Estimated Monthly Savings</th>
 							</tr>
 							{{range $index, $resource := $resources}}
 							<tr>
-								<td>{{.AccountID}}</td>
+								<!-- <td>{{.AccountID}}</td> -->
 								<td>{{.ResourceId}}</td>
 								<td>{{.ResourceName}}</td>
 								<td>{{.RegionCode}}</td>
 								<td>{{printf "$%.2f" .MonthlyPrice}}</td>
 								<td>{{.CurrentResourceType}}</td>
-								<td>{{.RecommendedResourceType}}</td>
+								<td>{{.Recommendation}}</td>
 								<td>{{printf "$%.2f" .MonthlySavings}}</td>
 							</tr>
 							{{end}}
@@ -201,11 +249,33 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 				{{end}}
 			</table>
 
+			<!-- CSV message section -->
+			<tr>
+				<td colspan="2" class="csv-message">
+				<span style="font-size: 16px; margin-right: 5px;">&#128206;</span>Please check the attached CSV file for the full list of resources and their details.
+				</td>
+			</tr>
 			<div style="text-align: center; margin-top: 20px;">
 				<a href="{{.CompanyURL}}" class="button" style="background-color: #3b6696; color: white;" target="_blank">Visit CloudSweeper</a>
 			</div>
+
+			<!-- Terms and Conditions section -->
+			<tr>
+				<td colspan="2" style="text-align: center; margin-top: 20px;">
+					<p style="font-size: 12px; color: #888888;">
+						&copy; 2024 CloudSweeper. All rights reserved. | Mailing Address: sales@cloudsweeper.com | 
+						<a href="https://cloudsweeper.in/terms" style="color: #888888; text-decoration: none;" target="_blank">Terms and Conditions</a>
+					</p>
+				</td>
+			</tr>
+
 		</body>
 	</html>`
+	funcMap := template.FuncMap{
+		"formatTime": func(t time.Time) string {
+			return t.Format("02 Jan 2006 03:04:05 PM UTC")
+		},
+	}
 
 	// Prepare data for the template
 	data := struct {
@@ -213,21 +283,25 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 		CompanyURL          string
 		ResourceDetails     []model.NotifyResourceDetails
 		PipeLineName        string
+		AccountId           string
 		TotalMonthlyPrice   float64
 		TotalMonthlySavings float64
+		Time                time.Time
 		GroupedResources    map[string][]model.NotifyResourceDetails
 	}{
 		//LogoURL:             logoURL,
 		CompanyURL:          config.GetConfig().CouldSweeper.URL,
 		ResourceDetails:     details.ResourceDetails,
 		PipeLineName:        details.PipeLineName,
+		AccountId:           details.AccountId,
 		TotalMonthlyPrice:   totalMonthlyPrice,
 		TotalMonthlySavings: totalMonthlySavings,
+		Time:                details.Time,
 		GroupedResources:    groupByResourceClass(details.ResourceDetails),
 	}
 
 	// Execute the template
-	tmpl, err := template.New("emailTemplate").Parse(emailTemplate)
+	tmpl, err := template.New("emailTemplate").Funcs(funcMap).Parse(emailTemplate)
 	if err != nil {
 		logging.NewDefaultLogger().Errorf("Error parsing email template: %v", err)
 		return "", err
@@ -278,7 +352,7 @@ func createAttachmentDataInCsvFormat(resources []model.NotifyResourceDetails) (s
 			resource.RegionCode,
 			resource.MonthlyPrice,
 			resource.CurrentResourceType,
-			resource.RecommendedResourceType,
+			resource.Recommendation,
 			resource.MonthlySavings,
 		))
 	}

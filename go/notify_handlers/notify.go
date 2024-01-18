@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -62,7 +63,6 @@ func (nm *NotifyManager) StartProcessing() {
 		for {
 			select {
 			case request := <-nm.pipeLineIdChannel:
-				fmt.Println("\n---------> PAVAN \n", request)
 				go nm.processNotification(request)
 			}
 		}
@@ -134,11 +134,12 @@ func SendNotification(pipelineId string) {
 // Owner: Bibin
 func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, error) {
 	opr := storage.GetDefaultDBOperators()
-	query := fmt.Sprintf(`{"pipelineid": "%s"}`, pipeLineId)
 	pipeline, err := opr.PipeLineOperator.GetPipeLineDetails(pipeLineId)
 	if err != nil {
-		logging.NewDefaultLogger().Errorf("Failed to get the pipeline details from DB: %v", err)
+		logging.NewDefaultLogger().Debugf("Failed to get the pipeline %s details from DB: %v", pipeLineId, err)
+		return notify_model.NotfifyDetails{}, err
 	}
+	query := fmt.Sprintf(`{"pipelineid": "%s"}`, pipeLineId)
 	results, _ := opr.PolicyOperator.GetPolicyResultDetails(query)
 
 	// TODO: check if pipeline is not empty
@@ -147,18 +148,17 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 		logging.NewDefaultLogger().Errorf("Failed to get cloundaccount details for CloudAccountId %s, %s", pipeline[0].CloudAccountID, err.Error())
 	}
 
-	awsAccountID := cloudAccList[0].AwsCredentials.AccountID
 	var details notify_model.NotfifyDetails
-
+	details.AccountId = cloudAccList[0].AwsCredentials.AccountID
 	details.EmailDetails.ToAddresses = pipeline[0].Notification.EmailAddresses
+	details.Time = time.Unix(pipeline[0].LastRunTime, 0).UTC().Truncate(time.Second)
 	// TODO: Bibin - This info should be fetched from UI, set in Pipeline and propogated here
 	details.EmailDetails.Enabled = true
 	var error error
-	line := "----------------------------------------------"
 	for _, object := range results {
 		var resource notify_model.NotifyResourceDetails
-		resource.AccountID = awsAccountID
-
+		resource.AccountID = details.AccountId
+		//fmt.Println(object.Resource)
 		if object.Resource == "ec2" {
 			for _, result := range object.Resultlist {
 				if result.Result == nil {
@@ -166,7 +166,7 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 				}
 				resultList, ok := result.Result.(primitive.A)
 				if !ok {
-					fmt.Println("Invalid result set")
+					logging.NewDefaultLogger().Errorf("EC2 Instance: Invalid result set")
 					continue
 				}
 
@@ -177,7 +177,6 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 					primativeData := entry.(primitive.D)
 					tempByteHolder, _ := bson.MarshalExtJSON(primativeData, true, true)
 					bson.UnmarshalExtJSON(tempByteHolder, true, &data)
-					fmt.Printf("%s\n ----->  %v\n%s", line, data, line)
 					resource.CurrentResourceType = data.ResultData.InstanceType
 					// TODO: Bibin - Monthly Price and Monthly savings should be provided with float value with separate currency and metric
 					if data.MetaData != nil {
@@ -191,10 +190,10 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 							if error != nil {
 								logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
 							}
-							resource.RecommendedResourceType = data.MetaData.Recommendations[0].Recommendation
+							resource.Recommendation = data.MetaData.Recommendations[0].Recommendation
 						} else {
 							resource.MonthlySavings = 0.0
-							resource.RecommendedResourceType = ""
+							resource.Recommendation = ""
 						}
 					}
 
@@ -213,7 +212,7 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 				}
 				resultList, ok := result.Result.(primitive.A)
 				if !ok {
-					fmt.Println("Invalid result set")
+					logging.NewDefaultLogger().Errorf("EBS Volumes: Invalid result set")
 					continue
 				}
 
@@ -223,7 +222,6 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 					primativeData := entry.(primitive.D)
 					tempByteHolder, _ := bson.MarshalExtJSON(primativeData, true, true)
 					bson.UnmarshalExtJSON(tempByteHolder, true, &data)
-					fmt.Printf("%s\n ----->  %v\n%s", line, data, line)
 					resource.CurrentResourceType = data.ResultData.VolumeType
 					// TODO: Bibin - Monthly Price and Monthly savings should be provided with float value with separate currency and metric
 					if data.MetaData != nil {
@@ -238,10 +236,10 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 								logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
 							}
 
-							resource.RecommendedResourceType = data.MetaData.Recommendations[0].Recommendation
+							resource.Recommendation = data.MetaData.Recommendations[0].Recommendation
 						} else {
 							resource.MonthlySavings = 0.0
-							resource.RecommendedResourceType = ""
+							resource.Recommendation = ""
 						}
 					}
 
@@ -257,11 +255,12 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 		} else if object.Resource == "elastic-ip" {
 			for _, result := range object.Resultlist {
 				if result.Result == nil {
+					logging.NewDefaultLogger().Warnf("Elastic IP: Result is empty")
 					continue
 				}
 				resultList, ok := result.Result.(primitive.A)
 				if !ok {
-					fmt.Println("Invalid result set")
+					logging.NewDefaultLogger().Errorf("Elastic-IP: Invalid result set")
 					continue
 				}
 
@@ -271,7 +270,6 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 					primativeData := entry.(primitive.D)
 					tempByteHolder, _ := bson.MarshalExtJSON(primativeData, true, true)
 					bson.UnmarshalExtJSON(tempByteHolder, true, &data)
-					fmt.Printf("%s\n ----->  %v\n%s", line, data, line)
 					if data.ResultData.Domain == "vpc" {
 						resource.CurrentResourceType = "EC2-VPC"
 					} else {
@@ -290,10 +288,10 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 								logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
 							}
 
-							resource.RecommendedResourceType = data.MetaData.Recommendations[0].Recommendation
+							resource.Recommendation = data.MetaData.Recommendations[0].Recommendation
 						} else {
 							resource.MonthlySavings = 0.0
-							resource.RecommendedResourceType = ""
+							resource.Recommendation = ""
 						}
 					}
 
@@ -309,21 +307,20 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 		} else if object.Resource == "ebs-snapshot" {
 			for _, result := range object.Resultlist {
 				if result.Result == nil {
+					logging.NewDefaultLogger().Warnf("EBS Sanpshot: Result is empty")
 					continue
 				}
 				resultList, ok := result.Result.(primitive.A)
 				if !ok {
-					fmt.Println("Invalid result set")
+					logging.NewDefaultLogger().Errorf("Ebs-Snapshot: Invalid result set")
 					continue
 				}
 
 				var data aws_model.AwsSnapshotResult
 				for _, entry := range resultList {
-
 					primativeData := entry.(primitive.D)
 					tempByteHolder, _ := bson.MarshalExtJSON(primativeData, true, true)
 					bson.UnmarshalExtJSON(tempByteHolder, true, &data)
-					fmt.Printf("%s\n ----->  %v\n%s", line, data, line)
 					resource.CurrentResourceType = data.ResultData.StorageTier
 
 					// TODO: Bibin - Monthly Price and Monthly savings should be provided with float value with separate currency and metric
@@ -338,10 +335,10 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 								logging.NewDefaultLogger().Errorf("Error While converting Monthly Savings: %v", error)
 							}
 
-							resource.RecommendedResourceType = data.MetaData.Recommendations[0].Recommendation
+							resource.Recommendation = data.MetaData.Recommendations[0].Recommendation
 						} else {
 							resource.MonthlySavings = 0.0
-							resource.RecommendedResourceType = ""
+							resource.Recommendation = ""
 						}
 					}
 
@@ -355,10 +352,7 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 			}
 
 		}
-		// TODO: Add the section for elastic IP and EBSSnapshot
 	}
-
-	logging.NewDefaultLogger().Debugf("%s\n%+v\n%s", line, details, line)
 	details.PipeLineName = pipeline[0].PipeLineName
 	return details, error
 }

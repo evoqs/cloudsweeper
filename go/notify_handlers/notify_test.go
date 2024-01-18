@@ -191,7 +191,7 @@ func TestNotifications(t *testing.T) {
 	}*/
 	// TODO: Get the pipeline ID and send the notification.
 	t.Logf("Sending Notification..")
-	pipelineId := "ew984u2uefuwefhwekj"
+	pipelineId := "65a0b6f154222ca8f93a651f"
 	for i := 0; i < 1; i++ {
 		fmt.Printf("Sending notification #%d\n", i+1)
 		SendNotification(pipelineId)
