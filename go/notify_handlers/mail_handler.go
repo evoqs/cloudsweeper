@@ -165,6 +165,10 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 					font-size: 14px;
 					color: #888888;
 				}
+
+				.message-row {
+					background-color: #d4d4e2;
+				}
 			</style>
 		</head>
 
@@ -202,6 +206,16 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 				<tr>
 					<td colspan="2">{{formatTime .Time}} </td>
 				</tr>
+
+				<!-- Check for no resources - custom message -->
+				{{if eq (len .ResourceDetails) 0}}
+					<tr class="message-row">
+						<td colspan="2" style="text-align: center;">
+							<span style="font-size: 24px;">&#128269;</span>
+							<h3>No resource found for this pipeline</h3>
+						</td>
+					</tr>
+				{{end}}
 
 				<!-- Iterate over each ResourceClass group -->
 				{{range $resourceClass, $resources := .GroupedResources}}
