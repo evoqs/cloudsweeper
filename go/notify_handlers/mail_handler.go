@@ -211,6 +211,7 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 				{{if eq (len .ResourceDetails) 0}}
 					<tr class="message-row">
 						<td colspan="2" style="text-align: center;">
+							<!-- shrug 129335 -->
 							<span style="font-size: 24px;">&#128269;</span>
 							<h3>No resource found for this pipeline</h3>
 						</td>
@@ -224,11 +225,10 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 					<td style="vertical-align: bottom; padding-bottom: 0px">
 						Resource Class: <strong>{{ $resourceClass }}</strong>
 					</td>
-					<!-- Note cell -->
+					<!-- Note cell &#9432-->
 					<td style="vertical-align: bottom; padding-bottom: 0px">
 						<div class="note-section">
-							<span class="note-icon">*</span>
-							Note: Table contains top 5 resources based on Monthly Savings
+							<span class="note-icon">&#9432;</span>Note: Table contains top 5 resources based on Monthly Savings
 						</div>
 					</td>
 				</tr>

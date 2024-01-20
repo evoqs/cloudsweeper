@@ -10,6 +10,8 @@ require (
 	github.com/itchyny/json2yaml v0.1.4
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/sashabaranov/go-openai v1.17.6
+	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c
+	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef
 	go.mongodb.org/mongo-driver v1.12.1
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 	google.golang.org/api v0.149.0
@@ -40,6 +42,7 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
+	golang.org/x/image v0.0.0-20211028202545-6944b10bf410 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.13.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
