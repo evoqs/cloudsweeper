@@ -117,6 +117,7 @@ type RecommendationItem[T InstanceDetails | EBSVolumeDetails] struct {
 	EstimatedMonthlySavings string             `json:"estimatedMonthlySavings" bson:"estimatedMonthlySavings"`
 }
 
+// Used for Recommendation
 type InstanceDetails struct {
 	InstanceType  string `json:"instanceType" bson:"instanceType"`
 	InstanceName  string `json:"instanceName" bson:"instanceName"`
@@ -126,6 +127,7 @@ type InstanceDetails struct {
 	//Cost          model.ResourceCost `json:"cost" bson:"cost"`
 }
 
+// Used for Recommendation
 type EBSVolumeDetails struct {
 	VolumeType               string `json:"volumeType" bson:"volumeType"`
 	VolumeName               string `json:"volumeName" bson:"volumeName"`
