@@ -283,8 +283,97 @@ func (ac *AwsClient) GetProductFamilyList(serviceCode string) ([]string, error) 
 			break
 		}
 	}
-
 	return productFamilies, nil
+}
+
+// GetInstanceDetails retrieves details of an EC2 instance using its instance ID and region.
+func (ac *AwsClient) GetInstanceDetails(instanceID string, region string) (*ec2.Instance, error) {
+	var ec2Client *ec2.EC2
+
+	if region != "" {
+		ec2Client = ac.GetEC2ClientWithRegion(region)
+	} else {
+		ec2Client = ac.GetEC2Client()
+	}
+
+	// Specify the input parameters for DescribeInstances call
+	params := &ec2.DescribeInstancesInput{
+		InstanceIds: []*string{aws.String(instanceID)},
+	}
+
+	// Call DescribeInstances API
+	resp, err := ec2Client.DescribeInstances(params)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if any instances were found
+	if len(resp.Reservations) == 0 || len(resp.Reservations[0].Instances) == 0 {
+		return nil, fmt.Errorf("instance with ID %s not found", instanceID)
+	}
+
+	// Return details of the first instance found (assuming there is only one)
+	return resp.Reservations[0].Instances[0], nil
+}
+
+// GetVolumeDetails retrieves details of an EBS volume using its volume ID and region.
+func (ac *AwsClient) GetEbsVolumeDetails(volumeID, region string) (*ec2.Volume, error) {
+	var ec2Client *ec2.EC2
+
+	if region != "" {
+		ec2Client = ac.GetEC2ClientWithRegion(region)
+	} else {
+		ec2Client = ac.GetEC2Client()
+	}
+
+	// Specify the input parameters for DescribeVolumes call
+	params := &ec2.DescribeVolumesInput{
+		VolumeIds: []*string{aws.String(volumeID)},
+	}
+
+	// Call DescribeVolumes API
+	resp, err := ec2Client.DescribeVolumes(params)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if any volumes were found
+	if len(resp.Volumes) == 0 {
+		return nil, fmt.Errorf("volume with ID %s not found", volumeID)
+	}
+
+	// Return details of the first volume found (assuming there is only one)
+	return resp.Volumes[0], nil
+}
+
+// GetSnapshotDetails retrieves details of an EBS snapshot using its snapshot ID and region.
+func (ac *AwsClient) GetEbsSnapshotDetails(snapshotID, region string) (*ec2.Snapshot, error) {
+	var ec2Client *ec2.EC2
+
+	if region != "" {
+		ec2Client = ac.GetEC2ClientWithRegion(region)
+	} else {
+		ec2Client = ac.GetEC2Client()
+	}
+
+	// Specify the input parameters for DescribeSnapshots call
+	params := &ec2.DescribeSnapshotsInput{
+		SnapshotIds: []*string{aws.String(snapshotID)},
+	}
+
+	// Call DescribeSnapshots API
+	resp, err := ec2Client.DescribeSnapshots(params)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if any snapshots were found
+	if len(resp.Snapshots) == 0 {
+		return nil, fmt.Errorf("snapshot with ID %s not found", snapshotID)
+	}
+
+	// Return details of the first snapshot found (assuming there is only one)
+	return resp.Snapshots[0], nil
 }
 
 // =============== AWS Wrapper functions =======================
