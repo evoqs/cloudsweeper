@@ -102,14 +102,20 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 
 	original := pipelines[0]
 	if requestPipeline.AccountID != original.AccountID {
-		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Pipeline Account ID not matching with pipeline ID")))
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Pipeline Account ID not matching with existing pipeline Account ID")))
 		return
 	}
 
-	if original.Default {
-		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Cannot update default pipeline")))
+	if requestPipeline.CloudAccountID != original.CloudAccountID {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Pipeline Cloud Account ID not matching with existing ID")))
 		return
 	}
+
+	//CS65
+	/*if original.Default {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Cannot update default pipeline")))
+		return
+	}*/
 
 	fmt.Printf("Run status %d %d %s", requestPipeline.RunStatus, model.RUNNING, original.PipeLineID)
 	if original.RunStatus == model.RUNNING {
@@ -117,6 +123,24 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 		return
 	}
 
+	//Validate Policies
+
+	for _, policy := range requestPipeline.Policies {
+		policyDetail, err := srv.opr.PolicyOperator.GetPolicyDetails(policy)
+		if err != nil {
+			srv.SendResponse500(writer, errors.New(fmt.Sprintf("Failed to fetch pipeline policy details, %s", err.Error())))
+			return
+		}
+		if policyDetail[0].AccountID != original.AccountID {
+			srv.SendResponse400(writer, errors.New(fmt.Sprintf("Policy %s not belonging to pipeline Account %s", policy, original.AccountID)))
+			return
+		}
+	}
+
+	//TODO Get default pipeline IDS and update.
+	if original.Default {
+		requestPipeline.Policies = original.Policies
+	}
 	requestPipeline.RunStatus = original.RunStatus
 	requestPipeline.LastRunTime = original.LastRunTime
 	requestPipeline.Default = original.Default
@@ -129,7 +153,7 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 	}
 
 	scheduler.GetDefaultPipelineScheduler().UpdatePipelineSchedule(requestPipeline)
-	srv.SendResponse200(writer, fmt.Sprintf("Updated %d Policy with ID %s", count, requestPipeline.PipeLineID))
+	srv.SendResponse200(writer, fmt.Sprintf("Updated %d Pipeline with ID %s", count, requestPipeline.PipeLineID))
 }
 
 func (srv *Server) GetPipeLine(writer http.ResponseWriter, request *http.Request) {
