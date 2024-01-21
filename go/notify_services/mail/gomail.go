@@ -18,7 +18,7 @@ func NewGomailSender(host string, port int, username, password string) *GomailSe
 }
 
 func (gs *GomailSender) Send(emailDetails EmailDetails) error {
-	logging.NewDefaultLogger().Debugf("Sending the mail to %v from %s subject %s body %s", emailDetails.To, emailDetails.From, emailDetails.Subject, emailDetails.BodyHTML)
+	logging.NewDefaultLogger().Debugf("Sending the mail to %v from %s subject %s", emailDetails.To, emailDetails.From, emailDetails.Subject) //, emailDetails.BodyHTML)
 	m := gomail.NewMessage()
 	m.SetHeader("From", emailDetails.From)
 	m.SetHeader("To", emailDetails.To...)

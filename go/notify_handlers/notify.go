@@ -53,7 +53,7 @@ func (nm *NotifyManager) RegisterNotifier(channel NotificationChannel, notifier 
 
 // SendNotification sends a notification using the specified channels.
 func (nm *NotifyManager) SendNotification(pipelineId string) {
-	logging.NewDefaultLogger().Debugf("Adding Pipeline Id to teh channel")
+	logging.NewDefaultLogger().Debugf("Adding Pipeline Id to the channel")
 	nm.pipeLineIdChannel <- pipelineId
 }
 
@@ -131,7 +131,7 @@ func SendNotification(pipelineId string) {
 	}
 }
 
-// Owner: Bibin
+// Owner: Bibin  -- Reads the pipeline results from db and converts to required format
 func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, error) {
 	opr := storage.GetDefaultDBOperators()
 	pipeline, err := opr.PipeLineOperator.GetPipeLineDetails(pipeLineId)
@@ -255,7 +255,7 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 		} else if object.Resource == "elastic-ip" {
 			for _, result := range object.Resultlist {
 				if result.Result == nil {
-					logging.NewDefaultLogger().Warnf("Elastic IP: Result is empty")
+					//logging.NewDefaultLogger().Warnf("Elastic IP: Result is empty")
 					continue
 				}
 				resultList, ok := result.Result.(primitive.A)
@@ -307,7 +307,7 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 		} else if object.Resource == "ebs-snapshot" {
 			for _, result := range object.Resultlist {
 				if result.Result == nil {
-					logging.NewDefaultLogger().Warnf("EBS Sanpshot: Result is empty")
+					//logging.NewDefaultLogger().Warnf("EBS Sanpshot: Result is empty")
 					continue
 				}
 				resultList, ok := result.Result.(primitive.A)
