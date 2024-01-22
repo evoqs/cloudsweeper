@@ -22,7 +22,18 @@ func (srv *Server) AddCustodianPolicy(writer http.ResponseWriter, request *http.
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid json payload for POST request, %s", err.Error())))
 		return
 	}
-	policy.PolicyType = "custom"
+
+	account, err := srv.opr.AccountOperator.GetCloudAccount(policy.AccountID)
+	if err != nil {
+		srv.SendResponse500(writer, errors.New(fmt.Sprintf("Failed to get Account ID %s, %s", policy.AccountID, err.Error())))
+		return
+	}
+
+	if account == nil {
+		srv.SendResponse400(writer, fmt.Errorf("Invalid Account ID, %s", policy.AccountID))
+		return
+	}
+	policy.IsDefault = false
 	id, err := srv.opr.PolicyOperator.AddPolicy(policy)
 
 	if err != nil {
@@ -47,7 +58,30 @@ func (srv *Server) UpdateCustodianPolicy(writer http.ResponseWriter, request *ht
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid json payload for POST request, %s", err.Error())))
 		return
 	}
-	policy.PolicyType = "custom"
+	if !primitive.IsValidObjectID(policy.PolicyID.Hex()) {
+		srv.SendResponse400(writer, fmt.Errorf("Invalid policy object ID %s", policy.PolicyID))
+		return
+	}
+	originalpolicy, err := srv.opr.PolicyOperator.GetPolicyDetails(string(policy.PolicyID.Hex()))
+	if err != nil {
+		srv.SendResponse400(writer, fmt.Errorf("Failed to read policy deatils for policy , %s", policy.PolicyID))
+		return
+	}
+
+	if originalpolicy == nil {
+		srv.SendResponse404(writer, nil)
+	}
+
+	if originalpolicy[0].IsDefault {
+		srv.SendResponse400(writer, fmt.Errorf("Cannot update default policy , %s", policy.PolicyID))
+		return
+	}
+
+	if originalpolicy[0].AccountID != policy.AccountID {
+		srv.SendResponse400(writer, fmt.Errorf("Account ID %s of the existing policy does not match with given policy ID %s", originalpolicy[0].AccountID, policy.PolicyID))
+		return
+	}
+
 	count, err := srv.opr.PolicyOperator.UpdatePolicy(policy)
 
 	if err != nil {
@@ -173,7 +207,7 @@ func (srv *Server) AddDefaultCustodianPolicy(writer http.ResponseWriter, request
 	defer request.Body.Close()
 	writer.Header().Set("Content-Type", "application/json")
 
-	var defaultpolicy model.DefaultPolicy
+	var defaultpolicy model.Policy
 	err := json.NewDecoder(request.Body).Decode(&defaultpolicy)
 
 	if err != nil {
@@ -182,7 +216,13 @@ func (srv *Server) AddDefaultCustodianPolicy(writer http.ResponseWriter, request
 		srv.SendResponse400(writer, errors.New(errmsg))
 		return
 	}
-
+	if !defaultpolicy.IsDefault {
+		errmsg := fmt.Errorf("Default flag must be set to be true, for adding default policies ")
+		srv.logwriter.Errorf(errmsg.Error())
+		srv.SendResponse400(writer, errmsg)
+		return
+	}
+	defaultpolicy.AccountID = "admin"
 	id, err := srv.opr.PolicyOperator.AddDefaultPolicy(defaultpolicy)
 
 	if err != nil {
@@ -202,7 +242,7 @@ func (srv *Server) AddDefaultCustodianPolicy(writer http.ResponseWriter, request
 func (srv *Server) UpdateDefaultCustodianPolicy(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
-	var defaultpolicy model.DefaultPolicy
+	var defaultpolicy model.Policy
 	err := json.NewDecoder(request.Body).Decode(&defaultpolicy)
 
 	if err != nil {
@@ -210,6 +250,27 @@ func (srv *Server) UpdateDefaultCustodianPolicy(writer http.ResponseWriter, requ
 		return
 	}
 
+	if !defaultpolicy.IsDefault {
+		errmsg := fmt.Errorf("Default flag must be set to be true, for default policies ")
+		srv.logwriter.Errorf(errmsg.Error())
+		srv.SendResponse400(writer, errmsg)
+		return
+	}
+
+	originalpolicy, err := srv.opr.PolicyOperator.GetPolicyDetails(string(defaultpolicy.PolicyID.Hex()))
+	if err != nil {
+		srv.SendResponse400(writer, fmt.Errorf("Failed to read policy deatils for policy , %s", defaultpolicy.PolicyID))
+		return
+	}
+
+	if originalpolicy == nil {
+		srv.SendResponse404(writer, nil)
+	}
+
+	if !originalpolicy[0].IsDefault {
+		srv.SendResponse400(writer, fmt.Errorf("Cannot update non default policy , %s", defaultpolicy.PolicyID))
+		return
+	}
 	count, err := srv.opr.PolicyOperator.UpdateDefaultPolicy(defaultpolicy)
 
 	if err != nil {
@@ -222,7 +283,7 @@ func (srv *Server) UpdateDefaultCustodianPolicy(writer http.ResponseWriter, requ
 		return
 	}
 
-	msg := fmt.Sprintf("Updated %d Policy with ID %s", count, defaultpolicy.PolicyID)
+	msg := fmt.Sprintf("Updated %d Default Policy with ID %s", count, defaultpolicy.PolicyID)
 	srv.logwriter.Infof(msg)
 	srv.SendResponse200(writer, msg)
 }

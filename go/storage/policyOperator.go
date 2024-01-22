@@ -102,27 +102,28 @@ func (opr *PolicyOperator) GetPolicyResultDetails(query string) ([]model.PolicyR
 }
 
 // Default Policy Operations
-func (opr *PolicyOperator) AddDefaultPolicy(policy model.DefaultPolicy) (string, error) {
+func (opr *PolicyOperator) AddDefaultPolicy(policy model.Policy) (string, error) {
 
-	id, err := opr.dbM.InsertRecord(defaultpolicyTable, policy)
+	id, err := opr.dbM.InsertRecord(policyTable, policy)
 	return id, err
 }
 
-func (opr *PolicyOperator) UpdateDefaultPolicy(policy model.DefaultPolicy) (int64, error) {
+func (opr *PolicyOperator) UpdateDefaultPolicy(policy model.Policy) (int64, error) {
 
 	objectId := policy.PolicyID
-	result, err := opr.dbM.UpdateRecordWithObjectId(defaultpolicyTable, objectId.Hex(), policy)
+	result, err := opr.dbM.UpdateRecordWithObjectId(policyTable, objectId.Hex(), policy)
 	if err != nil {
 		return 0, err
 	}
 	return result.ModifiedCount, err
 }
 
-func (opr *PolicyOperator) GetAllDefaultPolicyDetails() ([]model.DefaultPolicy, error) {
+func (opr *PolicyOperator) GetAllDefaultPolicyDetails() ([]model.Policy, error) {
 
-	var results []model.DefaultPolicy
+	var results []model.Policy
 
-	cursor, err := opr.dbM.QueryAllRecords(defaultpolicyTable)
+	query := fmt.Sprintf(`{"isDefault": %t}`, true)
+	cursor, err := opr.dbM.QueryRecord(policyTable, query)
 
 	if err = cursor.All(context.TODO(), &results); err != nil {
 		panic(err)
@@ -135,6 +136,6 @@ func (opr *PolicyOperator) GetAllDefaultPolicyDetails() ([]model.DefaultPolicy, 
 
 func (opr *PolicyOperator) DeleteDefaultCustodianPolicy(objectid string) (int64, error) {
 
-	result, err := opr.dbM.DeleteOneRecordWithObjectID(defaultpolicyTable, objectid)
+	result, err := opr.dbM.DeleteOneRecordWithObjectID(policyTable, objectid)
 	return result.DeletedCount, err
 }

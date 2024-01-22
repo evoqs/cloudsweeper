@@ -3,7 +3,8 @@ package storage
 import "cloudsweep/config"
 
 const policyTable = "policies"
-const defaultpolicyTable = "defaultpolicies"
+
+// const defaultpolicyTable = "defaultpolicies"
 const policyResultTable = "policyrunresult"
 const cloudaccountTable = "cloudaccount"
 const pipelineTable = "pipeline"

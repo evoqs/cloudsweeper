@@ -131,7 +131,7 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 			srv.SendResponse500(writer, errors.New(fmt.Sprintf("Failed to fetch pipeline policy details, %s", err.Error())))
 			return
 		}
-		if policyDetail[0].AccountID != original.AccountID {
+		if policyDetail[0].AccountID != original.AccountID && !policyDetail[0].IsDefault {
 			srv.SendResponse400(writer, errors.New(fmt.Sprintf("Policy %s not belonging to pipeline Account %s", policy, original.AccountID)))
 			return
 		}
