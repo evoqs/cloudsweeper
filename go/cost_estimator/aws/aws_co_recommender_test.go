@@ -73,7 +73,7 @@ func TestCOAllInstances(t *testing.T) {
 	}
 	storage.MakeDBOperators(dbM)
 
-	recommendations, err := GetAWSRecommendationForAllEC2Instances(config.GetConfig().Aws.Creds.Aws_access_key_id, config.GetConfig().Aws.Creds.Aws_secret_access_key, []string{config.GetConfig().Aws.Creds.Aws_default_region, "ap-northeast-1", "ap-southeast-2"})
+	recommendations, err := GetAWSRecommendationForAllEC2Instances(config.GetConfig().Aws.Creds.Aws_access_key_id, config.GetConfig().Aws.Creds.Aws_secret_access_key, "867226238913", []string{config.GetConfig().Aws.Creds.Aws_default_region, "ap-northeast-1", "ap-southeast-2"})
 	if err != nil {
 		t.Errorf("Error %v", err)
 	}
@@ -117,7 +117,7 @@ func TestCOInstance(t *testing.T) {
 	for _, recommendation := range recommendations {
 		t.Logf("Instance: %s, Current: %s, New: %s", *recommendation.InstanceName, *recommendation.CurrentInstanceType, *recommendation.RecommendationOptions[0].InstanceType)
 	}*/
-	recommendation, err := GetAWSRecommendationForEC2Instance(config.GetConfig().Aws.Creds.Aws_access_key_id, config.GetConfig().Aws.Creds.Aws_secret_access_key, "ap-northeast-1", "867226238913", "i-068d71557bb611e95")
+	recommendation, err := GetAWSRecommendationForEC2Instance(config.GetConfig().Aws.Creds.Aws_access_key_id, config.GetConfig().Aws.Creds.Aws_secret_access_key, "ap-southeast-2", "867226238913", "i-0268224cc7eb71459")
 	if err != nil {
 		t.Errorf("Error %v", err)
 	}

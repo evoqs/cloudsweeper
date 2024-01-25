@@ -11,10 +11,11 @@ const pipelineTable = "pipeline"
 var operatorRepo = make(map[string]*DbOperators)
 
 type DbOperators struct {
-	PipeLineOperator PipeLineOperator
-	AccountOperator  AccountOperator
-	PolicyOperator   PolicyOperator
-	CostOperator     CostOperator
+	PipeLineOperator       PipeLineOperator
+	AccountOperator        AccountOperator
+	PolicyOperator         PolicyOperator
+	CostOperator           CostOperator
+	RecommendationOperator RecommendationOperator
 }
 
 func MakeDBOperators(dbm *DBManger) *DbOperators {
@@ -24,16 +25,19 @@ func MakeDBOperators(dbm *DBManger) *DbOperators {
 	var Policy_Operator PolicyOperator
 	var Account_Operator AccountOperator
 	costOperator := GetDefaultCostOperator()
+	recommendationOperator := GetDefaultRecommendationOperator()
 
 	PipeLine_Operator.dbM = *dbm
 	Policy_Operator.dbM = *dbm
 	Account_Operator.dbM = *dbm
 	costOperator.dbM = *dbm
+	recommendationOperator.dbM = *dbm
 
 	Db_Operators.AccountOperator = Account_Operator
 	Db_Operators.PipeLineOperator = PipeLine_Operator
 	Db_Operators.PolicyOperator = Policy_Operator
 	Db_Operators.CostOperator = *costOperator
+	Db_Operators.RecommendationOperator = *recommendationOperator
 	operatorRepo[dbm.dbName] = &Db_Operators
 	return (&Db_Operators)
 }
