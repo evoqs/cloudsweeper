@@ -23,15 +23,16 @@ type AwsCredentials struct {
 }
 
 type Policy struct {
-	PolicyName       string             `json:"policyname" bson:"policyname"`
-	PolicyID         primitive.ObjectID `json:"policyid" bson:"_id,omitempty"`
-	AccountID        string             `json:"accountid" bson:"accountid"`
-	PolicyType       string             `json:"policytype" bson:"policytype"`
-	PolicyDefinition string             `json:"policydefinition" bson:"policydefinition"`
-	Recommendation   string             `json:"recommendation" bson:"recommendation"`
+	PolicyName        string             `json:"policyname" bson:"policyname"`
+	PolicyDescription string             `json:"description" bson:"description"`
+	PolicyID          primitive.ObjectID `json:"policyid" bson:"_id,omitempty"`
+	AccountID         string             `json:"accountid" bson:"accountid"`
+	IsDefault         bool               `json:"isDefault" bson:"isDefault"`
+	PolicyDefinition  string             `json:"policydefinition" bson:"policydefinition"`
+	Recommendation    string             `json:"recommendation" bson:"recommendation"`
 }
 
-type DefaultPolicy struct {
+type DefaultPolicyy struct {
 	PolicyName       string             `json:"policyname" bson:"policyname"`
 	PolicyID         primitive.ObjectID `json:"policyid" bson:"_id,omitempty"`
 	PolicyDefinition string             `json:"policydefinition" bson:"policydefinition"`

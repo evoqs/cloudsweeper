@@ -353,7 +353,7 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 						resultEntry.ResultData = resultData
 						resultEntry.MetaData = nil
 
-						if policy.PolicyType == "Default" {
+						if policy.IsDefault {
 							var metaData model.ResultMetaData
 							resultEntry.MetaData = &metaData
 							go updateMetaDataEc2(&resultWg, &resultData, &metaData, cloudAcc, regionName)
@@ -389,7 +389,7 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 						var resultEntry aws_model.AwsBlockVolumeResult
 						resultEntry.ResultData = resultData
 						resultEntry.MetaData = nil
-						if policy.PolicyType == "Default" {
+						if policy.IsDefault {
 							var metaData model.ResultMetaData
 							resultEntry.MetaData = &metaData
 							go updateMetaDataEbs(&resultWg, &resultData, &metaData, cloudAcc, regionName, resultData.Size)
@@ -408,7 +408,7 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 						var resultEntry aws_model.AwsElasticIPResult
 						resultEntry.ResultData = elem
 						resultEntry.MetaData = nil
-						if policy.PolicyType == "Default" {
+						if policy.IsDefault {
 							var metaData model.ResultMetaData
 							resultEntry.MetaData = &metaData
 							go updateMetaDataEip(&resultWg, &elem, &metaData, cloudAcc, policy.Recommendation, regionName)
@@ -427,7 +427,7 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 						resultEntry.ResultData = elem
 
 						resultEntry.MetaData = nil
-						if policy.PolicyType == "Default" {
+						if policy.IsDefault {
 							var metaData model.ResultMetaData
 							resultEntry.MetaData = &metaData
 							go updateMetaDataAwsSnapshot(&resultWg, &elem, &metaData, cloudAcc, policy.Recommendation, regionName, elem.VolumeSize)

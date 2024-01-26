@@ -110,7 +110,7 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 	//Validate Cloud credentials
 	var regionList []string
 	if strings.TrimSpace(acc.AccountType) == "aws" {
-		awsClient, err := cloud_lib.GetAwsClient(acc.AwsCredentials.AccessKeyID, acc.AwsCredentials.SecretAccessKey, "af-south-1")
+		awsClient, err := cloud_lib.GetAwsClient(acc.AwsCredentials.AccessKeyID, acc.AwsCredentials.SecretAccessKey, "")
 
 		if err != nil {
 			srv.SendResponse500(writer, err)
@@ -165,28 +165,9 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 	defaultPolicyList, _ := srv.opr.PolicyOperator.GetAllDefaultPolicyDetails()
 	var policyIDList []string
 	for _, defaultpolicy := range defaultPolicyList {
-		var policy model.Policy
-		policy.PolicyName = defaultpolicy.PolicyName
-		policy.PolicyDefinition = defaultpolicy.PolicyDefinition
-		policy.Recommendation = defaultpolicy.Recommendation
-		policy.PolicyType = "Default"
-		policy.AccountID = acc.AccountID
+		policyIDList = append(policyIDList, defaultpolicy.PolicyID.Hex())
+		srv.logwriter.Infof(fmt.Sprintf("Default policy with name %s, added", defaultpolicy.PolicyName, acc.AccountID))
 
-		query := fmt.Sprintf(`{"policyname": "%s", "policytype": "Default"}`, policy.PolicyName)
-		result, _ := srv.opr.PolicyOperator.GetAllPolicyDetails(query)
-		if len(result) == 0 {
-			id, err := srv.opr.PolicyOperator.AddPolicy(policy)
-
-			if err != nil {
-				srv.logwriter.Errorf(fmt.Sprintf("Failed to add default policy %s, with error %s.", policy.PolicyName, err.Error()))
-			} else {
-				srv.logwriter.Infof(fmt.Sprintf("Added default policy for account %s, policy name %s", acc.AccountID, policy.PolicyName))
-				policyIDList = append(policyIDList, id)
-			}
-		} else {
-			policyIDList = append(policyIDList, result[0].PolicyID.Hex())
-			srv.logwriter.Infof(fmt.Sprintf("Default policy  with name %s, already existing for account %s", policy.PolicyName, acc.AccountID))
-		}
 	}
 
 	if len(policyIDList) != 0 {
