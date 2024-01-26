@@ -157,16 +157,23 @@ func buildFilterRecursive(value reflect.Value, queryParts *[]string, parentKey s
 		field := value.Field(i)
 		fieldValue := field.Interface()
 
-		// Skip empty or zero values
-		if reflect.DeepEqual(fieldValue, reflect.Zero(field.Type()).Interface()) {
+		jsonTagName := value.Type().Field(i).Tag.Get("bson")
+		fieldKind := field.Kind()
+		if strings.Contains(jsonTagName, "omitempty") {
+			// These fields may not be present in the db if values are empty or null
 			continue
 		}
-
-		jsonTagName := value.Type().Field(i).Tag.Get("json")
-		fieldKind := field.Kind()
 		key := jsonTagName
 		if parentKey != "" {
 			key = parentKey + "." + jsonTagName
+		}
+
+		// Add field exists check
+		*queryParts = append(*queryParts, fmt.Sprintf("\"%s\": { \"$exists\": true }", key))
+
+		// Skip empty or zero values
+		if reflect.DeepEqual(fieldValue, reflect.Zero(field.Type()).Interface()) {
+			continue
 		}
 
 		switch fieldKind {
@@ -475,9 +482,33 @@ func GetAWSRecommendationForEC2Instance(awsAccessKeyId string, awsSecretAccessKe
 	return recommendation, err
 }
 
-func GetAWSRecommendationForAllEBSVolumes(awsAccessKeyId string, awsSecretAccessKey string, regions []string) ([]*aws_model.Recommendation[aws_model.EBSVolumeDetails], error) {
+func GetAWSRecommendationForAllEBSVolumes(awsAccessKeyId string, awsSecretAccessKey string, accountId string, regions []string) ([]*aws_model.Recommendation[aws_model.EBSVolumeDetails], error) {
 	logger.NewDefaultLogger().Debugf("[GetAWSRecommendationForAllEBSVolumes] Running the function")
 	var recommendations []*aws_model.Recommendation[aws_model.EBSVolumeDetails]
+	// ======================== Get From DB =========================
+	var errs []error
+	for _, region := range regions {
+		regionRecommendations, err := GetRecommendationsFromDB[aws_model.EBSVolumeDetails](aws_model.Recommendation[aws_model.EBSVolumeDetails]{
+			Source:        aws_model.RECOMMENDATION_AWSCO,
+			CloudProvider: aws_model.CLOUD_PROVIDER_AWS,
+			AccountId:     accountId,
+			CurrentResourceDetails: aws_model.EBSVolumeDetails{
+				Region: region,
+			},
+		})
+		if err != nil {
+			logger.NewDefaultLogger().Errorf("Error while getting recommendations from DB: %v", err)
+			errs = append(errs, err)
+		}
+		recommendations = append(recommendations, regionRecommendations...)
+	}
+	// TODO: We may need to just ignore the errors here? or any case of error get the recommendations from AWS
+	if len(errs) == 0 && len(recommendations) > 0 {
+		logger.NewDefaultLogger().Infof("Total Number of Recommendation returned from DB: %d", len(recommendations))
+		return recommendations, nil
+	}
+
+	// ======================== Get From AWS =========================
 	coResult, err := GetAWSCOResultForAllEBSVolumes(awsAccessKeyId, awsSecretAccessKey, regions)
 	logger.NewDefaultLogger().Debugf("Error: %v", err)
 
@@ -574,6 +605,7 @@ func GetAWSRecommendationForAllEBSVolumes(awsAccessKeyId string, awsSecretAccess
 			recommendations = append(recommendations, recommendation)
 		}
 	}
+	logger.NewDefaultLogger().Infof("Total Number of Recommendation returned from AWS: %d", len(recommendations))
 	return recommendations, err
 }
 
@@ -581,6 +613,26 @@ func GetAWSRecommendationForAllEBSVolumes(awsAccessKeyId string, awsSecretAccess
 func GetAWSRecommendationForEBSVolume(awsAccessKeyId string, awsSecretAccessKey string, region string, accountId string, volumeId string) (*aws_model.Recommendation[aws_model.EBSVolumeDetails], error) {
 	logger.NewDefaultLogger().Debugf("[GetAWSRecommendationForEBSVolume] Running the function")
 	var recommendation *aws_model.Recommendation[aws_model.EBSVolumeDetails]
+
+	// ======================== Get From DB =========================
+	regionRecommendations, err := GetRecommendationsFromDB[aws_model.EBSVolumeDetails](aws_model.Recommendation[aws_model.EBSVolumeDetails]{
+		Source:        aws_model.RECOMMENDATION_AWSCO,
+		CloudProvider: aws_model.CLOUD_PROVIDER_AWS,
+		AccountId:     accountId,
+		CurrentResourceDetails: aws_model.EBSVolumeDetails{
+			Region:   region,
+			VolumeId: volumeId,
+		},
+	})
+	if err != nil {
+		logger.NewDefaultLogger().Errorf("Error while getting recommendations from DB: %v", err)
+	} else if len(regionRecommendations) > 0 {
+		// Assuming there should be alway single recommendation entry for an instanceId
+		logger.NewDefaultLogger().Infof("Returning Recommendation from DB for Volume.")
+		return regionRecommendations[0], nil
+	}
+
+	// ======================== Get From AWS =========================.EB
 	coResult, err := GetAWSCOResultForEBSVolume(awsAccessKeyId, awsSecretAccessKey, region, accountId, volumeId)
 	logger.NewDefaultLogger().Debugf("Error: %v", err)
 
@@ -683,5 +735,6 @@ func GetAWSRecommendationForEBSVolume(awsAccessKeyId string, awsSecretAccessKey 
 		// For single resource, there will always be single result. We can break/return here.
 		break
 	}
+	logger.NewDefaultLogger().Infof("Returning Recommendation from AWS for EBS Volume.")
 	return recommendation, err
 }

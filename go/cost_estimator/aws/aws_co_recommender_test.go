@@ -151,7 +151,7 @@ func TestCOAllEBSVolumes(t *testing.T) {
 	}
 	storage.MakeDBOperators(dbM)
 
-	recommendations, err := GetAWSRecommendationForAllEBSVolumes(config.GetConfig().Aws.Creds.Aws_access_key_id, config.GetConfig().Aws.Creds.Aws_secret_access_key, []string{config.GetConfig().Aws.Creds.Aws_default_region, "ap-northeast-1", "ap-southeast-2"})
+	recommendations, err := GetAWSRecommendationForAllEBSVolumes(config.GetConfig().Aws.Creds.Aws_access_key_id, config.GetConfig().Aws.Creds.Aws_secret_access_key, "867226238913", []string{config.GetConfig().Aws.Creds.Aws_default_region, "ap-northeast-1", "ap-southeast-2"})
 	if err != nil {
 		t.Errorf("Error %v", err)
 	}
