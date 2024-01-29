@@ -116,6 +116,7 @@ func (opr *RecommendationOperator) DeleteOldRecommendations(thresholdTime time.T
 			"$lt": ` + strconv.FormatInt(thresholdTime.Unix(), 10) + `
 		}
 	}`
+	logger.NewDefaultLogger().Debugf("Filter : %s", filterJSON)
 	result, err := opr.dbM.DeleteMultipleRecord(opr.tableName, filterJSON)
 	if err != nil {
 		return nil, err
