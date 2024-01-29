@@ -6,6 +6,21 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type CloudProvider string
+
+const (
+	CLOUD_PROVIDER_AWS   CloudProvider = "AWS"
+	CLOUD_PROVIDER_AZURE CloudProvider = "AZURE"
+	CLOUD_PROVIDER_GCP   CloudProvider = "GCP"
+)
+
+type RecommendationSource string
+
+const (
+	RECOMMENDATION_AWSCO RecommendationSource = "AWS"
+	RECOMMENDATION_AI    RecommendationSource = "AI"
+)
+
 type PricingData[T any] struct {
 	FormatVersion string         `json:"FormatVersion"`
 	NextToken     string         `json:"NextToken"`
@@ -105,9 +120,14 @@ type ProductAttributesElasticIp struct {
 }
 
 type Recommendation[T InstanceDetails | EBSVolumeDetails] struct {
+	Id                     primitive.ObjectID      `json:"id" bson:"_id,omitempty"`
+	Source                 RecommendationSource    `json:"source" bson:"source"`
+	CloudProvider          CloudProvider           `json:"cloudProvider" bson:"cloudProvider"`
+	AccountId              string                  `json:"accountId" bson:"accountId"`
 	CurrentResourceDetails T                       `json:"currentResourceDetails" bson:"currentResourceDetails"`
 	CurrentCost            model.ResourceCost      `json:"cost" bson:"cost"`
 	RecommendationItems    []RecommendationItem[T] `json:"recommendationItems" bson:"recommendationItems"`
+	TimeStamp              int64                   `json:"timeStamp" bson:"timeStamp"`
 }
 
 type RecommendationItem[T InstanceDetails | EBSVolumeDetails] struct {
@@ -119,6 +139,7 @@ type RecommendationItem[T InstanceDetails | EBSVolumeDetails] struct {
 
 // Used for Recommendation
 type InstanceDetails struct {
+	InstaneId     string `json:"instanceId" bson:"instanceId"`
 	InstanceType  string `json:"instanceType" bson:"instanceType"`
 	InstanceName  string `json:"instanceName" bson:"instanceName"`
 	InstanceState string `json:"instanceState" bson:"instanceState"`
@@ -129,6 +150,7 @@ type InstanceDetails struct {
 
 // Used for Recommendation
 type EBSVolumeDetails struct {
+	VolumeId                 string `json:"volumeId" bson:"volumeId"`
 	VolumeType               string `json:"volumeType" bson:"volumeType"`
 	VolumeName               string `json:"volumeName" bson:"volumeName"`
 	VolumeSize               int64  `json:"volumeSize" bson:"volumeSize"`

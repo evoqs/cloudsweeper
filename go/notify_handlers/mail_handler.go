@@ -204,7 +204,7 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 					</td>
 				</tr>
 				<tr>
-					<td colspan="2">{{formatTime .Time}} </td>
+					<td colspan="2"><!-- <span style="font-size: 24px;">&#128339;</span> -->{{formatTime .Time}} </td>
 				</tr>
 
 				<!-- Check for no resources - custom message -->

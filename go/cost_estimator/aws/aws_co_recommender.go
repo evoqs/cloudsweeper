@@ -2,9 +2,14 @@ package cost_estimator
 
 import (
 	"cloudsweep/cloud_lib"
+	"reflect"
+	"strings"
+	"time"
+
 	logger "cloudsweep/logging"
 	"cloudsweep/model"
 	aws_model "cloudsweep/model/aws"
+	"cloudsweep/storage"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -135,13 +140,106 @@ func GetAWSCOResultForEBSVolume(awsAccessKeyId string, awsSecretAccessKey string
 	return result.VolumeRecommendations, nil
 }
 
+// =============================================================================================================func buildFilter(filter interface{}, parentKey string) string {
+func buildFilter(filter interface{}) string {
+	return buildFilterWithParentTag(filter, "")
+}
+
+func buildFilterWithParentTag(filter interface{}, parentKey string) string {
+	var queryParts []string
+	reflectValue := reflect.ValueOf(filter)
+	buildFilterRecursive(reflectValue, &queryParts, parentKey)
+	return "{" + strings.Join(queryParts, ", ") + "}"
+}
+
+func buildFilterRecursive(value reflect.Value, queryParts *[]string, parentKey string) {
+	for i := 0; i < value.NumField(); i++ {
+		field := value.Field(i)
+		fieldValue := field.Interface()
+
+		jsonTagName := value.Type().Field(i).Tag.Get("bson")
+		fieldKind := field.Kind()
+		if strings.Contains(jsonTagName, "omitempty") {
+			// These fields may not be present in the db if values are empty or null
+			continue
+		}
+		key := jsonTagName
+		if parentKey != "" {
+			key = parentKey + "." + jsonTagName
+		}
+
+		// Add field exists check
+		*queryParts = append(*queryParts, fmt.Sprintf("\"%s\": { \"$exists\": true }", key))
+
+		// Skip empty or zero values
+		if reflect.DeepEqual(fieldValue, reflect.Zero(field.Type()).Interface()) {
+			continue
+		}
+
+		switch fieldKind {
+		case reflect.Struct:
+			buildFilterRecursive(field, queryParts, key)
+		default:
+			*queryParts = append(*queryParts, fmt.Sprintf("\"%s\": \"%v\"", key, fieldValue))
+		}
+	}
+}
+
+// Read from DB
+// TODO: return value to be part of the parameter of the function. so that we can verify the type and build the query
+// OR the resource ID should represent the InstanceDetails or EBSVolumeDetails - sometimes it can be empty
+func GetRecommendationsFromDB[T aws_model.InstanceDetails | aws_model.EBSVolumeDetails](recommendationFilter aws_model.Recommendation[T]) ([]*aws_model.Recommendation[T], error) {
+	logger.NewDefaultLogger().Debugf("Query DB for Recommendation for Resource. Filter: %v", recommendationFilter)
+	var recommendations []*aws_model.Recommendation[T]
+	opr := storage.GetDefaultDBOperators()
+	query := buildFilter(recommendationFilter)
+	logger.NewDefaultLogger().Debugf("DB Query: %s", query)
+	err := opr.RecommendationOperator.GetQueryResult(query, &recommendations)
+	logger.NewDefaultLogger().Debugf("Length of Recommendations from DB: %d\n", len(recommendations))
+	return recommendations, err
+}
+
 // ============================= Recommendations ====================================
 
-func GetAWSRecommendationForAllEC2Instances(awsAccessKeyId string, awsSecretAccessKey string, regions []string) ([]*aws_model.Recommendation[aws_model.InstanceDetails], error) {
+func GetAWSRecommendationForAllEC2Instances(awsAccessKeyId string, awsSecretAccessKey string, accountId string, regions []string) ([]*aws_model.Recommendation[aws_model.InstanceDetails], error) {
 	logger.NewDefaultLogger().Debugf("[GetAWSRecommendationForAllEC2Instances] Running the function")
 	var recommendations []*aws_model.Recommendation[aws_model.InstanceDetails]
+	// TODO: Account Id shouldn't be fetched from AWS everytime, we should use customer account object here
+	/*awsClient, err := cloud_lib.GetAwsClient(awsAccessKeyId, awsSecretAccessKey, "")
+	if err != nil {
+		return nil, err
+	}
+	accountId, err := awsClient.GetAwsAccountID()
+	if err != nil {
+		return nil, err
+	}*/
+	// ======================== Get From DB =========================
+	var errs []error
+	for _, region := range regions {
+		regionRecommendations, err := GetRecommendationsFromDB[aws_model.InstanceDetails](aws_model.Recommendation[aws_model.InstanceDetails]{
+			Source:        aws_model.RECOMMENDATION_AWSCO,
+			CloudProvider: aws_model.CLOUD_PROVIDER_AWS,
+			AccountId:     accountId,
+			CurrentResourceDetails: aws_model.InstanceDetails{
+				Region: region,
+			},
+		})
+		if err != nil {
+			logger.NewDefaultLogger().Errorf("Error while getting recommendations from DB: %v", err)
+			errs = append(errs, err)
+		}
+		recommendations = append(recommendations, regionRecommendations...)
+	}
+	// TODO: We may need to just ignore the errors here? or any case of error get the recommendations from AWS
+	if len(errs) == 0 && len(recommendations) > 0 {
+		logger.NewDefaultLogger().Infof("Total Number of Recommendation returned from DB: %d", len(recommendations))
+		return recommendations, nil
+	}
 
+	// ======================== Get From AWS =========================
 	coResult, err := GetAWSCOResultForAllEC2Instances(awsAccessKeyId, awsSecretAccessKey, regions)
+	logger.NewDefaultLogger().Debugf("Error: %v", err)
+
 	for region, coItems := range coResult {
 		for _, coItem := range coItems {
 			var currentCost model.ResourceCost
@@ -203,7 +301,11 @@ func GetAWSRecommendationForAllEC2Instances(awsAccessKeyId string, awsSecretAcce
 
 			}
 			recommendation := &aws_model.Recommendation[aws_model.InstanceDetails]{
+				Source:        aws_model.RECOMMENDATION_AWSCO,
+				CloudProvider: aws_model.CLOUD_PROVIDER_AWS,
+				AccountId:     accountId,
 				CurrentResourceDetails: aws_model.InstanceDetails{
+					InstaneId:     GetResourceIdFromArn(*coItem.InstanceArn),
 					InstanceType:  *coItem.CurrentInstanceType,
 					InstanceName:  *coItem.InstanceName,
 					InstanceState: *coItem.InstanceState,
@@ -212,18 +314,90 @@ func GetAWSRecommendationForAllEC2Instances(awsAccessKeyId string, awsSecretAcce
 				},
 				CurrentCost:         currentCost,
 				RecommendationItems: recommendationItems,
+				TimeStamp:           time.Now().Unix(),
 			}
+
+			opr := storage.GetDefaultDBOperators()
+			opr.RecommendationOperator.AddRecommendation(recommendation)
 			recommendations = append(recommendations, recommendation)
 		}
 	}
+	/*recommendation := aws_model.Recommendation[aws_model.InstanceDetails]{
+		Source:        aws_model.RECOMMENDATION_AWSCO,
+		CloudProvider: aws_model.CLOUD_PROVIDER_AWS,
+		AccountId:     "867226238913",
+		CurrentResourceDetails: aws_model.InstanceDetails{
+			InstaneId:     "12345670",
+			InstanceType:  "dummyw",
+			InstanceName:  "dummy33",
+			InstanceState: "dum3e23my",
+			InstanceArn:   "dumwdwqsdcsmy:3e3e:sds:3e2e23:instance/i-23e21dedw",
+			Region:        "ap-northeast-1",
+		},
+		CurrentCost: model.ResourceCost{
+			MinPrice: 10,
+		},
+		RecommendationItems: []aws_model.RecommendationItem[aws_model.InstanceDetails]{
+			{
+				Resource: aws_model.InstanceDetails{
+					InstanceType:  "t2.micro",
+					InstanceName:  "SampleInstance",
+					InstanceState: "Running",
+					Region:        "us-east-1",
+					InstanceArn:   "arn:aws:ec2:us-east-1:123456789012:instance/i-0123456789abcdef0",
+				},
+				Cost: model.ResourceCost{
+					// Fill in cost details as needed
+				},
+				EstimatedCostSavings:    "100 USD",
+				EstimatedMonthlySavings: "50 USD",
+			},
+			// Add more items if needed
+		},
+		TimeStamp: time.Now().Unix(),
+	}
+
+	opr := storage.GetDefaultDBOperators()
+	logger.NewDefaultLogger().Infof("Object %+v\n", recommendation)
+	opr.RecommendationOperator.AddRecommendation(recommendation)*/
+	logger.NewDefaultLogger().Infof("Total Number of Recommendation returned from AWS: %d", len(recommendations))
 	return recommendations, err
 }
 
 func GetAWSRecommendationForEC2Instance(awsAccessKeyId string, awsSecretAccessKey string, region string, accountId string, instanceId string) (*aws_model.Recommendation[aws_model.InstanceDetails], error) {
 	logger.NewDefaultLogger().Debugf("[GetAWSRecommendationForEC2Instance] Running the function")
 	var recommendation *aws_model.Recommendation[aws_model.InstanceDetails]
+	// TODO: Account Id shouldn't be fetched from AWS everytime, we should use customer account object here
+	/*awsClient, err := cloud_lib.GetAwsClient(awsAccessKeyId, awsSecretAccessKey, "")
+	if err != nil {
+		return nil, err
+	}
+	accounId, err := awsClient.GetAwsAccountID()
+	if err != nil {
+		return nil, err
+	}*/
+	// ======================== Get From DB =========================
+	regionRecommendations, err := GetRecommendationsFromDB[aws_model.InstanceDetails](aws_model.Recommendation[aws_model.InstanceDetails]{
+		Source:        aws_model.RECOMMENDATION_AWSCO,
+		CloudProvider: aws_model.CLOUD_PROVIDER_AWS,
+		AccountId:     accountId,
+		CurrentResourceDetails: aws_model.InstanceDetails{
+			Region:    region,
+			InstaneId: instanceId,
+		},
+	})
+	if err != nil {
+		logger.NewDefaultLogger().Errorf("Error while getting recommendations from DB: %v", err)
+	} else if len(regionRecommendations) > 0 {
+		// Assuming there should be alway single recommendation entry for an instanceId
+		logger.NewDefaultLogger().Infof("Returning Recommendation from DB for Instance.")
+		return regionRecommendations[0], nil
+	}
 
+	// ======================== Get From AWS =========================
 	coResult, err := GetAWSCOResultForEC2Instance(awsAccessKeyId, awsSecretAccessKey, region, accountId, instanceId)
+	logger.NewDefaultLogger().Debugf("Error: %v", err)
+
 	for _, coItem := range coResult {
 		var currentCost model.ResourceCost
 		recommendationItems := []aws_model.RecommendationItem[aws_model.InstanceDetails]{}
@@ -284,7 +458,11 @@ func GetAWSRecommendationForEC2Instance(awsAccessKeyId string, awsSecretAccessKe
 
 		}
 		recommendation = &aws_model.Recommendation[aws_model.InstanceDetails]{
+			Source:        aws_model.RECOMMENDATION_AWSCO,
+			CloudProvider: aws_model.CLOUD_PROVIDER_AWS,
+			AccountId:     accountId,
 			CurrentResourceDetails: aws_model.InstanceDetails{
+				InstaneId:     GetResourceIdFromArn(*coItem.InstanceArn),
 				InstanceType:  *coItem.CurrentInstanceType,
 				InstanceName:  *coItem.InstanceName,
 				InstanceState: *coItem.InstanceState,
@@ -293,17 +471,56 @@ func GetAWSRecommendationForEC2Instance(awsAccessKeyId string, awsSecretAccessKe
 			},
 			CurrentCost:         currentCost,
 			RecommendationItems: recommendationItems,
+			TimeStamp:           time.Now().Unix(),
 		}
+		opr := storage.GetDefaultDBOperators()
+		opr.RecommendationOperator.AddRecommendation(recommendation)
 		// For single resource, there will always be single result. We can break/return here.
 		break
 	}
+	logger.NewDefaultLogger().Infof("Returning Recommendation from AWS for Instance.")
 	return recommendation, err
 }
 
-func GetAWSRecommendationForAllEBSVolumes(awsAccessKeyId string, awsSecretAccessKey string, regions []string) ([]*aws_model.Recommendation[aws_model.EBSVolumeDetails], error) {
+func GetAWSRecommendationForAllEBSVolumes(awsAccessKeyId string, awsSecretAccessKey string, accountId string, regions []string) ([]*aws_model.Recommendation[aws_model.EBSVolumeDetails], error) {
 	logger.NewDefaultLogger().Debugf("[GetAWSRecommendationForAllEBSVolumes] Running the function")
 	var recommendations []*aws_model.Recommendation[aws_model.EBSVolumeDetails]
+	// ======================== Get From DB =========================
+	var errs []error
+	for _, region := range regions {
+		regionRecommendations, err := GetRecommendationsFromDB[aws_model.EBSVolumeDetails](aws_model.Recommendation[aws_model.EBSVolumeDetails]{
+			Source:        aws_model.RECOMMENDATION_AWSCO,
+			CloudProvider: aws_model.CLOUD_PROVIDER_AWS,
+			AccountId:     accountId,
+			CurrentResourceDetails: aws_model.EBSVolumeDetails{
+				Region: region,
+			},
+		})
+		if err != nil {
+			logger.NewDefaultLogger().Errorf("Error while getting recommendations from DB: %v", err)
+			errs = append(errs, err)
+		}
+		recommendations = append(recommendations, regionRecommendations...)
+	}
+	// TODO: We may need to just ignore the errors here? or any case of error get the recommendations from AWS
+	if len(errs) == 0 && len(recommendations) > 0 {
+		logger.NewDefaultLogger().Infof("Total Number of Recommendation returned from DB: %d", len(recommendations))
+		return recommendations, nil
+	}
+
+	// ======================== Get From AWS =========================
 	coResult, err := GetAWSCOResultForAllEBSVolumes(awsAccessKeyId, awsSecretAccessKey, regions)
+	logger.NewDefaultLogger().Debugf("Error: %v", err)
+
+	// TODO: Account Id shouldn't be fetched from AWS everytime, we should use customer account object here
+	awsClient, err := cloud_lib.GetAwsClient(awsAccessKeyId, awsSecretAccessKey, "")
+	if err != nil {
+		return nil, err
+	}
+	accounId, err := awsClient.GetAwsAccountID()
+	if err != nil {
+		return nil, err
+	}
 
 	for region, coItems := range coResult {
 		for _, coItem := range coItems {
@@ -364,7 +581,11 @@ func GetAWSRecommendationForAllEBSVolumes(awsAccessKeyId string, awsSecretAccess
 				}
 			}
 			recommendation := &aws_model.Recommendation[aws_model.EBSVolumeDetails]{
+				Source:        aws_model.RECOMMENDATION_AWSCO,
+				CloudProvider: aws_model.CLOUD_PROVIDER_AWS,
+				AccountId:     accounId,
 				CurrentResourceDetails: aws_model.EBSVolumeDetails{
+					VolumeId:   GetResourceIdFromArn(*coItem.VolumeArn),
 					VolumeType: *coItem.CurrentConfiguration.VolumeType,
 					//VolumeName:  *coItem.,
 					VolumeSize:               *coItem.CurrentConfiguration.VolumeSize,
@@ -377,10 +598,14 @@ func GetAWSRecommendationForAllEBSVolumes(awsAccessKeyId string, awsSecretAccess
 				},
 				CurrentCost:         currentCost,
 				RecommendationItems: recommendationItems,
+				TimeStamp:           time.Now().Unix(),
 			}
+			opr := storage.GetDefaultDBOperators()
+			opr.RecommendationOperator.AddRecommendation(recommendation)
 			recommendations = append(recommendations, recommendation)
 		}
 	}
+	logger.NewDefaultLogger().Infof("Total Number of Recommendation returned from AWS: %d", len(recommendations))
 	return recommendations, err
 }
 
@@ -388,7 +613,38 @@ func GetAWSRecommendationForAllEBSVolumes(awsAccessKeyId string, awsSecretAccess
 func GetAWSRecommendationForEBSVolume(awsAccessKeyId string, awsSecretAccessKey string, region string, accountId string, volumeId string) (*aws_model.Recommendation[aws_model.EBSVolumeDetails], error) {
 	logger.NewDefaultLogger().Debugf("[GetAWSRecommendationForEBSVolume] Running the function")
 	var recommendation *aws_model.Recommendation[aws_model.EBSVolumeDetails]
+
+	// ======================== Get From DB =========================
+	regionRecommendations, err := GetRecommendationsFromDB[aws_model.EBSVolumeDetails](aws_model.Recommendation[aws_model.EBSVolumeDetails]{
+		Source:        aws_model.RECOMMENDATION_AWSCO,
+		CloudProvider: aws_model.CLOUD_PROVIDER_AWS,
+		AccountId:     accountId,
+		CurrentResourceDetails: aws_model.EBSVolumeDetails{
+			Region:   region,
+			VolumeId: volumeId,
+		},
+	})
+	if err != nil {
+		logger.NewDefaultLogger().Errorf("Error while getting recommendations from DB: %v", err)
+	} else if len(regionRecommendations) > 0 {
+		// Assuming there should be alway single recommendation entry for an instanceId
+		logger.NewDefaultLogger().Infof("Returning Recommendation from DB for Volume.")
+		return regionRecommendations[0], nil
+	}
+
+	// ======================== Get From AWS =========================.EB
 	coResult, err := GetAWSCOResultForEBSVolume(awsAccessKeyId, awsSecretAccessKey, region, accountId, volumeId)
+	logger.NewDefaultLogger().Debugf("Error: %v", err)
+
+	// TODO: Account Id shouldn't be fetched from AWS everytime, we should use customer account object here
+	awsClient, err := cloud_lib.GetAwsClient(awsAccessKeyId, awsSecretAccessKey, "")
+	if err != nil {
+		return nil, err
+	}
+	accounId, err := awsClient.GetAwsAccountID()
+	if err != nil {
+		return nil, err
+	}
 
 	for _, coItem := range coResult {
 		var currentCost model.ResourceCost
@@ -428,6 +684,7 @@ func GetAWSRecommendationForEBSVolume(awsAccessKeyId string, awsSecretAccessKey 
 
 			recommendationItems = append(recommendationItems, aws_model.RecommendationItem[aws_model.EBSVolumeDetails]{
 				Resource: aws_model.EBSVolumeDetails{
+					VolumeId:                 GetResourceIdFromArn(*coItem.VolumeArn),
 					VolumeType:               *recom.Configuration.VolumeType,
 					VolumeSize:               *recom.Configuration.VolumeSize,
 					VolumeBaselineIOPS:       *recom.Configuration.VolumeBaselineIOPS,
@@ -455,6 +712,9 @@ func GetAWSRecommendationForEBSVolume(awsAccessKeyId string, awsSecretAccessKey 
 		}
 
 		recommendation = &aws_model.Recommendation[aws_model.EBSVolumeDetails]{
+			Source:        aws_model.RECOMMENDATION_AWSCO,
+			CloudProvider: aws_model.CLOUD_PROVIDER_AWS,
+			AccountId:     accounId,
 			CurrentResourceDetails: aws_model.EBSVolumeDetails{
 				VolumeType: *coItem.CurrentConfiguration.VolumeType,
 				//VolumeName: coItem.CurrentConfiguration.RootVolume,
@@ -468,9 +728,13 @@ func GetAWSRecommendationForEBSVolume(awsAccessKeyId string, awsSecretAccessKey 
 			},
 			CurrentCost:         currentCost,
 			RecommendationItems: recommendationItems,
+			TimeStamp:           time.Now().Unix(),
 		}
+		opr := storage.GetDefaultDBOperators()
+		opr.RecommendationOperator.AddRecommendation(recommendation)
 		// For single resource, there will always be single result. We can break/return here.
 		break
 	}
+	logger.NewDefaultLogger().Infof("Returning Recommendation from AWS for EBS Volume.")
 	return recommendation, err
 }

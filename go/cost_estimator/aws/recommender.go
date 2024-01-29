@@ -32,6 +32,8 @@ func GetInstanceTypeRecommendation(pInfo aws_model.ProductInfo[aws_model.Product
 	})
 	if currentCost.MinPrice > newCost.MinPrice {
 		return aws_model.Recommendation[aws_model.InstanceDetails]{
+			Source:        aws_model.RECOMMENDATION_AI,
+			CloudProvider: aws_model.CLOUD_PROVIDER_AWS,
 			CurrentResourceDetails: aws_model.InstanceDetails{
 				InstanceType: pInfo.Attributes.InstanceType,
 			},

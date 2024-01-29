@@ -12,30 +12,33 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type CostOperator struct {
+type RecommendationOperator struct {
 	dbM       DBManger
 	tableName string
 }
 
-func GetDefaultCostOperator() *CostOperator {
+func GetDefaultRecommendationOperator() *RecommendationOperator {
 	// TODO: DBManager also should be set here, once DBManager.go is capable to create the object independently
-	return &CostOperator{
-		tableName: "cloudresourcecost",
+	return &RecommendationOperator{
+		tableName: "recommendations",
 	}
 }
 
-func (opr *CostOperator) AddResourceCost(resource interface{}) (string, error) {
+func (opr *RecommendationOperator) AddRecommendation(resource interface{}) (string, error) {
 	id, err := opr.dbM.InsertRecord(opr.tableName, resource)
 	return id, err
 }
 
-func (opr *CostOperator) UpdateResourceCost(resource interface{}) (int64, error) {
+func (opr *RecommendationOperator) UpdateRecommendation(resource interface{}) (int64, error) {
 	var Id primitive.ObjectID
 	switch r := resource.(type) {
-	case *aws_model.AwsResourceCost[any]:
+	case *aws_model.Recommendation[aws_model.InstanceDetails]:
+		Id = r.Id
+	case *aws_model.Recommendation[aws_model.EBSVolumeDetails]:
 		Id = r.Id
 	default:
 	}
+
 	result, err := opr.dbM.UpdateRecordWithObjectId(opr.tableName, Id.Hex(), resource)
 	if err != nil {
 		return 0, err
@@ -43,19 +46,19 @@ func (opr *CostOperator) UpdateResourceCost(resource interface{}) (int64, error)
 	return result.ModifiedCount, err
 }
 
-func (opr *CostOperator) GetResourceCostDetails(resourceId string, targetType interface{}) ([]interface{}, error) {
+func (opr *RecommendationOperator) GetRecommendation(resourceId string, targetType interface{}) ([]interface{}, error) {
 	var results []interface{}
 	cursor, err := opr.dbM.QueryRecordWithObjectID(opr.tableName, resourceId)
 	if err = cursor.All(context.TODO(), &results); err != nil {
 		panic(err)
 	}
 	if results != nil {
-		logger.NewDefaultLogger().Debugf("Length of ResourceCostDetails" + strconv.Itoa(len(results)))
+		logger.NewDefaultLogger().Debugf("Length of Recommendations" + strconv.Itoa(len(results)))
 	}
 	return results, err
 }
 
-func (opr *CostOperator) RunQuery(query string) ([]interface{}, error) {
+func (opr *RecommendationOperator) RunQuery(query string) ([]interface{}, error) {
 	var results []interface{}
 	cursor, err := opr.dbM.QueryRecord(opr.tableName, query)
 	if err = cursor.All(context.TODO(), &results); err != nil {
@@ -67,7 +70,7 @@ func (opr *CostOperator) RunQuery(query string) ([]interface{}, error) {
 	return results, err
 }
 
-func (opr *CostOperator) GetQueryResult(query string, results interface{}) error {
+func (opr *RecommendationOperator) GetQueryResult(query string, results interface{}) error {
 	logger.NewDefaultLogger().Debugf("Querying DB collection %v", opr.tableName)
 	cursor, err := opr.dbM.QueryRecord(opr.tableName, query)
 	if err != nil {
@@ -88,7 +91,7 @@ func (opr *CostOperator) GetQueryResult(query string, results interface{}) error
 	return nil
 }
 
-func (opr *CostOperator) GetQueryResultCount(query string) (int, error) {
+func (opr *RecommendationOperator) GetQueryResultCount(query string) (int, error) {
 	logger.NewDefaultLogger().Debugf("Querying DB collection %v", opr.tableName)
 	cursor, err := opr.dbM.QueryRecord(opr.tableName, query)
 	if err != nil {
@@ -101,18 +104,19 @@ func (opr *CostOperator) GetQueryResultCount(query string) (int, error) {
 	return count, nil
 }
 
-func (opr *CostOperator) DeleteResourceCost(resourdId string) (int64, error) {
+func (opr *RecommendationOperator) DeleteRecommendation(resourdId string) (int64, error) {
 
 	result, err := opr.dbM.DeleteOneRecordWithObjectID(opr.tableName, resourdId)
 	return result.DeletedCount, err
 }
 
-func (opr *CostOperator) DeleteOldResourceCosts(thresholdTime time.Time) (*mongo.DeleteResult, error) {
+func (opr *RecommendationOperator) DeleteOldRecommendations(thresholdTime time.Time) (*mongo.DeleteResult, error) {
 	filterJSON := `{
 		"timeStamp": {
 			"$lt": ` + strconv.FormatInt(thresholdTime.Unix(), 10) + `
 		}
 	}`
+	logger.NewDefaultLogger().Debugf("Filter : %s", filterJSON)
 	result, err := opr.dbM.DeleteMultipleRecord(opr.tableName, filterJSON)
 	if err != nil {
 		return nil, err

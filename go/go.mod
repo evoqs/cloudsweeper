@@ -5,6 +5,7 @@ go 1.20
 require (
 	cloud.google.com/go/ai v0.3.0
 	github.com/aws/aws-sdk-go v1.45.24
+	github.com/aws/aws-sdk-go-v2 v1.24.1
 	github.com/go-co-op/gocron v1.33.1
 	github.com/gorilla/mux v1.8.0
 	github.com/itchyny/json2yaml v0.1.4
