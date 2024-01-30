@@ -135,7 +135,7 @@ func SendNotification(pipelineId string) {
 func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, error) {
 	opr := storage.GetDefaultDBOperators()
 	pipeline, err := opr.PipeLineOperator.GetPipeLineDetails(pipeLineId)
-	if err != nil {
+	if err != nil || len(pipeline) == 0 {
 		logging.NewDefaultLogger().Debugf("Failed to get the pipeline %s details from DB: %v", pipeLineId, err)
 		return notify_model.NotfifyDetails{}, err
 	}

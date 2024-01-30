@@ -3,12 +3,14 @@ package notifications
 import (
 	"bytes"
 	"cloudsweep/config"
+	logger "cloudsweep/logging"
 	logging "cloudsweep/logging"
 	model "cloudsweep/notify_handlers/model"
 	mail "cloudsweep/notify_services/mail"
 	"fmt"
 	"html/template"
 	"os"
+	"reflect"
 	"sort"
 	"time"
 )
@@ -43,6 +45,7 @@ func (em *EmailManager) SendNotification(details model.NotfifyDetails) error {
 	if err != nil {
 		logging.NewDefaultLogger().Errorf("Problem in building the email body %v", err)
 	}
+	logging.NewDefaultLogger().Debugf("Body: " + body)
 	// Create a CSV file with header and details
 	csvData, err := createAttachmentDataInCsvFormat(details.ResourceDetails)
 	if err != nil {
@@ -208,7 +211,7 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 				</tr>
 
 				<!-- Check for no resources - custom message -->
-				{{if eq (len .ResourceDetails) 0}}
+				{{if eq (len .GroupedResources) 0}}
 					<tr class="message-row">
 						<td colspan="2" style="text-align: center;">
 							<!-- shrug 129335 -->
@@ -219,7 +222,7 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 				{{end}}
 
 				<!-- Iterate over each ResourceClass group -->
-				{{range $resourceClass, $resources := .GroupedResources}}
+				{{range $resourceClass, $groupResourceDetails := .GroupedResources}}
 				<tr style="height: 55px; vertical-align: bottom;">
 					<!-- Resource Class cell -->
 					<td style="vertical-align: bottom; padding-bottom: 0px">
@@ -228,7 +231,7 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 					<!-- Note cell &#9432-->
 					<td style="vertical-align: bottom; padding-bottom: 0px">
 						<div class="note-section">
-							<span class="note-icon">&#9432;</span>Note: Table contains top 5 resources based on Monthly Savings
+							<span class="note-icon">&#9432;</span>Note: Tables only display top 5 resources based on Monthly Savings
 						</div>
 					</td>
 				</tr>
@@ -237,24 +240,24 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 						<table class="internal-table">
 							<tr>
 								<!-- <th>Account ID</th> -->
-								<th>Resource ID</th>
-								<th>Resource Name</th>
-								<th>Region Code</th>
-								<th>Monthly Price</th>
-								<th>Resource Type</th>
-								<th>Recommendation</th>
-								<th>Estimated Monthly Savings</th>
+								{{if $groupResourceDetails.Columns.ResourceId}}<th>Resource Id</th>{{end}}
+								{{if $groupResourceDetails.Columns.ResourceName}}<th>Resource Name</th>{{end}}
+								{{if $groupResourceDetails.Columns.RegionCode}}<th>Region Code</th>{{end}}
+								{{if $groupResourceDetails.Columns.MonthlyPrice}}<th>Monthly Price</th>{{end}}
+								{{if $groupResourceDetails.Columns.CurrentResourceType}}<th>Resource Type</th>{{end}}
+								{{if $groupResourceDetails.Columns.Recommendation}}<th>Recommendation</th>{{end}}
+								{{if $groupResourceDetails.Columns.MonthlySavings}}<th>Estimated Monthly Savings</th>{{end}}
 							</tr>
-							{{range $index, $resource := $resources}}
+							{{range $index, $resource := $groupResourceDetails.Resources}}
 							<tr>
 								<!-- <td>{{.AccountID}}</td> -->
-								<td>{{.ResourceId}}</td>
-								<td>{{.ResourceName}}</td>
-								<td>{{.RegionCode}}</td>
-								<td>{{printf "$%.2f" .MonthlyPrice}}</td>
-								<td>{{.CurrentResourceType}}</td>
-								<td>{{.Recommendation}}</td>
-								<td>{{printf "$%.2f" .MonthlySavings}}</td>
+								{{if $groupResourceDetails.Columns.ResourceId}}<td>{{.ResourceId}}</td>{{end}}
+								{{if $groupResourceDetails.Columns.ResourceName}}<td>{{.ResourceName}}</td>{{end}}
+								{{if $groupResourceDetails.Columns.RegionCode}}<td>{{.RegionCode}}</td>{{end}}
+								{{if $groupResourceDetails.Columns.MonthlyPrice}}<td>{{printf "$%.2f" .MonthlyPrice}}</td>{{end}}
+								{{if $groupResourceDetails.Columns.CurrentResourceType}}<td>{{.CurrentResourceType}}</td>{{end}}
+								{{if $groupResourceDetails.Columns.Recommendation}}<td>{{.Recommendation}}</td>{{end}}
+								{{if $groupResourceDetails.Columns.MonthlySavings}}<td>{{printf "$%.2f" .MonthlySavings}}</td>{{end}}
 							</tr>
 							{{end}}
 						</table>
@@ -294,18 +297,18 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 	// Prepare data for the template
 	data := struct {
 		//LogoURL             string
-		CompanyURL          string
-		ResourceDetails     []model.NotifyResourceDetails
+		CompanyURL string
+		//ResourceDetails     []model.NotifyResourceDetails
 		PipeLineName        string
 		AccountId           string
 		TotalMonthlyPrice   float64
 		TotalMonthlySavings float64
 		Time                time.Time
-		GroupedResources    map[string][]model.NotifyResourceDetails
+		GroupedResources    map[string]GroupResourceDetails
 	}{
 		//LogoURL:             logoURL,
-		CompanyURL:          config.GetConfig().CouldSweeper.URL,
-		ResourceDetails:     details.ResourceDetails,
+		CompanyURL: config.GetConfig().CouldSweeper.URL,
+		//ResourceDetails:     details.ResourceDetails,
 		PipeLineName:        details.PipeLineName,
 		AccountId:           details.AccountId,
 		TotalMonthlyPrice:   totalMonthlyPrice,
@@ -331,22 +334,49 @@ func buildEmailBody(details model.NotfifyDetails) (string, error) {
 	return emailBodyBuffer.String(), nil
 }
 
-func groupByResourceClass(resources []model.NotifyResourceDetails) map[string][]model.NotifyResourceDetails {
-	groups := make(map[string][]model.NotifyResourceDetails)
+type GroupResourceDetails struct {
+	Resources []model.NotifyResourceDetails
+	Columns   map[string]bool
+}
+
+func groupByResourceClass(resources []model.NotifyResourceDetails) map[string]GroupResourceDetails {
+	logger.NewDefaultLogger().Debugf("Running groupByResourceClass with resource length: %d", len(resources))
+	allGroupMap := make(map[string]GroupResourceDetails)
 
 	for _, resource := range resources {
-		group := groups[resource.ResourceClass]
+		//logger.NewDefaultLogger().Debugf("For - Resource Class: %s", resource.ResourceClass)
+		groupMap := allGroupMap[resource.ResourceClass]
+		group := groupMap.Resources
 
-		// Sort the group based on MonthlySavings in descending order
+		//logger.NewDefaultLogger().Debugf("Adding Resource: %+v", resource)
+		groupMap.Resources = append(group, resource)
+
+		// Sort the group based on MonthlySavings in descending order.
 		sort.Slice(group, func(i, j int) bool {
-			return group[i].MonthlySavings > group[j].MonthlySavings
+			if group[i].MonthlySavings != group[j].MonthlySavings {
+				return group[i].MonthlySavings > group[j].MonthlySavings
+			}
+			// If MonthlySavings is the same, sort based on MonthlyPrice.
+			return group[i].MonthlyPrice > group[j].MonthlyPrice
 		})
-
-		if len(group) < MAX_RESOURCES_PER_RESOURCE_CLASS {
-			groups[resource.ResourceClass] = append(group, resource)
+		if len(groupMap.Resources) > MAX_RESOURCES_PER_RESOURCE_CLASS {
+			groupMap.Resources = groupMap.Resources[:MAX_RESOURCES_PER_RESOURCE_CLASS]
 		}
+		allGroupMap[resource.ResourceClass] = groupMap
 	}
-	return groups
+	//logger.NewDefaultLogger().Debugf("Length of the allGroupMap: %d", len(allGroupMap))
+	for resourceClass, groupResourceDetails := range allGroupMap {
+		if groupResourceDetails.Columns == nil {
+			groupResourceDetails.Columns = make(map[string]bool)
+		}
+		for field, isEmpty := range checkEmptyFields(groupResourceDetails.Resources) {
+			logger.NewDefaultLogger().Debugf("Field %s isEmpty %v", field, isEmpty)
+			groupResourceDetails.Columns[field] = !isEmpty
+		}
+		allGroupMap[resourceClass] = groupResourceDetails
+		//logger.NewDefaultLogger().Debugf("Class %s Column %+v", resourceClass, groupResourceDetails.Columns)
+	}
+	return allGroupMap
 }
 
 // Function to create a CSV file from NotifyResourceDetails
@@ -372,4 +402,60 @@ func createAttachmentDataInCsvFormat(resources []model.NotifyResourceDetails) (s
 	}
 
 	return csvDataBuffer.String(), nil
+}
+
+func checkEmptyFields(resources []model.NotifyResourceDetails) map[string]bool {
+	logger.NewDefaultLogger().Debugf("Running checkEmptyFields")
+	emptyFields := make(map[string]bool)
+
+	resourceType := reflect.TypeOf(resources).Elem()
+	fieldsToCheck := getFields(resourceType)
+
+	for _, field := range fieldsToCheck {
+		emptyFields[field] = false // Initialize to false, assuming all are empty initially
+
+		// Iterate through the group and check if any value for the field is non-empty
+		for _, resource := range resources {
+			// Returns true if empty
+			if isEmptyField(resource, field) {
+				emptyFields[field] = true
+				break
+			}
+		}
+	}
+	return emptyFields
+}
+
+func getFields(resourceType reflect.Type) []string {
+	var fieldsToCheck []string
+
+	for i := 0; i < resourceType.NumField(); i++ {
+		fieldsToCheck = append(fieldsToCheck, resourceType.Field(i).Name)
+	}
+	return fieldsToCheck
+}
+
+func isEmptyField(resource model.NotifyResourceDetails, field string) bool {
+	val := reflect.ValueOf(resource)
+	fieldVal := reflect.Indirect(val).FieldByName(field)
+
+	switch fieldVal.Kind() {
+	case reflect.String:
+		return fieldVal.String() == ""
+	case reflect.Float64, reflect.Float32:
+		return fieldVal.Float() == 0.0
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return fieldVal.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return fieldVal.Uint() == 0
+	// TODO: Not interested in other types for now
+	/*case reflect.Bool:
+		return !fieldVal.Bool()
+	case reflect.Slice, reflect.Array, reflect.Map:
+		return fieldVal.Len() == 0
+	case reflect.Ptr, reflect.Interface:
+		return fieldVal.IsNil()*/
+	default:
+		return false
+	}
 }
