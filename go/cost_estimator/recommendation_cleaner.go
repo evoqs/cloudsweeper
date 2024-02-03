@@ -34,15 +34,15 @@ func CleanOldRecommendations(maxAge time.Duration) error {
 }
 
 func StartRecommendationPurger() {
-	recomScheduler, _ := schedulerStore.CreateScheduler("RecommendationCleaner", logger.NewDefaultLogger())
+	recomScheduler, _ := rcmdtnSchedulerStore.CreateScheduler("RecommendationCleaner", logger.NewDefaultLogger())
 	// Run everyday, delete over a week old data
-	//costScheduler.AddCron("recommendation_cleaner", "0 0 * * *", func() { CleanOldRecommendations(24 * 7 * time.Hour) })
-	recomScheduler.AddCron("cost_cleaner", "* * * * *", func() { CleanOldRecommendations(2 * time.Minute) })
+	recomScheduler.AddCron("recommendation_cleaner", "0 0 * * *", func() { CleanOldRecommendations(24 * time.Hour) })
+	//recomScheduler.AddCron("cost_cleaner", "* * * * *", func() { CleanOldRecommendations(2 * time.Minute) })
 	recomScheduler.StartScheduler()
 }
 
 func StopRecommendationPurger() {
-	recomScheduler, err := schedulerStore.GetScheduler("RecommendationCleaner")
+	recomScheduler, err := rcmdtnSchedulerStore.GetScheduler("RecommendationCleaner")
 	if err != nil {
 		logger.NewDefaultLogger().Errorf("Problem in stopping the scheduler \" RecommendationCleaner \"")
 	}
