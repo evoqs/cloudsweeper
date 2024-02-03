@@ -376,6 +376,36 @@ func (ac *AwsClient) GetEbsSnapshotDetails(snapshotID, region string) (*ec2.Snap
 	return resp.Snapshots[0], nil
 }
 
+// GetElasticIPDetailsByID retrieves details of an Elastic IP using its allocation ID and region.
+func (ac *AwsClient) GetElasticIPDetails(allocationID, region string) (*ec2.Address, error) {
+	var ec2Client *ec2.EC2
+
+	if region != "" {
+		ec2Client = ac.GetEC2ClientWithRegion(region)
+	} else {
+		ec2Client = ac.GetEC2Client()
+	}
+
+	// Specify the input parameters for DescribeAddresses call
+	params := &ec2.DescribeAddressesInput{
+		AllocationIds: []*string{aws.String(allocationID)},
+	}
+
+	// Call DescribeAddresses API
+	resp, err := ec2Client.DescribeAddresses(params)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if any Elastic IPs were found
+	if len(resp.Addresses) == 0 {
+		return nil, fmt.Errorf("Elastic IP with allocation ID %s not found", allocationID)
+	}
+
+	// Return details of the first Elastic IP found (assuming there is only one)
+	return resp.Addresses[0], nil
+}
+
 // =============== AWS Wrapper functions =======================
 
 func GetAwsClient(awsAccessKeyId string, awsSecretAccessKey string, region string) (*AwsClient, error) {

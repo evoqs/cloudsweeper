@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"cloudsweep/cloud_lib"
 	logging "cloudsweep/logging"
 	aws_model "cloudsweep/model/aws"
 	notify_model "cloudsweep/notify_handlers/model"
@@ -200,7 +201,16 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 					resource.RegionCode = result.Region
 					resource.ResourceClass = "Compute Instances"
 					resource.ResourceId = data.ResultData.InstanceId
-					//resource.ResourceName = ""
+					awsClient, _ := cloud_lib.GetAwsClient(cloudAccList[0].AwsCredentials.AccessKeyID, cloudAccList[0].AwsCredentials.SecretAccessKey, result.Region)
+					resout, _ := awsClient.GetInstanceDetails(resource.ResourceId, "")
+					for _, tagelem := range resout.Tags {
+						if tagelem != nil {
+							if *tagelem.Key == "Name" {
+								resource.ResourceName = *tagelem.Value
+							}
+						}
+					}
+
 					//resource.ResourceTags = ""
 					details.ResourceDetails = append(details.ResourceDetails, resource)
 				}
@@ -246,6 +256,15 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 					resource.RegionCode = result.Region
 					resource.ResourceClass = "EBS Volumes"
 					resource.ResourceId = data.ResultData.VolumeId
+					awsClient, _ := cloud_lib.GetAwsClient(cloudAccList[0].AwsCredentials.AccessKeyID, cloudAccList[0].AwsCredentials.SecretAccessKey, result.Region)
+					resout, _ := awsClient.GetEbsVolumeDetails(resource.ResourceId, "")
+					for _, tagelem := range resout.Tags {
+						if tagelem != nil {
+							if *tagelem.Key == "Name" {
+								resource.ResourceName = *tagelem.Value
+							}
+						}
+					}
 					//resource.ResourceName = ""
 					//resource.ResourceTags = ""
 					details.ResourceDetails = append(details.ResourceDetails, resource)
@@ -298,6 +317,15 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 					resource.RegionCode = result.Region
 					resource.ResourceClass = "Elastic IP"
 					resource.ResourceId = data.ResultData.AllocationId
+					awsClient, _ := cloud_lib.GetAwsClient(cloudAccList[0].AwsCredentials.AccessKeyID, cloudAccList[0].AwsCredentials.SecretAccessKey, result.Region)
+					resout, _ := awsClient.GetElasticIPDetails(resource.ResourceId, "")
+					for _, tagelem := range resout.Tags {
+						if tagelem != nil {
+							if *tagelem.Key == "Name" {
+								resource.ResourceName = *tagelem.Value
+							}
+						}
+					}
 					//resource.ResourceName = ""
 					//resource.ResourceTags = ""
 					details.ResourceDetails = append(details.ResourceDetails, resource)
@@ -345,6 +373,15 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 					resource.RegionCode = result.Region
 					resource.ResourceClass = "EBS Snapshot"
 					resource.ResourceId = data.ResultData.SnapshotId
+					awsClient, _ := cloud_lib.GetAwsClient(cloudAccList[0].AwsCredentials.AccessKeyID, cloudAccList[0].AwsCredentials.SecretAccessKey, result.Region)
+					resout, _ := awsClient.GetEbsSnapshotDetails(resource.ResourceId, "")
+					for _, tagelem := range resout.Tags {
+						if tagelem != nil {
+							if *tagelem.Key == "Name" {
+								resource.ResourceName = *tagelem.Value
+							}
+						}
+					}
 					//resource.ResourceName = ""
 					//resource.ResourceTags = ""
 					details.ResourceDetails = append(details.ResourceDetails, resource)
