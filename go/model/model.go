@@ -8,11 +8,12 @@ const AWS = "aws"
 
 type CloudAccountData struct {
 	Name           string             `json:"name" bson:"name"`
-	AccountID      string             `json:"accountid" bson:"accountid"`
+	SweepAccountID string             `json:"sweepaccountid" bson:"sweepaccountid"`
 	CloudAccountID primitive.ObjectID `json:"cloudaccountid,omitempty" bson:"_id,omitempty"`
 	AccountType    string             `json:"accounttype" bson:"accounttype"`
 	Description    string             `json:"description" bson:"description"`
 	AwsCredentials AwsCredentials     `json:"awscredentials" bson:"awscredentials"`
+	EmailList      []string           `json:"emaillist"`
 }
 
 type AwsCredentials struct {
@@ -26,7 +27,7 @@ type Policy struct {
 	PolicyName        string             `json:"policyname" bson:"policyname"`
 	PolicyDescription string             `json:"description" bson:"description"`
 	PolicyID          primitive.ObjectID `json:"policyid" bson:"_id,omitempty"`
-	AccountID         string             `json:"accountid" bson:"accountid"`
+	SweepAccountID    string             `json:"sweepaccountid" bson:"sweepaccountid"`
 	IsDefault         bool               `json:"isDefault" bson:"isDefault"`
 	PolicyDefinition  string             `json:"policydefinition" bson:"policydefinition"`
 	Recommendation    string             `json:"recommendation" bson:"recommendation"`
@@ -93,7 +94,7 @@ type PipeLineNotification struct {
 }
 
 type PipeLine struct {
-	AccountID        string               `json:"accountid" bson:"accountid"`
+	SweepAccountID   string               `json:"sweepaccountid" bson:"sweepaccountid"`
 	CloudAccountID   string               `json:"cloudaccountid" bson:"cloudaccountid"`
 	PipeLineID       primitive.ObjectID   `json:"piplineid" bson:"_id,omitempty"`
 	PipeLineName     string               `json:"piplinename" bson:"piplinename"`

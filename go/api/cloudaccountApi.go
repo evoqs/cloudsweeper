@@ -89,8 +89,8 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 	}
 
 	//validate json input
-	if acc.AccountID == "" {
-		err := errors.New("Account ID cannot be null")
+	if acc.SweepAccountID == "" {
+		err := errors.New("Sweep Customer Account ID cannot be null")
 		srv.SendResponse400(writer, err)
 		return
 	}
@@ -166,13 +166,13 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 	var policyIDList []string
 	for _, defaultpolicy := range defaultPolicyList {
 		policyIDList = append(policyIDList, defaultpolicy.PolicyID.Hex())
-		srv.logwriter.Infof(fmt.Sprintf("Default policy with name %s, added", defaultpolicy.PolicyName, acc.AccountID))
+		srv.logwriter.Infof(fmt.Sprintf("Default policy with name %s, added", defaultpolicy.PolicyName))
 
 	}
 
 	if len(policyIDList) != 0 {
 		var pipeline model.PipeLine
-		pipeline.AccountID = acc.AccountID
+		pipeline.SweepAccountID = acc.SweepAccountID
 		pipeline.CloudAccountID = acc.CloudAccountID.Hex()
 		pipeline.Enabled = true
 		pipeline.PipeLineName = fmt.Sprintf("Default_%s", acc.Name)
@@ -181,7 +181,7 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 		pipeline.Schedule = schedule
 		pipeline.Policies = policyIDList
 		pipeline.Default = true
-
+		pipeline.Notification.EmailAddresses = acc.EmailList
 		//create aws client and get subscription regions
 
 		//pipeline.ExecutionRegions = []string{"ap-southeast-2"} //TODO make regions to all
@@ -191,7 +191,7 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 		if err != nil {
 			srv.logwriter.Errorf(fmt.Sprintf("Failed to add default pipeline for cloud account %s, with error %s", acc.CloudAccountID, err.Error()))
 		} else {
-			srv.logwriter.Infof(fmt.Sprintf("Added default pipeline for account %s, policy name %s", acc.AccountID, pipelineid))
+			srv.logwriter.Infof(fmt.Sprintf("Added default pipeline for customer sweep account %s, policy name %s", acc.SweepAccountID, pipelineid))
 			pipelines, _ := srv.opr.PipeLineOperator.GetPipeLineDetails(pipelineid)
 			scheduler.GetDefaultPipelineScheduler().AddPipelineSchedule(pipelines[0])
 			runner.ValidateAndRunPipeline(pipelineid)
@@ -213,8 +213,8 @@ func (srv *Server) UpdateCloudAccount(writer http.ResponseWriter, request *http.
 	}
 
 	//validate json input
-	if acc.AccountID == "" {
-		err := errors.New("Account ID cannot be null")
+	if acc.SweepAccountID == "" {
+		err := errors.New("Sweeper Customer Account ID cannot be null")
 		srv.SendResponse400(writer, err)
 		return
 	}

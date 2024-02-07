@@ -101,7 +101,7 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 	}
 
 	original := pipelines[0]
-	if requestPipeline.AccountID != original.AccountID {
+	if requestPipeline.SweepAccountID != original.SweepAccountID {
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Pipeline Account ID not matching with existing pipeline Account ID")))
 		return
 	}
@@ -131,8 +131,8 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 			srv.SendResponse500(writer, errors.New(fmt.Sprintf("Failed to fetch pipeline policy details, %s", err.Error())))
 			return
 		}
-		if policyDetail[0].AccountID != original.AccountID && !policyDetail[0].IsDefault {
-			srv.SendResponse400(writer, errors.New(fmt.Sprintf("Policy %s not belonging to pipeline Account %s", policy, original.AccountID)))
+		if policyDetail[0].SweepAccountID != original.SweepAccountID && !policyDetail[0].IsDefault {
+			srv.SendResponse400(writer, errors.New(fmt.Sprintf("Policy %s not belonging to pipeline Account %s", policy, original.SweepAccountID)))
 			return
 		}
 	}
@@ -293,7 +293,7 @@ func (srv *Server) GetPipelineRunResult(writer http.ResponseWriter, request *htt
 
 	if !primitive.IsValidObjectID(pipelineId) {
 		srv.logwriter.Warnf(fmt.Sprintf("Invalid Pipeline ID: %s, received in get result query", pipelineId))
-		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Cloud AccountID: %s", pipelineId)))
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Pipeline ID: %s", pipelineId)))
 		return
 	}
 	query := fmt.Sprintf(`{"pipelineid":"%s"}`, pipelineId)
