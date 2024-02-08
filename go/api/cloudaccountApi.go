@@ -35,7 +35,7 @@ func (srv *Server) GetAllCloudAccount(writer http.ResponseWriter, request *http.
 	query := fmt.Sprintf(`{"sweepaccountid": "%s"}`, sweepaccountid)
 	fmt.Println(query)
 
-	accounts, err := srv.opr.AccountOperator.GetAllAccounts(query)
+	accounts, err := srv.opr.AccountOperator.QueryAccountTable(query)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)
@@ -104,27 +104,29 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 	}
 
 	//validate json input
-	if acc.SweepAccountID == "" {
-		err := errors.New("Sweep Customer Account ID cannot be null")
-		srv.SendResponse400(writer, err)
-		return
-	}
+	acc.SweepAccountID = sweepaccountid
 
-	if acc.AwsCredentials.AccessKeyID == "" {
-		err := errors.New("AWS AccessKeyID cannot be null")
-		srv.SendResponse400(writer, err)
-		return
-	}
-
-	if acc.AwsCredentials.SecretAccessKey == "" {
-		err := errors.New("AWS Access Secret cannot be null")
-		srv.SendResponse400(writer, err)
-		return
+	if acc.Name == "" {
+		errString := fmt.Sprintf("Cloud Account name cannot be empty.")
+		srv.SendResponse400(writer, errors.New(errString))
 	}
 
 	//Validate Cloud credentials
 	var regionList []string
 	if strings.TrimSpace(acc.AccountType) == "aws" {
+
+		if acc.AwsCredentials.AccessKeyID == "" {
+			err := errors.New("AWS AccessKeyID cannot be null")
+			srv.SendResponse400(writer, err)
+			return
+		}
+
+		if acc.AwsCredentials.SecretAccessKey == "" {
+			err := errors.New("AWS Access Secret cannot be null")
+			srv.SendResponse400(writer, err)
+			return
+		}
+
 		awsClient, err := cloud_lib.GetAwsClient(acc.AwsCredentials.AccessKeyID, acc.AwsCredentials.SecretAccessKey, "")
 
 		if err != nil {
@@ -145,17 +147,9 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 			srv.SendResponse409(writer, errors.New(errString))
 			return
 		}
-		/* Old validation implementaion
-		if !utils.ValidateAwsCredentials(acc.AwsCredentials.AccessKeyID, acc.AwsCredentials.SecretAccessKey) {
-			errString := fmt.Sprintf("AWS Authentication Failed with given access key and secret")
-			err := errors.New(errString)
-			srv.logwriter.Warnf(errString)
-			srv.SendResponse409(writer, err)
-			return
-		}*/
 
 	} else {
-		errString := fmt.Sprintf("Unknown Account type %s , supported account types are aws,gcp,azure and oci.", acc.AccountType)
+		errString := fmt.Sprintf("Unsupported Account type %s , supported account types are aws, Future expansion: gcp,azure and oci.", acc.AccountType)
 		err := errors.New(errString)
 		srv.logwriter.Warnf(errString)
 		srv.SendResponse400(writer, err)
@@ -177,12 +171,16 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 	json.NewEncoder(writer).Encode(acc)
 
 	//Getting default regions
-	defaultPolicyList, _ := srv.opr.PolicyOperator.GetAllDefaultPolicyDetails()
+	defaultPolicyList, err := srv.opr.PolicyOperator.GetAllDefaultPolicyDetails()
+	if err != nil {
+		srv.SendResponse500(writer, fmt.Errorf("Failed to fetch default policies, %s", err))
+		return
+	}
+
 	var policyIDList []string
 	for _, defaultpolicy := range defaultPolicyList {
 		policyIDList = append(policyIDList, defaultpolicy.PolicyID.Hex())
 		srv.logwriter.Infof(fmt.Sprintf("Default policy with name %s, added", defaultpolicy.PolicyName))
-
 	}
 
 	if len(policyIDList) != 0 {
@@ -212,25 +210,44 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 			runner.ValidateAndRunPipeline(pipelineid)
 		}
 
+	} else {
+		srv.SendResponse500(writer, fmt.Errorf("No default policies found, failed to add default pipeline"))
+		return
 	}
 }
 
 func (srv *Server) UpdateCloudAccount(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
 	//decoding post json to Accountdata Model
 	var acc model.CloudAccountData
 	err := json.NewDecoder(request.Body).Decode(&acc)
-
 	if err != nil {
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid json payload for POST request, %s", err.Error())))
 		return
 	}
 
-	//validate json input
-	if acc.SweepAccountID == "" {
-		err := errors.New("Sweeper Customer Account ID cannot be null")
-		srv.SendResponse400(writer, err)
+	//original,err := srv.opr.AccountOperator.GetCloudAccountWithObjectID(acc.CloudAccountID.Hex())
+	query := fmt.Sprintf(`{"sweepaccountid": "%s", "cloudaccountid": "%s"}`, sweepaccountid, acc.CloudAccountID.Hex())
+	original, err := srv.opr.AccountOperator.QueryAccountTable(query)
+
+	if len(original) == 0 {
+		srv.SendResponse404(writer, nil)
+		return
+	}
+
+	if err != nil {
+		srv.SendResponse500(writer, fmt.Errorf("Failed to fetch existing account details, %s", err))
+		return
+	}
+
+	if strings.TrimSpace(acc.AccountType) == strings.TrimSpace(original[0].AccountType) {
+		srv.SendResponse400(writer, fmt.Errorf("Account Type should match for update operation, Expected %s, Received %s", original[0].AccountType, acc.AccountType))
 		return
 	}
 
@@ -262,7 +279,7 @@ func (srv *Server) UpdateCloudAccount(writer http.ResponseWriter, request *http.
 		}
 
 	} else {
-		errString := fmt.Sprintf("Unknown Account type %s , supported account types are aws,gcp,azure and oci.", acc.AccountType)
+		errString := fmt.Sprintf("Unsupported Account type %s , supported account types are aws, Future expansion: gcp,azure and oci.", acc.AccountType)
 		err := errors.New(errString)
 		srv.logwriter.Warnf(errString)
 		srv.SendResponse400(writer, err)
@@ -299,7 +316,7 @@ func (srv *Server) GetCloudAccount(writer http.ResponseWriter, request *http.Req
 		return
 	}
 
-	accounts, err := srv.opr.AccountOperator.GetCloudAccount(accountid)
+	accounts, err := srv.opr.AccountOperator.GetCloudAccountWithObjectID(accountid)
 	if err != nil {
 		srv.SendResponse500(writer, err)
 		return
@@ -335,7 +352,7 @@ func (srv *Server) AuthCheckCloudAccount(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	accounts, err := srv.opr.AccountOperator.GetCloudAccount(accountid)
+	accounts, err := srv.opr.AccountOperator.GetCloudAccountWithObjectID(accountid)
 	if err != nil {
 		srv.SendResponse500(writer, err)
 		return

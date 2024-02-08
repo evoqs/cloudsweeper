@@ -11,7 +11,7 @@ type AccountOperator struct {
 	dbM DBManger
 }
 
-func (opr *AccountOperator) GetAllAccounts(accountquery string) ([]model.CloudAccountData, error) {
+func (opr *AccountOperator) QueryAccountTable(accountquery string) ([]model.CloudAccountData, error) {
 
 	var results []model.CloudAccountData
 
@@ -27,7 +27,7 @@ func (opr *AccountOperator) GetAllAccounts(accountquery string) ([]model.CloudAc
 	return results, err
 }
 
-func (opr *AccountOperator) GetCloudAccount(cloudaccountid string) ([]model.CloudAccountData, error) {
+func (opr *AccountOperator) GetCloudAccountWithObjectID(cloudaccountid string) ([]model.CloudAccountData, error) {
 
 	var results []model.CloudAccountData
 

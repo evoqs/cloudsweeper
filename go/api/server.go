@@ -31,7 +31,7 @@ func (srv *Server) StartApiServer(socket string, dbO storage.DbOperators) {
 
 	//Cloud Account operations
 	router.HandleFunc("/cloudaccount", srv.AddCloudAccount).Methods("POST")
-	router.HandleFunc("/cloudaccount", srv.UpdateCloudAccount).Methods("PUT")
+	router.HandleFunc("/cloudaccount", srv.UpdateCloudAccount).Methods("PUT") //completed
 	router.HandleFunc("/cloudaccount/{cloudaccountid}", srv.GetCloudAccount).Methods("GET")
 	router.HandleFunc("/cloudaccount/{cloudaccountid}", srv.DeleteCloudAccount).Methods("DELETE")
 	router.HandleFunc("/cloudaccount/{cloudaccountid}/authtest", srv.AuthCheckCloudAccount).Methods("POST")

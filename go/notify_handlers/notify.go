@@ -144,7 +144,7 @@ func processPipelineResult(pipeLineId string) (notify_model.NotfifyDetails, erro
 	results, _ := opr.PolicyOperator.GetPolicyResultDetails(query)
 
 	// TODO: check if pipeline is not empty
-	cloudAccList, err := opr.AccountOperator.GetCloudAccount(pipeline[0].CloudAccountID)
+	cloudAccList, err := opr.AccountOperator.GetCloudAccountWithObjectID(pipeline[0].CloudAccountID)
 	if err != nil || len(cloudAccList) < 1 {
 		logging.NewDefaultLogger().Errorf("Failed to get cloundaccount details for CloudAccountId %s, %s", pipeline[0].CloudAccountID, err.Error())
 	}

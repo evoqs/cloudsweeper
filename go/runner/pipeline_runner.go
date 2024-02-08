@@ -76,7 +76,7 @@ func ValidateAndRunPipeline(pipelineid string) (int, error) {
 		return 404, fmt.Errorf("Policy not found with id %s", policyId)
 	}
 
-	accounts, err := opr.AccountOperator.GetCloudAccount(pipeLine.CloudAccountID)
+	accounts, err := opr.AccountOperator.GetCloudAccountWithObjectID(pipeLine.CloudAccountID)
 	if err != nil {
 		return 500, err
 	}
@@ -219,7 +219,7 @@ func runPolicy(wg *sync.WaitGroup, policy model.Policy, pipeLine model.PipeLine,
 	}
 
 	//Get creds
-	cloudAccList, err := opr.AccountOperator.GetCloudAccount(pipeLine.CloudAccountID)
+	cloudAccList, err := opr.AccountOperator.GetCloudAccountWithObjectID(pipeLine.CloudAccountID)
 	if err != nil || len(cloudAccList) < 1 {
 		logwriter.Errorf("Failed to get cloundaccount details for policy id %s %s , %s", policy.PolicyID, pipeLine.CloudAccountID, err.Error())
 		updatePolicyRunResult(pipeLine.PipeLineID.Hex(), policyid, "", "Missing Cloud Account definition for policy", time.Now().Unix(), nil, false)
