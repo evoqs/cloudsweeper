@@ -195,9 +195,14 @@ func (srv *Server) GetAllPipeLine(writer http.ResponseWriter, request *http.Requ
 	defer request.Body.Close()
 	writer.Header().Set("Content-Type", "application/json")
 
-	vars := mux.Vars(request)
-	accountid := vars["accountid"]
-	pipelines, err := srv.opr.PipeLineOperator.GetAccountPipeLines(accountid)
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
+	query := fmt.Sprintf(`{"sweepaccountid": "%s"}`, sweepaccountid)
+	pipelines, err := srv.opr.PipeLineOperator.GetAccountPipeLines(query)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)
@@ -220,27 +225,31 @@ func (srv *Server) GetAllPolicies(writer http.ResponseWriter, request *http.Requ
 	defer request.Body.Close()
 	writer.Header().Set("Content-Type", "application/json")
 
-	vars := mux.Vars(request)
-	accountid := vars["accountid"]
-	query := fmt.Sprintf(`{"accountid": "%s"}`, accountid)
-	srv.logwriter.Infof("Get all policies for account: ", accountid)
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
+	query := fmt.Sprintf(`{"sweepaccountid": "%s"}`, sweepaccountid)
+	srv.logwriter.Infof("Get all policies for account: ", sweepaccountid)
 
 	policies, err := srv.opr.PolicyOperator.GetAllPolicyDetails(query)
 
 	if err != nil {
-		srv.logwriter.Errorf("Get all policies for account: ", accountid, ",failed with error:", err)
+		srv.logwriter.Errorf("Get all policies for account: ", sweepaccountid, ",failed with error:", err)
 		srv.SendResponse500(writer, err)
 		return
 	}
 	//TODO when length >1
 	if len(policies) == 0 {
-		srv.logwriter.Infof("Get all policies for account: ", accountid, ",returned empty")
+		srv.logwriter.Infof("Get all policies for account: ", sweepaccountid, ",returned empty")
 		json.NewEncoder(writer).Encode(make([]string, 0))
 		//srv.SendResponse404(writer, nil)
 		return
 
 	} else {
-		srv.logwriter.Infof("Get all policies for account: ", accountid, "succcess")
+		srv.logwriter.Infof("Get all policies for account: ", sweepaccountid, "succcess")
 		writer.WriteHeader(http.StatusOK)
 		json.NewEncoder(writer).Encode(policies)
 	}

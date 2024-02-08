@@ -22,10 +22,17 @@ func (srv *Server) GetAllCloudAccount(writer http.ResponseWriter, request *http.
 	defer request.Body.Close()
 	writer.Header().Set("Content-Type", "application/json")
 
-	vars := mux.Vars(request)
-	accountid := vars["accountid"]
-	//query := `{"accountid": ` + accountid + `}`
-	query := fmt.Sprintf(`{"accountid": "%s"}`, accountid)
+	//reading from url
+	//vars := mux.Vars(request)
+	//accountid := vars["accountid"]
+
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
+	query := fmt.Sprintf(`{"sweepaccountid": "%s"}`, sweepaccountid)
 	fmt.Println(query)
 
 	accounts, err := srv.opr.AccountOperator.GetAllAccounts(query)
@@ -52,11 +59,13 @@ func (srv *Server) DeleteAllCloudAccount(writer http.ResponseWriter, request *ht
 	defer request.Body.Close()
 	writer.Header().Set("Content-Type", "application/json")
 
-	vars := mux.Vars(request)
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
 
-	accountid := vars["accountid"]
-	fmt.Println(vars)
-	query := fmt.Sprintf(`{"accountid": "%s"}`, accountid)
+	query := fmt.Sprintf(`{"sweepaccountid": "%s"}`, sweepaccountid)
 	fmt.Println(query)
 	deleteCount, err := srv.opr.AccountOperator.DeleteAllCloudAccounts(query)
 
@@ -80,6 +89,12 @@ func (srv *Server) AddCloudAccount(writer http.ResponseWriter, request *http.Req
 	defer request.Body.Close()
 
 	//decoding post json to Accountdata Model
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
 	var acc model.CloudAccountData
 	err := json.NewDecoder(request.Body).Decode(&acc)
 

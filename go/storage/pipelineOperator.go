@@ -45,10 +45,9 @@ func (opr *PipeLineOperator) GetPipeLineDetails(pipelineid string) ([]model.Pipe
 }
 
 // Fetches all pipelines belonging to an account
-func (opr *PipeLineOperator) GetAccountPipeLines(accountid string) ([]model.PipeLine, error) {
+func (opr *PipeLineOperator) GetAccountPipeLines(query string) ([]model.PipeLine, error) {
 
 	var results []model.PipeLine
-	query := fmt.Sprintf(`{"accountid": "%s"}`, accountid)
 	cursor, err := opr.dbM.QueryRecord(pipelineTable, query)
 
 	fmt.Println(err)

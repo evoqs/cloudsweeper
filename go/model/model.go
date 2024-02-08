@@ -8,7 +8,7 @@ const AWS = "aws"
 
 type CloudAccountData struct {
 	Name           string             `json:"name" bson:"name"`
-	SweepAccountID string             `json:"sweepaccountid" bson:"sweepaccountid"`
+	SweepAccountID string             `bson:"sweepaccountid"`
 	CloudAccountID primitive.ObjectID `json:"cloudaccountid,omitempty" bson:"_id,omitempty"`
 	AccountType    string             `json:"accounttype" bson:"accounttype"`
 	Description    string             `json:"description" bson:"description"`

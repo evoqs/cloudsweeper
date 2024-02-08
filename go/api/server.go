@@ -15,6 +15,8 @@ type Server struct {
 	socket    string
 }
 
+const AccountIDHeader = "AccountId"
+
 func (srv *Server) StartApiServer(socket string, dbO storage.DbOperators) {
 	srv.socket = socket
 	srv.logwriter = logger.NewDefaultLogger()
@@ -22,10 +24,10 @@ func (srv *Server) StartApiServer(socket string, dbO storage.DbOperators) {
 	router := mux.NewRouter()
 
 	//SweepAccount Level operations
-	router.HandleFunc("/accounts/{accountid}/cloudaccounts", srv.GetAllCloudAccount).Methods("GET")
-	router.HandleFunc("/accounts/{accountid}/cloudaccounts", srv.DeleteAllCloudAccount).Methods("DELETE")
-	router.HandleFunc("/accounts/{accountid}/pipelines", srv.GetAllPipeLine).Methods("GET")
-	router.HandleFunc("/accounts/{accountid}/policies", srv.GetAllPolicies).Methods("GET")
+	router.HandleFunc("/accounts/cloudaccounts", srv.GetAllCloudAccount).Methods("GET")
+	router.HandleFunc("/accounts/cloudaccounts", srv.DeleteAllCloudAccount).Methods("DELETE")
+	router.HandleFunc("/accounts/pipelines", srv.GetAllPipeLine).Methods("GET")
+	router.HandleFunc("/accounts/policies", srv.GetAllPolicies).Methods("GET")
 
 	//Cloud Account operations
 	router.HandleFunc("/cloudaccount", srv.AddCloudAccount).Methods("POST")
