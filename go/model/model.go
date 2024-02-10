@@ -88,7 +88,7 @@ type PipeLineNotification struct {
 }
 
 type PipeLine struct {
-	SweepAccountID   string               `json:"sweepaccountid" bson:"sweepaccountid"`
+	SweepAccountID   string               `bson:"sweepaccountid"`
 	CloudAccountID   string               `json:"cloudaccountid" bson:"cloudaccountid"`
 	PipeLineID       primitive.ObjectID   `json:"piplineid" bson:"_id,omitempty"`
 	PipeLineName     string               `json:"piplinename" bson:"piplinename"`
@@ -127,6 +127,11 @@ type Response200 struct {
 
 type Response201 struct {
 	Status     string `json:"status"`
+	StatusCode int    `json:"responsecode"`
+}
+
+type Response207 struct {
+	Error      string `json:"error"`
 	StatusCode int    `json:"responsecode"`
 }
 

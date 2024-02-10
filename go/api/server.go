@@ -114,3 +114,14 @@ func (srv *Server) SendResponse200(writer http.ResponseWriter, msg string) {
 
 	json.NewEncoder(writer).Encode(resp)
 }
+
+func (srv *Server) SendResponse207(writer http.ResponseWriter, err error) {
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusMultiStatus)
+	resp := getResponse207()
+	if err != nil {
+		resp.Error = err.Error()
+	}
+
+	json.NewEncoder(writer).Encode(resp)
+}

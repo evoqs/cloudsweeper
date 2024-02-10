@@ -57,6 +57,11 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 func (srv *Server) AddPipeLine(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	writer.Header().Set("Content-Type", "application/json")
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
 
 	var pipeline model.PipeLine
 	err := json.NewDecoder(request.Body).Decode(&pipeline)
@@ -70,6 +75,65 @@ func (srv *Server) AddPipeLine(writer http.ResponseWriter, request *http.Request
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid request, Atleast once execution region is needed to create pipline.")))
 		return
 	}
+
+	if len(pipeline.Policies) == 0 {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid request, Atleast once policy is needed to create pipline.")))
+		return
+	}
+
+	if !primitive.IsValidObjectID(pipeline.CloudAccountID) {
+		srv.SendResponse400(writer, fmt.Errorf("Invalid cloud Account ID: %s", pipeline.CloudAccountID))
+		return
+	}
+
+	//Validate the cloud account belongs to same sweepid
+	cloudaccounts, err := srv.opr.AccountOperator.GetCloudAccountWithObjectID(pipeline.CloudAccountID)
+	if err != nil {
+		srv.SendResponse500(writer, err)
+		return
+	}
+
+	if len(cloudaccounts) == 0 {
+
+		srv.SendResponse404(writer, fmt.Errorf("Cannot find cloud account %s", pipeline.CloudAccountID))
+		return
+	} else if len(cloudaccounts) > 1 {
+		err := errors.New("Internal Server Error, DB data consistency issue")
+		srv.SendResponse500(writer, err)
+		return
+	}
+
+	if cloudaccounts[0].SweepAccountID != sweepaccountid {
+		srv.SendResponse404(writer, fmt.Errorf("Cannot find cloud account %s", pipeline.CloudAccountID))
+		return
+	}
+
+	//Validate all policies are belonging to the same sweep account
+	for count := range pipeline.Policies {
+		policyid := pipeline.Policies[count]
+		if !primitive.IsValidObjectID(policyid) {
+			srv.SendResponse400(writer, fmt.Errorf("Invalid Policy ID: %s", policyid))
+			return
+		}
+		policies, err := srv.opr.PolicyOperator.GetPolicyDetails(pipeline.Policies[count])
+
+		if err != nil {
+			srv.SendResponse500(writer, err)
+			return
+		}
+
+		if len(policies) == 0 {
+			srv.SendResponse404(writer, fmt.Errorf("Cannot find policy %s ", policyid))
+			return
+		}
+
+		if policies[0].SweepAccountID != sweepaccountid {
+			srv.SendResponse404(writer, fmt.Errorf("Cannot find policy %s", policyid))
+			return
+		}
+	}
+
+	pipeline.SweepAccountID = sweepaccountid
 	pipeline.Default = false
 	pipeline.RunStatus = model.UNKNOWN
 	pipeline.LastRunTime = 0
@@ -85,7 +149,11 @@ func (srv *Server) AddPipeLine(writer http.ResponseWriter, request *http.Request
 		return
 	}
 	// Schedule the newly added pipeline
-	scheduler.GetDefaultPipelineScheduler().AddPipelineSchedule(pipelines[0])
+	err = scheduler.GetDefaultPipelineScheduler().AddPipelineSchedule(pipelines[0])
+	if err != nil {
+		srv.SendResponse207(writer, fmt.Errorf("Pipeline added Successfully, Failed to add schedule for the pipeline"))
+		return
+	}
 	//srv.SendResponse200(writer, fmt.Sprintf("Successfully Added Policy with ID %s", id))
 
 	writer.WriteHeader(http.StatusOK)
@@ -100,6 +168,17 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 	var requestPipeline model.PipeLine
 	err := json.NewDecoder(request.Body).Decode(&requestPipeline)
 
+	if !primitive.IsValidObjectID(requestPipeline.PipeLineID.Hex()) {
+		srv.SendResponse400(writer, fmt.Errorf("Invalid Pipeline ID  %s", requestPipeline.PipeLineID.Hex()))
+		return
+	}
+
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
 	if err != nil {
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid json payload for POST request, %s", err.Error())))
 		return
@@ -110,9 +189,7 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 		return
 	}
 
-	//Add schedule check if needed
-
-	pipelines, err := srv.opr.PipeLineOperator.GetPipeLineDetails(string(requestPipeline.PipeLineID.Hex()))
+	pipelines, err := srv.opr.PipeLineOperator.GetPipeLineDetails(requestPipeline.PipeLineID.Hex())
 	if err != nil {
 		srv.SendResponse500(writer, err)
 		return
@@ -124,7 +201,7 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 	}
 
 	original := pipelines[0]
-	if requestPipeline.SweepAccountID != original.SweepAccountID {
+	if sweepaccountid != original.SweepAccountID {
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Pipeline Account ID not matching with existing pipeline Account ID")))
 		return
 	}
@@ -134,12 +211,6 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 		return
 	}
 
-	//CS65
-	/*if original.Default {
-		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Cannot update default pipeline")))
-		return
-	}*/
-
 	fmt.Printf("Run status %d %d %s", requestPipeline.RunStatus, model.RUNNING, original.PipeLineID)
 	if original.RunStatus == model.RUNNING {
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Cannot update pipeline while it is running")))
@@ -147,26 +218,39 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 	}
 
 	//Validate Policies
+	if original.Default {
+		requestPipeline.Policies = original.Policies
+	} else {
 
-	for _, policy := range requestPipeline.Policies {
-		policyDetail, err := srv.opr.PolicyOperator.GetPolicyDetails(policy)
-		if err != nil {
-			srv.SendResponse500(writer, errors.New(fmt.Sprintf("Failed to fetch pipeline policy details, %s", err.Error())))
-			return
-		}
-		if policyDetail[0].SweepAccountID != original.SweepAccountID && !policyDetail[0].IsDefault {
-			srv.SendResponse400(writer, errors.New(fmt.Sprintf("Policy %s not belonging to pipeline Account %s", policy, original.SweepAccountID)))
-			return
+		for _, policy := range requestPipeline.Policies {
+
+			if !primitive.IsValidObjectID(policy) {
+				srv.SendResponse400(writer, fmt.Errorf("Invalid Policy ID: %s", policy))
+				return
+			}
+			policyDetail, err := srv.opr.PolicyOperator.GetPolicyDetails(policy)
+
+			if err != nil {
+				srv.SendResponse500(writer, errors.New(fmt.Sprintf("Failed to fetch pipeline policy details, %s", err.Error())))
+				return
+			}
+			if len(policyDetail) == 0 {
+				srv.SendResponse404(writer, fmt.Errorf("Cannot find policy %s ", policy))
+				return
+			}
+			if policyDetail[0].SweepAccountID != original.SweepAccountID {
+				srv.SendResponse400(writer, errors.New(fmt.Sprintf("Policy %s not belonging to Sweep Account %s", policy, original.SweepAccountID)))
+				return
+			}
 		}
 	}
 
 	//TODO Get default pipeline IDS and update.
-	if original.Default {
-		requestPipeline.Policies = original.Policies
-	}
+
 	requestPipeline.RunStatus = original.RunStatus
 	requestPipeline.LastRunTime = original.LastRunTime
 	requestPipeline.Default = original.Default
+	requestPipeline.SweepAccountID = sweepaccountid
 
 	count, err := srv.opr.PipeLineOperator.UpdatePipeLine(requestPipeline)
 
@@ -175,7 +259,11 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 		return
 	}
 
-	scheduler.GetDefaultPipelineScheduler().UpdatePipelineSchedule(requestPipeline)
+	err = scheduler.GetDefaultPipelineScheduler().UpdatePipelineSchedule(requestPipeline)
+	if err != nil {
+		srv.SendResponse207(writer, fmt.Errorf("Pipeline Updated Successfully, Failed to update schedule for the pipeline"))
+		return
+	}
 	srv.SendResponse200(writer, fmt.Sprintf("Updated %d Pipeline with ID %s", count, requestPipeline.PipeLineID))
 }
 

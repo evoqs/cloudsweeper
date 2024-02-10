@@ -26,6 +26,12 @@ func getResponse200() *model.Response200 {
 	}
 }
 
+func getResponse207() *model.Response207 {
+	return &model.Response207{
+		StatusCode: 207,
+	}
+}
+
 func getResponse404() *model.Response404 {
 	return &model.Response404{
 		Error:      "Requested Object Not Found or You are not Authorized to access",
