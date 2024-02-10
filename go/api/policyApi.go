@@ -23,7 +23,16 @@ func (srv *Server) AddCustodianPolicy(writer http.ResponseWriter, request *http.
 		return
 	}
 
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
 	policy.IsDefault = false
+	policy.SweepAccountID = sweepaccountid
+	policy.Recommendation = ""
+
 	id, err := srv.opr.PolicyOperator.AddPolicy(policy)
 
 	if err != nil {
@@ -52,6 +61,13 @@ func (srv *Server) UpdateCustodianPolicy(writer http.ResponseWriter, request *ht
 		srv.SendResponse400(writer, fmt.Errorf("Invalid policy object ID %s", policy.PolicyID))
 		return
 	}
+
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
 	originalpolicy, err := srv.opr.PolicyOperator.GetPolicyDetails(string(policy.PolicyID.Hex()))
 	if err != nil {
 		srv.SendResponse400(writer, fmt.Errorf("Failed to read policy deatils for policy , %s", policy.PolicyID))
@@ -67,10 +83,14 @@ func (srv *Server) UpdateCustodianPolicy(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	if originalpolicy[0].SweepAccountID != policy.SweepAccountID {
-		srv.SendResponse400(writer, fmt.Errorf("Sweep Account ID %s of the existing policy does not match with given policy ID %s", originalpolicy[0].SweepAccountID, policy.PolicyID))
+	if originalpolicy[0].SweepAccountID != sweepaccountid {
+		//srv.SendResponse400(writer, fmt.Errorf("Sweep Account ID %s of the existing policy does not match with given policy ID %s", originalpolicy[0].SweepAccountID, policy.PolicyID))
+		srv.SendResponse404(writer, nil)
 		return
 	}
+
+	policy.IsDefault = false
+	policy.Recommendation = ""
 
 	count, err := srv.opr.PolicyOperator.UpdatePolicy(policy)
 
@@ -98,6 +118,12 @@ func (srv *Server) GetCustodianPolicy(writer http.ResponseWriter, request *http.
 		return
 	}
 
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
 	policies, err := srv.opr.PolicyOperator.GetPolicyDetails(policyid)
 
 	if err != nil {
@@ -117,8 +143,13 @@ func (srv *Server) GetCustodianPolicy(writer http.ResponseWriter, request *http.
 		return
 	}
 
-	writer.WriteHeader(http.StatusOK)
 	policy := policies[0]
+
+	if policy.SweepAccountID != sweepaccountid {
+		srv.SendResponse404(writer, nil)
+		return
+	}
+	writer.WriteHeader(http.StatusOK)
 	json.NewEncoder(writer).Encode(policy)
 }
 
@@ -131,6 +162,55 @@ func (srv *Server) DeleteCustodianPolicy(writer http.ResponseWriter, request *ht
 	policyid := vars["policyid"]
 	if !primitive.IsValidObjectID(policyid) {
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid ObjectID: %s", policyid)))
+		return
+	}
+
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
+	policies, err := srv.opr.PolicyOperator.GetPolicyDetails(policyid)
+	if err != nil {
+		srv.SendResponse500(writer, err)
+		return
+	}
+	if len(policies) == 0 {
+
+		srv.SendResponse404(writer, nil)
+		return
+	} else if len(policies) > 1 {
+		err := errors.New("Internal Server Error, DB data consistency issue , duplicate policies with same ID")
+		srv.SendResponse500(writer, err)
+		return
+	}
+	originalpolicy := policies[0]
+
+	if originalpolicy.SweepAccountID != sweepaccountid {
+		srv.SendResponse404(writer, nil)
+		return
+	}
+
+	//Validate no pipelines are using this policy
+	query := fmt.Sprintf(`{"policyid": "%s"}`, policyid)
+	pipelines, err := srv.opr.PipeLineOperator.QueryPipeLineDetails(query)
+	if err != nil {
+		srv.SendResponse500(writer, err)
+		return
+	}
+
+	if len(pipelines) >= 1 {
+		piplinename := "Pipelines: ["
+		for count := range pipelines {
+			if count == 1 {
+				piplinename = fmt.Sprintf("%s %s", piplinename, pipelines[count].PipeLineName)
+			} else {
+				piplinename = fmt.Sprintf("%s,%s", piplinename, pipelines[count].PipeLineName)
+			}
+		}
+		piplinename = fmt.Sprintf("%s,%s", piplinename, "]")
+		srv.SendResponse409(writer, fmt.Errorf("Cannot delete associated policy, which are used by %s", piplinename))
 		return
 	}
 
@@ -168,6 +248,13 @@ func (srv *Server) GetPolicyRunResult(writer http.ResponseWriter, request *http.
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Pipeline ObjectID: %s", pipelineId)))
 		return
 	}
+
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
 	query := fmt.Sprintf(`{"policyid": "%s", "pipelineid":"%s"}`, policyid, pipelineId)
 	policieResults, err := srv.opr.PolicyOperator.GetPolicyResultDetails(query)
 

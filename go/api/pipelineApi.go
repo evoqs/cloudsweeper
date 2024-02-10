@@ -202,7 +202,7 @@ func (srv *Server) GetAllPipeLine(writer http.ResponseWriter, request *http.Requ
 	}
 
 	query := fmt.Sprintf(`{"sweepaccountid": "%s"}`, sweepaccountid)
-	pipelines, err := srv.opr.PipeLineOperator.GetAccountPipeLines(query)
+	pipelines, err := srv.opr.PipeLineOperator.QueryPipeLineDetails(query)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)
@@ -234,7 +234,7 @@ func (srv *Server) GetAllPolicies(writer http.ResponseWriter, request *http.Requ
 	query := fmt.Sprintf(`{"sweepaccountid": "%s"}`, sweepaccountid)
 	srv.logwriter.Infof("Get all policies for account: ", sweepaccountid)
 
-	policies, err := srv.opr.PolicyOperator.GetAllPolicyDetails(query)
+	policies, err := srv.opr.PolicyOperator.QueryPolicyDetails(query)
 
 	if err != nil {
 		srv.logwriter.Errorf("Get all policies for account: ", sweepaccountid, ",failed with error:", err)

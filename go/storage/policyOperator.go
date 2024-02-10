@@ -42,7 +42,7 @@ func (opr *PolicyOperator) GetPolicyDetails(policyid string) ([]model.Policy, er
 	return results, err
 }
 
-func (opr *PolicyOperator) GetAllPolicyDetails(query string) ([]model.Policy, error) {
+func (opr *PolicyOperator) QueryPolicyDetails(query string) ([]model.Policy, error) {
 
 	var results []model.Policy
 

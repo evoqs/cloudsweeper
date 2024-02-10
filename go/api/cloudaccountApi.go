@@ -316,6 +316,12 @@ func (srv *Server) GetCloudAccount(writer http.ResponseWriter, request *http.Req
 		return
 	}
 
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
 	accounts, err := srv.opr.AccountOperator.GetCloudAccountWithObjectID(accountid)
 	if err != nil {
 		srv.SendResponse500(writer, err)
@@ -334,8 +340,14 @@ func (srv *Server) GetCloudAccount(writer http.ResponseWriter, request *http.Req
 		return
 	}
 
-	writer.WriteHeader(http.StatusOK)
 	account := accounts[0]
+	if account.SweepAccountID != sweepaccountid {
+		srv.SendResponse404(writer, nil)
+		return
+	}
+
+	writer.WriteHeader(http.StatusOK)
+
 	json.NewEncoder(writer).Encode(account)
 
 }
@@ -352,6 +364,12 @@ func (srv *Server) AuthCheckCloudAccount(writer http.ResponseWriter, request *ht
 		return
 	}
 
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
 	accounts, err := srv.opr.AccountOperator.GetCloudAccountWithObjectID(accountid)
 	if err != nil {
 		srv.SendResponse500(writer, err)
@@ -371,6 +389,12 @@ func (srv *Server) AuthCheckCloudAccount(writer http.ResponseWriter, request *ht
 	}
 
 	account := accounts[0]
+
+	if account.SweepAccountID != sweepaccountid {
+		srv.SendResponse404(writer, nil)
+		return
+	}
+
 	if utils.ValidateAwsCredentials(account.AwsCredentials.AccessKeyID, account.AwsCredentials.SecretAccessKey) {
 		srv.SendResponse200(writer, "Authentication Succeeded")
 	} else {
@@ -384,13 +408,86 @@ func (srv *Server) DeleteCloudAccount(writer http.ResponseWriter, request *http.
 
 	vars := mux.Vars(request)
 
-	accountid := vars["cloudaccountid"]
-	if !primitive.IsValidObjectID(accountid) {
-		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid ObjectID: %s", accountid)))
+	cloudaccountid := vars["cloudaccountid"]
+	if !primitive.IsValidObjectID(cloudaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid ObjectID: %s", cloudaccountid)))
 		return
 	}
 
-	deleteCount, err := srv.opr.AccountOperator.DeleteCloudAccount(accountid)
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
+	cloudaccounts, err := srv.opr.AccountOperator.GetCloudAccountWithObjectID(cloudaccountid)
+	if err != nil {
+		srv.SendResponse500(writer, err)
+		return
+	}
+
+	if len(cloudaccounts) == 0 {
+
+		srv.SendResponse404(writer, nil)
+		return
+	} else if len(cloudaccounts) > 1 {
+		err := errors.New("Internal Server Error, DB data consistency issue")
+		srv.SendResponse500(writer, err)
+		return
+	}
+
+	account := cloudaccounts[0]
+	if account.SweepAccountID != sweepaccountid {
+		srv.SendResponse404(writer, nil)
+		return
+	}
+
+	// 1. Delete All pipeline + Schedules
+	srv.logwriter.Infof("Deleting all pipelines for account %s", cloudaccountid)
+	query := fmt.Sprintf(`{"sweepaccountid": "%s", "cloudaccountid": %s}`, sweepaccountid, cloudaccountid)
+	pipelines, err := srv.opr.PipeLineOperator.QueryPipeLineDetails(query)
+	if len(pipelines) != 0 {
+		for itr, _ := range pipelines {
+			_, err := srv.opr.PipeLineOperator.DeletePipeLine(string(pipelines[itr].PipeLineID.Hex()))
+			if err != nil {
+				srv.SendResponse500(writer, fmt.Errorf("Failed to delete pipeline %s associated with cloudaccount %s, with error %s", pipelines[itr].PipeLineID.Hex(),
+					cloudaccountid, err))
+				srv.logwriter.Errorf("Failed to delete pipeline %s associated with cloudaccount %s, with error %s", pipelines[itr].PipeLineID.Hex(),
+					cloudaccountid, err)
+				return
+			} else {
+				srv.logwriter.Infof("Deleted pipeline %s associated with account %s", pipelines[itr].PipeLineID.Hex(), cloudaccountid)
+				//Removed schedule for pipeline
+				err := scheduler.GetDefaultPipelineScheduler().DeletePipelineSchedule(pipelines[itr].PipeLineID.Hex())
+				if err != nil {
+					srv.SendResponse500(writer, fmt.Errorf("Failed to delete pipeline %s  from schedule, associated with cloudaccount %s, with error %s", pipelines[itr].PipeLineID.Hex(),
+						cloudaccountid, err))
+					srv.logwriter.Errorf("Failed to delete pipeline %s from schedule, associated with cloudaccount %s, with error %s", pipelines[itr].PipeLineID.Hex(),
+						cloudaccountid, err)
+				} else {
+					srv.logwriter.Infof("Successfully removed pipeline %s from schedule for cloud accont delted %s", pipelines[itr].PipeLineID.Hex(),
+						cloudaccountid)
+				}
+				//Delete Results
+				query := fmt.Sprintf(`{"pipelineid": "%s"}`, pipelines[itr].PipeLineID.Hex())
+				_, err = srv.opr.PipeLineOperator.DeletePipelineRunResult(query)
+				if err != nil {
+					srv.SendResponse500(writer, fmt.Errorf("Failed to delete results for pipeline %s associated with cloudaccount %s, with error %s", pipelines[itr].PipeLineID.Hex(),
+						cloudaccountid, err))
+					srv.logwriter.Errorf("Failed to delete results for pipeline %s associated with cloudaccount %s, with error %s", pipelines[itr].PipeLineID.Hex(),
+						cloudaccountid, err)
+					return
+				} else {
+					srv.logwriter.Infof("Deleted results for pipeline %s associated with account %s", pipelines[itr].PipeLineID.Hex(), cloudaccountid)
+				}
+
+			}
+		}
+	}
+
+	// 3. Delete Account
+
+	deleteCount, err := srv.opr.AccountOperator.DeleteCloudAccount(cloudaccountid)
 
 	if err != nil {
 		srv.SendResponse500(writer, err)
@@ -402,7 +499,7 @@ func (srv *Server) DeleteCloudAccount(writer http.ResponseWriter, request *http.
 		return
 
 	} else {
-		srv.SendResponse200(writer, fmt.Sprintf("Successfully deleted cloudaccount, %s", accountid))
+		srv.SendResponse200(writer, fmt.Sprintf("Successfully deleted cloudaccount, %s", cloudaccountid))
 
 	}
 

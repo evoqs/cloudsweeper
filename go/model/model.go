@@ -27,17 +27,10 @@ type Policy struct {
 	PolicyName        string             `json:"policyname" bson:"policyname"`
 	PolicyDescription string             `json:"description" bson:"description"`
 	PolicyID          primitive.ObjectID `json:"policyid" bson:"_id,omitempty"`
-	SweepAccountID    string             `json:"sweepaccountid" bson:"sweepaccountid"`
+	SweepAccountID    string             `bson:"sweepaccountid"`
 	IsDefault         bool               `json:"isDefault" bson:"isDefault"`
 	PolicyDefinition  string             `json:"policydefinition" bson:"policydefinition"`
 	Recommendation    string             `json:"recommendation" bson:"recommendation"`
-}
-
-type DefaultPolicyy struct {
-	PolicyName       string             `json:"policyname" bson:"policyname"`
-	PolicyID         primitive.ObjectID `json:"policyid" bson:"_id,omitempty"`
-	PolicyDefinition string             `json:"policydefinition" bson:"policydefinition"`
-	Recommendation   string             `json:"recommendation" bson:"recommendation"`
 }
 
 type PolicyResult struct {
@@ -98,6 +91,7 @@ type PipeLine struct {
 	CloudAccountID   string               `json:"cloudaccountid" bson:"cloudaccountid"`
 	PipeLineID       primitive.ObjectID   `json:"piplineid" bson:"_id,omitempty"`
 	PipeLineName     string               `json:"piplinename" bson:"piplinename"`
+	Description      string               `json:"description" bson:"description"`
 	Policies         []string             `json:"policies" bson:"policyid"`
 	Schedule         Schedule             `json:"schedule" bson:"schedule"`
 	Enabled          bool                 `json:"enabled" bson:"enabled"`
