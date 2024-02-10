@@ -612,10 +612,14 @@ func updatePolicyRunResult(pipeLineID string, policyID string, resourceName stri
 	opr := storage.GetDefaultDBOperators()
 	query := fmt.Sprintf(`{"policyid": "%s","pipelineid": "%s"}`, policyID, pipeLineID)
 	results, _ := opr.PolicyOperator.GetPolicyResultDetails(query)
+	pipeline, _ := opr.PipeLineOperator.GetPipeLineDetails(pipeLineID)
 
 	if len(results) == 0 {
 		var policyRunresult model.PolicyResult
 		policyRunresult.PipelIneID = pipeLineID
+		if len(pipeline) == 1 {
+			policyRunresult.SweepAccountID = pipeline[0].SweepAccountID
+		}
 		policyRunresult.PolicyID = policyID
 		policyRunresult.Resource = resourceName
 		policyRunresult.LastRunStatus = runStatus

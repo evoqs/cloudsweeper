@@ -447,7 +447,7 @@ func (srv *Server) DeleteCloudAccount(writer http.ResponseWriter, request *http.
 	query := fmt.Sprintf(`{"sweepaccountid": "%s", "cloudaccountid": %s}`, sweepaccountid, cloudaccountid)
 	pipelines, err := srv.opr.PipeLineOperator.QueryPipeLineDetails(query)
 	if len(pipelines) != 0 {
-		for itr, _ := range pipelines {
+		for itr := range pipelines {
 			_, err := srv.opr.PipeLineOperator.DeletePipeLine(string(pipelines[itr].PipeLineID.Hex()))
 			if err != nil {
 				srv.SendResponse500(writer, fmt.Errorf("Failed to delete pipeline %s associated with cloudaccount %s, with error %s", pipelines[itr].PipeLineID.Hex(),

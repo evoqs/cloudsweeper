@@ -36,6 +36,7 @@ type Policy struct {
 type PolicyResult struct {
 	PolicyResultID    primitive.ObjectID `json:"policyresultid" bson:"_id,omitempty"`
 	PolicyID          string             `json:"policyid" bson:"policyid"`
+	SweepAccountID    string             `bson:"sweepaccountid"`
 	PipelIneID        string             `json:"pipelineid" bson:"pipelineid"`
 	Resource          string             `json:"resource" bson:"resource"`
 	Resultlist        []RegionResult     `json:"resultlist" bson:"resultlist"`

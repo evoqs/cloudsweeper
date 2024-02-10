@@ -255,7 +255,7 @@ func (srv *Server) GetPolicyRunResult(writer http.ResponseWriter, request *http.
 		return
 	}
 
-	query := fmt.Sprintf(`{"policyid": "%s", "pipelineid":"%s"}`, policyid, pipelineId)
+	query := fmt.Sprintf(`{"policyid": "%s", "pipelineid":"%s", "sweepaccountid": "%s"}`, policyid, pipelineId, sweepaccountid)
 	policieResults, err := srv.opr.PolicyOperator.GetPolicyResultDetails(query)
 
 	if err != nil {

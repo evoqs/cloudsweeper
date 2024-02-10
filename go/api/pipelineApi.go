@@ -19,6 +19,29 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 
 	vars := mux.Vars(request)
 	pipelineid := vars["pipelineid"]
+
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
+	pipeline, err := srv.opr.PipeLineOperator.GetPipeLineDetails(pipelineid)
+	if err != nil {
+		srv.SendResponse500(writer, fmt.Errorf("Failed to get pipline details, %s", err))
+		return
+	}
+
+	if len(pipeline) == 0 {
+		srv.SendResponse404(writer, err)
+		return
+	}
+
+	if pipeline[0].SweepAccountID != sweepaccountid {
+		srv.SendResponse404(writer, err)
+		return
+	}
+
 	rc, err := runner.ValidateAndRunPipeline(pipelineid)
 	if rc == 200 {
 		srv.SendResponse200(writer, "Accepted pipeline request for run.")
@@ -27,7 +50,7 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 	} else if rc == 404 {
 		srv.SendResponse404(writer, err)
 	} else if rc == 409 {
-		srv.SendResponse404(writer, err)
+		srv.SendResponse409(writer, err)
 	}
 }
 
@@ -305,7 +328,15 @@ func (srv *Server) GetPipelineRunResult(writer http.ResponseWriter, request *htt
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Pipeline ID: %s", pipelineId)))
 		return
 	}
-	query := fmt.Sprintf(`{"pipelineid":"%s"}`, pipelineId)
+
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
+	query := fmt.Sprintf(`{"pipelineid":"%s", "sweepaccountid": "%s"}`, pipelineId, sweepaccountid)
+
 	pipelineResults, err := srv.opr.PipeLineOperator.GetPipelineResultDetails(query)
 
 	if err != nil {

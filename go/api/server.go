@@ -31,7 +31,7 @@ func (srv *Server) StartApiServer(socket string, dbO storage.DbOperators) {
 
 	//Cloud Account operations
 	router.HandleFunc("/cloudaccount", srv.AddCloudAccount).Methods("POST")
-	router.HandleFunc("/cloudaccount", srv.UpdateCloudAccount).Methods("PUT") //completed
+	router.HandleFunc("/cloudaccount", srv.UpdateCloudAccount).Methods("PUT")
 	router.HandleFunc("/cloudaccount/{cloudaccountid}", srv.GetCloudAccount).Methods("GET")
 	router.HandleFunc("/cloudaccount/{cloudaccountid}", srv.DeleteCloudAccount).Methods("DELETE")
 	router.HandleFunc("/cloudaccount/{cloudaccountid}/authtest", srv.AuthCheckCloudAccount).Methods("POST")
@@ -51,7 +51,7 @@ func (srv *Server) StartApiServer(socket string, dbO storage.DbOperators) {
 	router.HandleFunc("/defaultpolicy", srv.GetDefaultCustodianPolicies).Methods("GET")
 	router.HandleFunc("/defaultpolicy", srv.AddDefaultCustodianPolicy).Methods("POST")
 	router.HandleFunc("/defaultpolicy", srv.UpdateDefaultCustodianPolicy).Methods("PUT")
-	router.HandleFunc("/defaultpolicy/{defaultpolicyid}", srv.DeleteDefaultCustodianPolicy).Methods("DELETE")
+	router.HandleFunc("/defaultpolicy/{defaultpolicyid}", srv.DeleteDefaultCustodianPolicy).Methods("DELETE") //completed
 
 	//Run a pipeline
 	router.HandleFunc("/pipeline/{pipelineid}/run", srv.RunPipeLine).Methods("POST")
