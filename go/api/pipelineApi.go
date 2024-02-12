@@ -4,6 +4,7 @@ import (
 	"cloudsweep/model"
 	"cloudsweep/runner"
 	"cloudsweep/scheduler"
+	"cloudsweep/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,6 +43,10 @@ func (srv *Server) RunPipeLine(writer http.ResponseWriter, request *http.Request
 		return
 	}
 
+	if !pipeline[0].Enabled {
+		srv.SendResponse400(writer, fmt.Errorf("Cannot run a disabled policy"))
+		return
+	}
 	rc, err := runner.ValidateAndRunPipeline(pipelineid)
 	if rc == 200 {
 		srv.SendResponse200(writer, "Accepted pipeline request for run.")
@@ -78,6 +83,16 @@ func (srv *Server) AddPipeLine(writer http.ResponseWriter, request *http.Request
 
 	if len(pipeline.Policies) == 0 {
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid request, Atleast once policy is needed to create pipline.")))
+		return
+	}
+
+	if utils.CheckDuplicates[string](pipeline.Policies) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Duplicate polices in pileline create request")))
+		return
+	}
+
+	if utils.CheckDuplicates[string](pipeline.ExecutionRegions) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Duplicate execution regions in pileline create request")))
 		return
 	}
 
@@ -149,10 +164,12 @@ func (srv *Server) AddPipeLine(writer http.ResponseWriter, request *http.Request
 		return
 	}
 	// Schedule the newly added pipeline
-	err = scheduler.GetDefaultPipelineScheduler().AddPipelineSchedule(pipelines[0])
-	if err != nil {
-		srv.SendResponse207(writer, fmt.Errorf("Pipeline added Successfully, Failed to add schedule for the pipeline"))
-		return
+	if pipeline.Enabled {
+		err = scheduler.GetDefaultPipelineScheduler().AddPipelineSchedule(pipelines[0])
+		if err != nil {
+			srv.SendResponse207(writer, fmt.Errorf("Pipeline added Successfully, Failed to add schedule for the pipeline"))
+			return
+		}
 	}
 	//srv.SendResponse200(writer, fmt.Sprintf("Successfully Added Policy with ID %s", id))
 
@@ -186,6 +203,21 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 
 	if len(requestPipeline.ExecutionRegions) == 0 {
 		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid request, Atleast once execution region is needed to create pipline.")))
+		return
+	}
+
+	if len(requestPipeline.Policies) == 0 {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid request, Atleast once policy is needed to create pipline.")))
+		return
+	}
+
+	if utils.CheckDuplicates[string](requestPipeline.Policies) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Duplicate polices in pileline update request")))
+		return
+	}
+
+	if utils.CheckDuplicates[string](requestPipeline.ExecutionRegions) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Duplicate execution regions in pipeline update request")))
 		return
 	}
 
@@ -259,11 +291,18 @@ func (srv *Server) UpdatePipeLine(writer http.ResponseWriter, request *http.Requ
 		return
 	}
 
-	err = scheduler.GetDefaultPipelineScheduler().UpdatePipelineSchedule(requestPipeline)
-	if err != nil {
-		srv.SendResponse207(writer, fmt.Errorf("Pipeline Updated Successfully, Failed to update schedule for the pipeline"))
-		return
+	//if requestPipeline.Schedule != nil {
+	if requestPipeline.Enabled {
+		err = scheduler.GetDefaultPipelineScheduler().UpdatePipelineSchedule(requestPipeline)
+		if err != nil {
+			srv.SendResponse207(writer, fmt.Errorf("Pipeline Updated Successfully, Failed to update schedule for the pipeline"))
+			return
+		}
+	} else {
+		scheduler.GetDefaultPipelineScheduler().DeletePipelineSchedule(requestPipeline.PipeLineID.Hex())
 	}
+	//}
+
 	srv.SendResponse200(writer, fmt.Sprintf("Updated %d Pipeline with ID %s", count, requestPipeline.PipeLineID))
 }
 
@@ -278,6 +317,12 @@ func (srv *Server) GetPipeLine(writer http.ResponseWriter, request *http.Request
 		return
 	}
 
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
 	pipline, err := srv.opr.PipeLineOperator.GetPipeLineDetails(pipelineid)
 
 	if err != nil {
@@ -285,20 +330,19 @@ func (srv *Server) GetPipeLine(writer http.ResponseWriter, request *http.Request
 		return
 	}
 
-	//TODO when length >1
-
 	if len(pipline) == 0 {
 
 		srv.SendResponse404(writer, nil)
 		return
-	} else if len(pipline) > 1 {
-		err := errors.New("Internal Server Error, DB data consistency issue , duplicate pipline with same ID")
-		srv.SendResponse500(writer, err)
+	}
+	pipeln := pipline[0]
+
+	if pipeln.SweepAccountID != sweepaccountid {
+		srv.SendResponse404(writer, nil)
 		return
 	}
 
 	writer.WriteHeader(http.StatusOK)
-	pipeln := pipline[0]
 	json.NewEncoder(writer).Encode(pipeln)
 }
 
@@ -379,14 +423,34 @@ func (srv *Server) DeletePipeLine(writer http.ResponseWriter, request *http.Requ
 		return
 	}
 
+	sweepaccountid := request.Header.Get(AccountIDHeader)
+	if !primitive.IsValidObjectID(sweepaccountid) {
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		return
+	}
+
 	pipeline, err := srv.opr.PipeLineOperator.GetPipeLineDetails(pipelineid)
-	if len(pipeline) != 0 {
-		if pipeline[0].Default {
-			err := errors.New("Cannot delete default pipeline, Only disabled allowed")
-			srv.logwriter.Warnf(err.Error())
-			srv.SendResponse404(writer, err)
-			return
-		}
+	if err != nil {
+		srv.SendResponse500(writer, err)
+		return
+	}
+
+	if len(pipeline) == 0 {
+		srv.SendResponse404(writer, nil)
+		return
+
+	}
+
+	if pipeline[0].SweepAccountID != sweepaccountid {
+		srv.SendResponse404(writer, nil)
+		return
+	}
+
+	if pipeline[0].Default {
+		err := errors.New("Cannot delete default pipeline, Only disabled allowed")
+		srv.logwriter.Warnf(err.Error())
+		srv.SendResponse400(writer, err)
+		return
 	}
 
 	deleteCount, err := srv.opr.PipeLineOperator.DeletePipeLine(pipelineid)
@@ -401,7 +465,18 @@ func (srv *Server) DeletePipeLine(writer http.ResponseWriter, request *http.Requ
 		return
 
 	} else {
-		scheduler.GetDefaultPipelineScheduler().DeletePipelineSchedule(pipelineid)
+		//Delete Results
+		query := fmt.Sprintf(`{"pipelineid": "%s"}`, pipelineid)
+		_, err = srv.opr.PipeLineOperator.DeletePipelineRunResult(query)
+		if err != nil {
+			srv.SendResponse500(writer, fmt.Errorf("Failed to delete results for pipeline %s , with error %s", pipelineid, err))
+			srv.logwriter.Errorf("Failed to delete results for pipeline %s , with error %s", pipelineid, err)
+			return
+		} else {
+			srv.logwriter.Infof("Deleted results for pipeline %s", pipelineid)
+		}
+
+		err = scheduler.GetDefaultPipelineScheduler().DeletePipelineSchedule(pipelineid)
 		srv.SendResponse200(writer, fmt.Sprintf("Successfully deleted pipeline, %s", pipelineid))
 	}
 }

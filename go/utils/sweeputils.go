@@ -184,3 +184,19 @@ func ExtractJsonFromString(input string) ([]string, error) {
 	}
 	return matches, nil
 }
+
+// Validates if a slice contains duplicates
+func CheckDuplicates[S string | int64](slice []S) bool {
+	// Create a map to store unique elements
+	seen := make(map[S]bool)
+
+	// Loop through the slice, adding elements to the map if they haven't been seen before
+	for _, val := range slice {
+		if _, ok := seen[val]; !ok {
+			seen[val] = true
+		} else {
+			return true
+		}
+	}
+	return false
+}
