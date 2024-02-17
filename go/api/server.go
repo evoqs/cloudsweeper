@@ -15,6 +15,8 @@ type Server struct {
 	socket    string
 }
 
+const AccountIDHeader = "AccountId"
+
 func (srv *Server) StartApiServer(socket string, dbO storage.DbOperators) {
 	srv.socket = socket
 	srv.logwriter = logger.NewDefaultLogger()
@@ -22,10 +24,10 @@ func (srv *Server) StartApiServer(socket string, dbO storage.DbOperators) {
 	router := mux.NewRouter()
 
 	//SweepAccount Level operations
-	router.HandleFunc("/accounts/{accountid}/cloudaccounts", srv.GetAllCloudAccount).Methods("GET")
-	router.HandleFunc("/accounts/{accountid}/cloudaccounts", srv.DeleteAllCloudAccount).Methods("DELETE")
-	router.HandleFunc("/accounts/{accountid}/pipelines", srv.GetAllPipeLine).Methods("GET")
-	router.HandleFunc("/accounts/{accountid}/policies", srv.GetAllPolicies).Methods("GET")
+	router.HandleFunc("/accounts/cloudaccounts", srv.GetAllCloudAccount).Methods("GET")
+	router.HandleFunc("/accounts/cloudaccounts", srv.DeleteAllCloudAccount).Methods("DELETE")
+	router.HandleFunc("/accounts/pipelines", srv.GetAllPipeLine).Methods("GET")
+	router.HandleFunc("/accounts/policies", srv.GetAllPolicies).Methods("GET")
 
 	//Cloud Account operations
 	router.HandleFunc("/cloudaccount", srv.AddCloudAccount).Methods("POST")
@@ -49,7 +51,7 @@ func (srv *Server) StartApiServer(socket string, dbO storage.DbOperators) {
 	router.HandleFunc("/defaultpolicy", srv.GetDefaultCustodianPolicies).Methods("GET")
 	router.HandleFunc("/defaultpolicy", srv.AddDefaultCustodianPolicy).Methods("POST")
 	router.HandleFunc("/defaultpolicy", srv.UpdateDefaultCustodianPolicy).Methods("PUT")
-	router.HandleFunc("/defaultpolicy/{defaultpolicyid}", srv.DeleteDefaultCustodianPolicy).Methods("DELETE")
+	router.HandleFunc("/defaultpolicy/{defaultpolicyid}", srv.DeleteDefaultCustodianPolicy).Methods("DELETE") //completed
 
 	//Run a pipeline
 	router.HandleFunc("/pipeline/{pipelineid}/run", srv.RunPipeLine).Methods("POST")
@@ -108,6 +110,17 @@ func (srv *Server) SendResponse200(writer http.ResponseWriter, msg string) {
 	resp := getResponse200()
 	if msg != "" {
 		resp.Status = msg
+	}
+
+	json.NewEncoder(writer).Encode(resp)
+}
+
+func (srv *Server) SendResponse207(writer http.ResponseWriter, err error) {
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusMultiStatus)
+	resp := getResponse207()
+	if err != nil {
+		resp.Error = err.Error()
 	}
 
 	json.NewEncoder(writer).Encode(resp)

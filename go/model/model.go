@@ -8,11 +8,12 @@ const AWS = "aws"
 
 type CloudAccountData struct {
 	Name           string             `json:"name" bson:"name"`
-	AccountID      string             `json:"accountid" bson:"accountid"`
+	SweepAccountID string             `bson:"sweepaccountid"`
 	CloudAccountID primitive.ObjectID `json:"cloudaccountid,omitempty" bson:"_id,omitempty"`
 	AccountType    string             `json:"accounttype" bson:"accounttype"`
 	Description    string             `json:"description" bson:"description"`
 	AwsCredentials AwsCredentials     `json:"awscredentials" bson:"awscredentials"`
+	EmailList      []string           `json:"emaillist"`
 }
 
 type AwsCredentials struct {
@@ -26,22 +27,16 @@ type Policy struct {
 	PolicyName        string             `json:"policyname" bson:"policyname"`
 	PolicyDescription string             `json:"description" bson:"description"`
 	PolicyID          primitive.ObjectID `json:"policyid" bson:"_id,omitempty"`
-	AccountID         string             `json:"accountid" bson:"accountid"`
+	SweepAccountID    string             `bson:"sweepaccountid"`
 	IsDefault         bool               `json:"isDefault" bson:"isDefault"`
 	PolicyDefinition  string             `json:"policydefinition" bson:"policydefinition"`
 	Recommendation    string             `json:"recommendation" bson:"recommendation"`
 }
 
-type DefaultPolicyy struct {
-	PolicyName       string             `json:"policyname" bson:"policyname"`
-	PolicyID         primitive.ObjectID `json:"policyid" bson:"_id,omitempty"`
-	PolicyDefinition string             `json:"policydefinition" bson:"policydefinition"`
-	Recommendation   string             `json:"recommendation" bson:"recommendation"`
-}
-
 type PolicyResult struct {
 	PolicyResultID    primitive.ObjectID `json:"policyresultid" bson:"_id,omitempty"`
 	PolicyID          string             `json:"policyid" bson:"policyid"`
+	SweepAccountID    string             `bson:"sweepaccountid"`
 	PipelIneID        string             `json:"pipelineid" bson:"pipelineid"`
 	Resource          string             `json:"resource" bson:"resource"`
 	Resultlist        []RegionResult     `json:"resultlist" bson:"resultlist"`
@@ -93,10 +88,11 @@ type PipeLineNotification struct {
 }
 
 type PipeLine struct {
-	AccountID        string               `json:"accountid" bson:"accountid"`
+	SweepAccountID   string               `bson:"sweepaccountid"`
 	CloudAccountID   string               `json:"cloudaccountid" bson:"cloudaccountid"`
 	PipeLineID       primitive.ObjectID   `json:"piplineid" bson:"_id,omitempty"`
 	PipeLineName     string               `json:"piplinename" bson:"piplinename"`
+	Description      string               `json:"description" bson:"description"`
 	Policies         []string             `json:"policies" bson:"policyid"`
 	Schedule         Schedule             `json:"schedule" bson:"schedule"`
 	Enabled          bool                 `json:"enabled" bson:"enabled"`
@@ -131,6 +127,11 @@ type Response200 struct {
 
 type Response201 struct {
 	Status     string `json:"status"`
+	StatusCode int    `json:"responsecode"`
+}
+
+type Response207 struct {
+	Error      string `json:"error"`
 	StatusCode int    `json:"responsecode"`
 }
 

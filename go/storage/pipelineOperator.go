@@ -45,10 +45,9 @@ func (opr *PipeLineOperator) GetPipeLineDetails(pipelineid string) ([]model.Pipe
 }
 
 // Fetches all pipelines belonging to an account
-func (opr *PipeLineOperator) GetAccountPipeLines(accountid string) ([]model.PipeLine, error) {
+func (opr *PipeLineOperator) QueryPipeLineDetails(query string) ([]model.PipeLine, error) {
 
 	var results []model.PipeLine
-	query := fmt.Sprintf(`{"accountid": "%s"}`, accountid)
 	cursor, err := opr.dbM.QueryRecord(pipelineTable, query)
 
 	fmt.Println(err)
@@ -83,15 +82,8 @@ func (opr *PipeLineOperator) DeletePipeLine(objectid string) (int64, error) {
 
 func (opr *PipeLineOperator) GetPipelineResultDetails(query string) ([]bson.M, error) {
 
-	//var results []model.PolicyResult
-
 	fmt.Println("Query: ", query)
 	cursor, err := opr.dbM.QueryRecord(policyResultTable, query)
-
-	/*if cursor == nil {
-		fmt.Println("Empty result Set")
-		return nil, nil
-	}*/
 
 	var docs []bson.M
 	if err = cursor.All(context.TODO(), &docs); err != nil {
@@ -99,16 +91,14 @@ func (opr *PipeLineOperator) GetPipelineResultDetails(query string) ([]bson.M, e
 		return nil, err
 	}
 
-	/*for result.Next(ctx) {
-	      var document bson.M
-	      err = result.Decode(&document)
-	      if err != nil {
-	          log.Println(err)
-	      }
-	      docs = append(docs, document)
-	  }
-	  return docs*/
-
-	fmt.Printf("%+v", docs)
+	//fmt.Printf("%+v", docs)
 	return docs, err
+}
+
+func (opr *PipeLineOperator) DeletePipelineRunResult(query string) (int64, error) {
+
+	fmt.Println("Query: ", query)
+	result, err := opr.dbM.DeleteMultipleRecord(policyResultTable, query)
+
+	return result.DeletedCount, err
 }
