@@ -83,6 +83,8 @@ docker build -t "867226238913.dkr.ecr.us-east-1.amazonaws.com/cs:$IMAGE_VERSION"
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 867226238913.dkr.ecr.us-east-1.amazonaws.com
 docker push 867226238913.dkr.ecr.us-east-1.amazonaws.com/cs:$IMAGE_VERSION
 docker push 867226238913.dkr.ecr.us-east-1.amazonaws.com/cs-ui:$IMAGE_VERSION
+docker push 867226238913.dkr.ecr.us-east-1.amazonaws.com/cs-ui:latest
+docker push 867226238913.dkr.ecr.us-east-1.amazonaws.com/cs:latest
 
 #docker compose -f ./cs_compose.yaml up -d
 

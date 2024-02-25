@@ -1,14 +1,14 @@
 version: '3'
 services:
   cs-ui:
-    image: 867226238913.dkr.ecr.us-east-1.amazonaws.com/cs-ui:1.1
+    image: "867226238913.dkr.ecr.us-east-1.amazonaws.com/cs-ui:${CS_UI_VERSION:-latest}"
     ports:
       - "3000:3000"
     depends_on:
       - cs-backend
 
   cs-backend:
-    image: 867226238913.dkr.ecr.us-east-1.amazonaws.com/cs:1.1
+    image: "867226238913.dkr.ecr.us-east-1.amazonaws.com/cs:${CS_BACKEND_VERSION:-latest}"
     ports:
       - "8080:8080"
     depends_on:
