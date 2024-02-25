@@ -1,12 +1,15 @@
 #!/bin/bash
 
-while getopts ":v:" opt; do
+while getopts ":v:l:" opt; do
   case ${opt} in
     v )
       IMAGE_VERSION=$OPTARG
       ;;
+    l )
+      LOGO_PATH=$OPTARG
+      ;;
     \? )
-      echo "Usage: $0 -v <image_version>"
+      echo "Usage: $0 -v <image_version> -l <logo_path>"
       exit 1
       ;;
     : )
@@ -19,11 +22,24 @@ shift $((OPTIND -1))
 
 if [ -z "$IMAGE_VERSION" ]; then
     echo "Error: Image version (-v) argument is required."
-    echo "Usage: $0 -v <image_version>"
+    echo "Usage: $0 -v <image_version> -l <logo_path>"
+    exit 1
+fi
+
+if [ -z "$LOGO_PATH" ]; then
+    echo "Error: Logo path (-l) argument is required."
+    echo "Usage: $0 -v <image_version> -l <logo_path>"
+    exit 1
+fi
+
+if [ ! -f "$LOGO_PATH" ]; then
+    echo "Error: Logo file does not exist."
     exit 1
 fi
 
 CURRENT_DIR=$(pwd)
+mkdir -p ui
+mkdir -p backend
 
 if [ -d "ui/cloudsweeper-ui" ]; then
     echo "Performing git pull for cloudsweeper-ui"
@@ -47,17 +63,31 @@ else
    git clone -b poc git@bitbucket.org:cloudsweeper/cloudsweep.git backend/cloudsweep || exit
 fi
 
+# Copy the Dockerfiles outside the git repos
+cp ./ui/cloudsweeper-ui/build/Dockerfile ./ui/
+cp ./backend/cloudsweep/build/Dockerfile ./backend/
+
+# Copy the logo file to the backend Dockerfile path
+cp "$LOGO_PATH" backend/logo.jpeg || exit
+
+# Build the backend
 cd backend/cloudsweep/go || exit
 go build cloudsweep.go
 
 cd "$CURRENT_DIR" || exit
 # Build the Docker image
-docker build -t "867226238913.dkr.ecr.us-east-1.amazonaws.com/cs-ui:$IMAGE_VERSION" ./ui || exit
-docker build -t "867226238913.dkr.ecr.us-east-1.amazonaws.com/cs:$IMAGE_VERSION" ./backend || exit
+docker build -t "867226238913.dkr.ecr.us-east-1.amazonaws.com/cs-ui:$IMAGE_VERSION" -t "867226238913.dkr.ecr.us-east-1.amazonaws.com/cs-ui:latest" ./ui/ || exit
+docker build -t "867226238913.dkr.ecr.us-east-1.amazonaws.com/cs:$IMAGE_VERSION" -t "867226238913.dkr.ecr.us-east-1.amazonaws.com/cs:latest" ./backend/ || exit
 
 #ECR_PASSWORD=$(aws ecr get-login-password --region us-east-1)
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 867226238913.dkr.ecr.us-east-1.amazonaws.com
 docker push 867226238913.dkr.ecr.us-east-1.amazonaws.com/cs:$IMAGE_VERSION
 docker push 867226238913.dkr.ecr.us-east-1.amazonaws.com/cs-ui:$IMAGE_VERSION
+docker push 867226238913.dkr.ecr.us-east-1.amazonaws.com/cs-ui:latest
+docker push 867226238913.dkr.ecr.us-east-1.amazonaws.com/cs:latest
 
 #docker compose -f ./cs_compose.yaml up -d
+
+# clean up
+rm -rf backend
+rm -rf ui
