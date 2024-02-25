@@ -88,7 +88,7 @@ type PipeLineNotification struct {
 }
 
 type PipeLine struct {
-	SweepAccountID   string               `bson:"sweepaccountid"`
+	SweepAccountID   string               `json:"sweepaccountid" bson:"sweepaccountid"`
 	CloudAccountID   string               `json:"cloudaccountid" bson:"cloudaccountid"`
 	PipeLineID       primitive.ObjectID   `json:"piplineid" bson:"_id,omitempty"`
 	PipeLineName     string               `json:"piplinename" bson:"piplinename"`

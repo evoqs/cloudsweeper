@@ -74,8 +74,9 @@ func (srv *Server) UpdateCustodianPolicy(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	if originalpolicy == nil {
+	if len(originalpolicy) == 0 {
 		srv.SendResponse404(writer, nil)
+		return
 	}
 
 	if originalpolicy[0].IsDefault {
@@ -238,20 +239,20 @@ func (srv *Server) GetPolicyRunResult(writer http.ResponseWriter, request *http.
 	pipelineId := request.URL.Query().Get("pipelineid")
 
 	if !primitive.IsValidObjectID(policyid) {
-		srv.logwriter.Warnf(fmt.Sprintf("Invalid Policy ObjectID: %s, received in get result query", policyid))
-		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Policy ObjectID: %s", policyid)))
+		srv.logwriter.Warnf(fmt.Sprintf("invalid Policy ObjectID: %s, received in get result query", policyid))
+		srv.SendResponse400(writer, fmt.Errorf("Invalid Policy ObjectID: %s", policyid))
 		return
 	}
 
 	if !primitive.IsValidObjectID(pipelineId) {
-		srv.logwriter.Warnf(fmt.Sprintf("Invalid Pipeline ObjectID: %s, received in get result query", pipelineId))
-		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Pipeline ObjectID: %s", pipelineId)))
+		srv.logwriter.Warnf(fmt.Sprintf("invalid Pipeline ObjectID: %s, received in get result query", pipelineId))
+		srv.SendResponse400(writer, fmt.Errorf("invalid Pipeline ObjectID: %s", pipelineId))
 		return
 	}
 
 	sweepaccountid := request.Header.Get(AccountIDHeader)
 	if !primitive.IsValidObjectID(sweepaccountid) {
-		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid Customer(Sweeper) Account ID: %s", sweepaccountid)))
+		srv.SendResponse400(writer, fmt.Errorf("invalid customer(Sweeper) Account ID: %s", sweepaccountid))
 		return
 	}
 
@@ -311,7 +312,7 @@ func (srv *Server) AddDefaultCustodianPolicy(writer http.ResponseWriter, request
 	//srv.SendResponse200(writer, fmt.Sprintf("Successfully Added Policy with ID %s", id))
 	srv.logwriter.Infof("Successfully added default policy with ID", id)
 	writer.WriteHeader(http.StatusOK)
-	defaultpolicy.PolicyID, err = primitive.ObjectIDFromHex(id)
+	defaultpolicy.PolicyID, _ = primitive.ObjectIDFromHex(id)
 	json.NewEncoder(writer).Encode(defaultpolicy)
 }
 
@@ -323,12 +324,12 @@ func (srv *Server) UpdateDefaultCustodianPolicy(writer http.ResponseWriter, requ
 	err := json.NewDecoder(request.Body).Decode(&defaultpolicy)
 
 	if err != nil {
-		srv.SendResponse400(writer, errors.New(fmt.Sprintf("Invalid json payload for POST request, %s", err.Error())))
+		srv.SendResponse400(writer, errors.New(fmt.Sprintf("invalid json payload for POST request, %s", err.Error())))
 		return
 	}
 
 	if !defaultpolicy.IsDefault {
-		errmsg := fmt.Errorf("Default flag must be set to be true, for default policies ")
+		errmsg := fmt.Errorf("default flag must be set to be true, for default policies ")
 		srv.logwriter.Errorf(errmsg.Error())
 		srv.SendResponse400(writer, errmsg)
 		return
@@ -336,16 +337,17 @@ func (srv *Server) UpdateDefaultCustodianPolicy(writer http.ResponseWriter, requ
 
 	originalpolicy, err := srv.opr.PolicyOperator.GetPolicyDetails(string(defaultpolicy.PolicyID.Hex()))
 	if err != nil {
-		srv.SendResponse400(writer, fmt.Errorf("Failed to read policy deatils for policy , %s", defaultpolicy.PolicyID))
+		srv.SendResponse400(writer, fmt.Errorf("failed to read policy deatils for policy , %s", defaultpolicy.PolicyID))
 		return
 	}
 
-	if originalpolicy == nil {
+	if len(originalpolicy) == 0 {
 		srv.SendResponse404(writer, nil)
+		return
 	}
 
 	if !originalpolicy[0].IsDefault {
-		srv.SendResponse400(writer, fmt.Errorf("Cannot update non default policy , %s", defaultpolicy.PolicyID))
+		srv.SendResponse400(writer, fmt.Errorf("cannot update non default policy , %s", defaultpolicy.PolicyID))
 		return
 	}
 	count, err := srv.opr.PolicyOperator.UpdateDefaultPolicy(defaultpolicy)
