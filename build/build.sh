@@ -76,8 +76,8 @@ go build cloudsweep.go
 
 cd "$CURRENT_DIR" || exit
 # Build the Docker image
-docker build -t "867226238913.dkr.ecr.us-east-1.amazonaws.com/cs-ui:$IMAGE_VERSION" ./ui/ || exit
-docker build -t "867226238913.dkr.ecr.us-east-1.amazonaws.com/cs:$IMAGE_VERSION" ./backend/ || exit
+docker build -t "867226238913.dkr.ecr.us-east-1.amazonaws.com/cs-ui:$IMAGE_VERSION" -t "867226238913.dkr.ecr.us-east-1.amazonaws.com/cs-ui:latest" ./ui/ || exit
+docker build -t "867226238913.dkr.ecr.us-east-1.amazonaws.com/cs:$IMAGE_VERSION" -t "867226238913.dkr.ecr.us-east-1.amazonaws.com/cs:latest" ./backend/ || exit
 
 #ECR_PASSWORD=$(aws ecr get-login-password --region us-east-1)
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 867226238913.dkr.ecr.us-east-1.amazonaws.com
