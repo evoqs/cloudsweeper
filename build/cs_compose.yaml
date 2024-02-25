@@ -1,0 +1,31 @@
+version: '3'
+services:
+  cs-ui:
+    image: 867226238913.dkr.ecr.us-east-1.amazonaws.com/cs-ui:1.1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - cs-backend
+
+  cs-backend:
+    image: 867226238913.dkr.ecr.us-east-1.amazonaws.com/cs:1.1
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongodb
+    environment:
+      - DB_HOST=mongodb
+      - DB_PORT=27017
+      - DB_USERNAME=
+      - DB_PASS=
+      - DB_NAME=sweepdb
+
+  mongodb:
+    image: mongo
+    environment:
+      - MONGO_INITDB_DATABASE=sweepdb
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:
